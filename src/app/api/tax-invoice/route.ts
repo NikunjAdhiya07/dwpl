@@ -152,6 +152,12 @@ export async function POST(request: NextRequest) {
       cgstPercentage: halfGST, // Split GST equally
       sgstPercentage: halfGST, // Split GST equally
       invoiceDate: body.invoiceDate || new Date(),
+      
+      // Transport Details from Challan
+      vehicleNumber: challan.vehicleNumber,
+      transportName: challan.transportName,
+      ownerName: challan.ownerName,
+      dispatchedThrough: challan.dispatchedThrough || 'By Road',
     });
     
     console.log('Tax Invoice created successfully:', {

@@ -69,6 +69,13 @@ interface OutwardChallan {
   drawCharge: number;
   totalAmount: number;
   challanDate: string;
+  
+  // Transport Details
+  vehicleNumber?: string;
+  transportName?: string;
+  ownerName?: string;
+  dispatchedThrough?: string;
+  
   createdAt: string;
 }
 
@@ -81,6 +88,12 @@ interface ChallanForm {
   quantity: number;
   rate: number;
   challanDate: string;
+  
+  // Transport Details
+  vehicleNumber?: string;
+  transportName?: string;
+  ownerName?: string;
+  dispatchedThrough?: string;
 }
 
 export default function OutwardChallanPage() {
@@ -116,6 +129,12 @@ export default function OutwardChallanPage() {
     quantity: 0,
     rate: 0,
     challanDate: new Date().toISOString().split('T')[0],
+    
+    // Transport Details
+    vehicleNumber: '',
+    transportName: '',
+    ownerName: '',
+    dispatchedThrough: 'By Road',
   });
 
   useEffect(() => {
@@ -444,6 +463,12 @@ export default function OutwardChallanPage() {
       quantity: 0,
       rate: 0,
       challanDate: new Date().toISOString().split('T')[0],
+      
+      // Transport Details
+      vehicleNumber: '',
+      transportName: '',
+      ownerName: '',
+      dispatchedThrough: 'By Road',
     });
     setSelectedParty(null);
     setSelectedBOM(null);
@@ -466,6 +491,12 @@ export default function OutwardChallanPage() {
       quantity: challan.quantity,
       rate: challan.rate,
       challanDate: new Date(challan.challanDate).toISOString().split('T')[0],
+      
+      // Transport Details
+      vehicleNumber: challan.vehicleNumber || '',
+      transportName: challan.transportName || '',
+      ownerName: challan.ownerName || '',
+      dispatchedThrough: challan.dispatchedThrough || 'By Road',
     });
     setSelectedParty(parties.find(p => p._id === challan.party._id) || null);
     setShowForm(true);
@@ -796,6 +827,65 @@ export default function OutwardChallanPage() {
               </div>
             </div>
 
+            {/* Transport Details */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-4">
+              <h3 className="font-semibold text-purple-900">Transport Details (Optional)</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Vehicle Number</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.vehicleNumber || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, vehicleNumber: e.target.value })
+                    }
+                    placeholder="e.g., GJ01AB1234"
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Transport Name</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.transportName || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, transportName: e.target.value })
+                    }
+                    placeholder="e.g., ABC Transport"
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Owner Name</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.ownerName || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, ownerName: e.target.value })
+                    }
+                    placeholder="e.g., John Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Dispatched Through</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.dispatchedThrough || 'By Road'}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dispatchedThrough: e.target.value })
+                    }
+                    placeholder="e.g., By Road, By Rail"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Charge Breakdown - Professional ERP Style */}
             {selectedParty && formData.quantity > 0 && (
               <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
@@ -1033,13 +1123,21 @@ export default function OutwardChallanPage() {
                           <span>0</span>
                           
                           <span>Vehicle No/LR No:</span>
-                          <span className="break-all">-</span>
+                          <span className="break-all">{printChallan.vehicleNumber || '-'}</span>
+                          
+                          <span>Owner Name:</span>
+                          <span>{printChallan.ownerName || '-'}</span>
                           
                           <span>E-Way Bill No :</span>
                           <span>-</span>
                           
                           <span>Dispatched Through:</span>
-                          <span>By Road</span>
+                          <span>
+                            {printChallan.dispatchedThrough || 'By Road'}
+                            {(printChallan.transportName || printChallan.ownerName) && 
+                              ` / ${printChallan.transportName || printChallan.ownerName}`
+                            }
+                          </span>
                         </div>
                       </div>
                     </div>

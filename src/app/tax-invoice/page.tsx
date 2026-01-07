@@ -304,7 +304,12 @@ export default function TaxInvoicePage() {
                           <span>{invoice.eWayBillNo || '-'}</span>
                           
                           <span>Dispatched Through:</span>
-                          <span>{invoice.dispatchedThrough || 'By Road'}</span>
+                          <span>
+                            {invoice.dispatchedThrough || 'By Road'}
+                            {(invoice.transportName || invoice.ownerName) && 
+                              ` / ${invoice.transportName || invoice.ownerName}`
+                            }
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -791,7 +796,12 @@ export default function TaxInvoicePage() {
                           <span>{printInvoice.eWayBillNo || '-'}</span>
                           
                           <span>Dispatched Through:</span>
-                          <span>{printInvoice.dispatchedThrough || 'By Road'}</span>
+                          <span>
+                            {printInvoice.dispatchedThrough || 'By Road'}
+                            {(printInvoice.transportName || printInvoice.ownerName) && 
+                              ` / ${printInvoice.transportName || printInvoice.ownerName}`
+                            }
+                          </span>
                         </div>
                       </div>
                     </div>

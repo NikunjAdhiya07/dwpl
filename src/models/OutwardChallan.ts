@@ -65,6 +65,24 @@ const OutwardChallanSchema = new Schema<IOutwardChallan>(
       required: [true, 'Challan date is required'],
       default: Date.now,
     },
+    
+    // Transport Details
+    vehicleNumber: {
+      type: String,
+      trim: true,
+    },
+    transportName: {
+      type: String,
+      trim: true,
+    },
+    ownerName: {
+      type: String,
+      trim: true,
+    },
+    dispatchedThrough: {
+      type: String,
+      default: 'By Road',
+    },
   },
   {
     timestamps: true,

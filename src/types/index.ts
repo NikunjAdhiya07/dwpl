@@ -88,6 +88,13 @@ export interface IOutwardChallan extends Document {
   drawCharge: number; // auto-calculated from Party Master
   totalAmount: number;
   challanDate: Date;
+  
+  // Transport Details
+  vehicleNumber?: string;
+  transportName?: string;
+  ownerName?: string;
+  dispatchedThrough?: string; // e.g., "By Road"
+  
   createdAt: Date;
   updatedAt: Date;
 }

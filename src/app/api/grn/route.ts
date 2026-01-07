@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Populate and return
-    const populatedGRN = await GRN.findById(grn._id)
+    const populatedGRN = await GRN.findById((grn as any)._id)
       .populate('sendingParty')
       .populate('items.rmSize');
     

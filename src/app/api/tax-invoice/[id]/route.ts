@@ -4,12 +4,12 @@ import { TaxInvoice } from '@/models/TaxInvoice';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
-    const { id } = params;
+    const { id } = await params;
     console.log('Deleting tax invoice:', id);
     
     const deletedInvoice = await TaxInvoice.findByIdAndDelete(id);

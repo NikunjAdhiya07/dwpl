@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
@@ -20,7 +20,7 @@ interface StockItem {
   lastUpdated: string;
 }
 
-export default function StockPage() {
+function StockContent() {
   const searchParams = useSearchParams();
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,5 +229,13 @@ export default function StockPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function StockPage() {
+  return (
+    <Suspense fallback={<Loading message="Loading stock..." />}>
+      <StockContent />
+    </Suspense>
   );
 }

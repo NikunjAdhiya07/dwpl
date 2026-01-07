@@ -10,10 +10,10 @@ import { Plus, Edit2, Trash2, X } from 'lucide-react';
 
 interface Item {
   _id: string;
+  itemCode: string;
   category: 'RM' | 'FG';
   size: string;
   grade: string;
-  mill: string;
   hsnCode: string;
   isActive: boolean;
 }
@@ -22,7 +22,6 @@ interface ItemForm {
   category: 'RM' | 'FG';
   size: string;
   grade: string;
-  mill: string;
   hsnCode: string;
   isActive: boolean;
 }
@@ -40,7 +39,6 @@ export default function ItemMasterPage() {
     category: 'RM',
     size: '',
     grade: '',
-    mill: '',
     hsnCode: '',
     isActive: true,
   });
@@ -97,7 +95,6 @@ export default function ItemMasterPage() {
       category: item.category,
       size: item.size,
       grade: item.grade,
-      mill: item.mill,
       hsnCode: item.hsnCode,
       isActive: item.isActive,
     });
@@ -130,7 +127,6 @@ export default function ItemMasterPage() {
       category: 'RM',
       size: '',
       grade: '',
-      mill: '',
       hsnCode: '',
       isActive: true,
     });
@@ -146,7 +142,7 @@ export default function ItemMasterPage() {
       return (
         item.size.toLowerCase().includes(query) ||
         item.grade.toLowerCase().includes(query) ||
-        item.mill.toLowerCase().includes(query) ||
+        item.itemCode.toLowerCase().includes(query) ||
         item.hsnCode.toLowerCase().includes(query)
       );
     });
@@ -228,17 +224,7 @@ export default function ItemMasterPage() {
                 />
               </div>
 
-              <div>
-                <label className="label">Mill *</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={formData.mill}
-                  onChange={(e) => setFormData({ ...formData, mill: e.target.value })}
-                  placeholder="e.g., TATA, JSW"
-                  required
-                />
-              </div>
+
 
               <div>
                 <label className="label">HSN Code *</label>
@@ -282,7 +268,7 @@ export default function ItemMasterPage() {
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Search by size, grade, mill, or HSN code..."
+          placeholder="Search by item code, size, grade, or HSN code..."
         />
       </div>
 
@@ -308,10 +294,10 @@ export default function ItemMasterPage() {
           <table className="table">
             <thead>
               <tr>
+                <th>Item Code</th>
                 <th>Category</th>
                 <th>Size</th>
                 <th>Grade</th>
-                <th>Mill</th>
                 <th>HSN Code</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -327,6 +313,7 @@ export default function ItemMasterPage() {
               ) : (
                 filteredItems.map((item) => (
                   <tr key={item._id}>
+                    <td className="font-mono text-sm text-blue-600">{item.itemCode}</td>
                     <td>
                       <span
                         className={`badge ${
@@ -338,7 +325,6 @@ export default function ItemMasterPage() {
                     </td>
                     <td className="font-medium">{item.size}</td>
                     <td>{item.grade}</td>
-                    <td>{item.mill}</td>
                     <td className="font-mono text-sm">{item.hsnCode}</td>
                     <td>
                       <span

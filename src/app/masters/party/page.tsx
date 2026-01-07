@@ -14,6 +14,7 @@ interface Party {
   address: string;
   gstNumber: string;
   contactNumber: string;
+  rate: number;
   annealingCharge: number;
   drawCharge: number;
   isActive: boolean;
@@ -24,6 +25,7 @@ interface PartyForm {
   address: string;
   gstNumber: string;
   contactNumber: string;
+  rate: number;
   annealingCharge: number;
   drawCharge: number;
   isActive: boolean;
@@ -42,6 +44,7 @@ export default function PartyMasterPage() {
     address: '',
     gstNumber: '',
     contactNumber: '',
+    rate: 0,
     annealingCharge: 0,
     drawCharge: 0,
     isActive: true,
@@ -100,6 +103,7 @@ export default function PartyMasterPage() {
       address: party.address,
       gstNumber: party.gstNumber,
       contactNumber: party.contactNumber,
+      rate: party.rate,
       annealingCharge: party.annealingCharge,
       drawCharge: party.drawCharge,
       isActive: party.isActive,
@@ -134,6 +138,7 @@ export default function PartyMasterPage() {
       address: '',
       gstNumber: '',
       contactNumber: '',
+      rate: 0,
       annealingCharge: 0,
       drawCharge: 0,
       isActive: true,
@@ -243,6 +248,21 @@ export default function PartyMasterPage() {
               </div>
 
               <div>
+                <label className="label">Base Rate (per unit) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input"
+                  value={formData.rate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, rate: parseFloat(e.target.value) })
+                  }
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              <div>
                 <label className="label">Annealing Charge (per unit) *</label>
                 <input
                   type="number"
@@ -314,6 +334,7 @@ export default function PartyMasterPage() {
                 <th>Party Name</th>
                 <th>GST Number</th>
                 <th>Contact</th>
+                <th>Rate</th>
                 <th>Annealing Charge</th>
                 <th>Draw Charge</th>
                 <th>Status</th>
@@ -323,7 +344,7 @@ export default function PartyMasterPage() {
             <tbody>
               {filteredParties.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-500">
+                  <td colSpan={8} className="text-center py-8 text-slate-500">
                     {searchQuery ? 'No parties found matching your search.' : 'No parties found. Click "Add Party" to create one.'}
                   </td>
                 </tr>
@@ -333,8 +354,9 @@ export default function PartyMasterPage() {
                     <td className="font-medium">{party.partyName}</td>
                     <td className="font-mono text-sm">{party.gstNumber}</td>
                     <td>{party.contactNumber}</td>
-                    <td>₹{party.annealingCharge.toFixed(2)}</td>
-                    <td>₹{party.drawCharge.toFixed(2)}</td>
+                    <td>₹{(party.rate ?? 0).toFixed(2)}</td>
+                    <td>₹{(party.annealingCharge ?? 0).toFixed(2)}</td>
+                    <td>₹{(party.drawCharge ?? 0).toFixed(2)}</td>
                     <td>
                       <span
                         className={`badge ${

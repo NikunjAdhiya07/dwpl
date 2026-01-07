@@ -7,6 +7,7 @@ export interface IPartyMaster extends Document {
   address: string;
   gstNumber: string;
   contactNumber: string;
+  rate: number; // base rate per unit
   annealingCharge: number; // per unit
   drawCharge: number; // per pass/unit
   isActive: boolean;
@@ -15,10 +16,10 @@ export interface IPartyMaster extends Document {
 }
 
 export interface IItemMaster extends Document {
+  itemCode: string; // Unique identifier for the item (auto-generated)
   category: 'RM' | 'FG';
   size: string; // diameter
   grade: string;
-  mill: string;
   hsnCode: string;
   isActive: boolean;
   createdAt: Date;
@@ -36,11 +37,6 @@ export interface ITransportMaster extends Document {
 export interface IBOM extends Document {
   fgSize: string; // Finish Size
   rmSize: string; // Original/Raw Material Size
-  grade: string;
-  annealingMin: number; // 0-7
-  annealingMax: number; // 0-7
-  drawPassMin: number; // 0-10
-  drawPassMax: number; // 0-10
   status: 'Active' | 'Inactive';
   createdAt: Date;
   updatedAt: Date;
@@ -56,12 +52,16 @@ export interface IGSTMaster extends Document {
 
 // ============= TRANSACTION TYPES =============
 
-export interface IGRN extends Document {
-  sendingParty: string; // Party ID
-  partyChallanNumber: string;
+export interface IGRNItem {
   rmSize: string; // Item ID
   quantity: number;
   rate: number;
+}
+
+export interface IGRN extends Document {
+  sendingParty: string; // Party ID
+  partyChallanNumber: string;
+  items: IGRNItem[]; // Array of items
   totalValue: number;
   grnDate: Date;
   createdAt: Date;
@@ -110,7 +110,9 @@ export interface ITaxInvoice extends Document {
   poNumber?: string; // Purchase Order Number
   paymentTerm?: string; // e.g., "0 Days"
   supplierCode?: string; // Supplier Code
-  vehicleNumber?: string; // Vehicle No/LR No
+  vehicleNumber?: string; // Vehicle No
+  transportName?: string; // Transport Name (replaces LR No)
+  ownerName?: string; // Owner Name
   eWayBillNo?: string; // E-Way Bill No
   dispatchedThrough?: string; // e.g., "By Road"
   

@@ -6,7 +6,7 @@ import Card from '@/components/Card';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
-import { Plus, X, FileText, Download } from 'lucide-react';
+import { Plus, X, FileText, Download, Trash2 } from 'lucide-react';
 import { exportToPDF, generatePDFFilename } from '@/lib/pdfExport';
 
 interface Party {
@@ -20,8 +20,17 @@ interface Item {
   _id: string;
   size: string;
   grade: string;
-  mill: string;
   category: string;
+}
+
+interface GRNItem {
+  rmSize: {
+    _id: string;
+    size: string;
+    grade: string;
+  };
+  quantity: number;
+  rate: number;
 }
 
 interface GRN {
@@ -33,34 +42,21 @@ interface GRN {
     gstNumber?: string;
   };
   partyChallanNumber: string;
-  rmSize: {
-    _id: string;
-    size: string;
-    grade: string;
-    mill: string;
-  };
-  quantity: number;
-  rate: number;
+  items: GRNItem[];
   totalValue: number;
   grnDate: string;
+}
+
+interface GRNFormItem {
+  rmSize: string;
+  quantity: string;
+  rate: string;
 }
 
 interface GRNForm {
   sendingParty: string;
   partyChallanNumber: string;
-  rmSize: string;
-  quantity: string;
-  rate: string;
   grnDate: string;
-}
-
-interface FormErrors {
-  sendingParty?: string;
-  partyChallanNumber?: string;
-  rmSize?: string;
-  quantity?: string;
-  rate?: string;
-  grnDate?: string;
 }
 
 export default function GRNPage() {
@@ -73,28 +69,16 @@ export default function GRNPage() {
   const [formData, setFormData] = useState<GRNForm>({
     sendingParty: '',
     partyChallanNumber: '',
-    rmSize: '',
-    quantity: '',
-    rate: '',
     grnDate: new Date().toISOString().split('T')[0],
   });
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [formItems, setFormItems] = useState<GRNFormItem[]>([
+    { rmSize: '', quantity: '', rate: '' }
+  ]);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [valueUpdated, setValueUpdated] = useState(false);
-  const [selectedGRN, setSelectedGRN] = useState<GRN | null>(null);
 
   useEffect(() => {
     fetchData();
   }, []);
-
-  useEffect(() => {
-    // Trigger animation when total value changes
-    if (formData.quantity || formData.rate) {
-      setValueUpdated(true);
-      const timer = setTimeout(() => setValueUpdated(false), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [formData.quantity, formData.rate]);
 
   const fetchData = async () => {
     try {
@@ -120,50 +104,82 @@ export default function GRNPage() {
     }
   };
 
+  const addItem = () => {
+    setFormItems([...formItems, { rmSize: '', quantity: '', rate: '' }]);
+  };
+
+  const removeItem = (index: number) => {
+    if (formItems.length > 1) {
+      setFormItems(formItems.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateItem = (index: number, field: keyof GRNFormItem, value: string) => {
+    const newItems = [...formItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setFormItems(newItems);
+  };
+
   const validateForm = (): boolean => {
-    const errors: FormErrors = {};
-
-    if (!formData.sendingParty) errors.sendingParty = 'Please select a sending party';
-    if (!formData.partyChallanNumber.trim()) errors.partyChallanNumber = 'Challan number is required';
-    if (!formData.rmSize) errors.rmSize = 'Please select RM size';
-    if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
-      errors.quantity = 'Quantity must be greater than 0';
+    if (!formData.sendingParty) {
+      setError('Please select a sending party');
+      return false;
     }
-    if (!formData.rate || parseFloat(formData.rate) <= 0) {
-      errors.rate = 'Rate must be greater than 0';
+    if (!formData.partyChallanNumber.trim()) {
+      setError('Challan number is required');
+      return false;
     }
-    if (!formData.grnDate) errors.grnDate = 'GRN date is required';
+    if (!formData.grnDate) {
+      setError('GRN date is required');
+      return false;
+    }
 
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    for (let i = 0; i < formItems.length; i++) {
+      const item = formItems[i];
+      if (!item.rmSize) {
+        setError(`Please select RM size for item ${i + 1}`);
+        return false;
+      }
+      if (!item.quantity || parseFloat(item.quantity) <= 0) {
+        setError(`Quantity must be greater than 0 for item ${i + 1}`);
+        return false;
+      }
+      if (!item.rate || parseFloat(item.rate) < 0) {
+        setError(`Rate cannot be negative for item ${i + 1}`);
+        return false;
+      }
+    }
+
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Validate form
     if (!validateForm()) {
       return;
     }
 
-    // Show confirmation dialog
     setShowConfirmation(true);
   };
 
   const confirmAndSubmit = async () => {
     try {
-      const quantity = parseFloat(formData.quantity);
-      const rate = parseFloat(formData.rate);
-      const totalValue = quantity * rate;
+      const items = formItems.map(item => ({
+        rmSize: item.rmSize,
+        quantity: parseFloat(item.quantity),
+        rate: parseFloat(item.rate),
+      }));
+
+      const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
 
       const response = await fetch('/api/grn', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          quantity,
-          rate,
+          items,
           totalValue,
         }),
       });
@@ -189,25 +205,29 @@ export default function GRNPage() {
     setFormData({
       sendingParty: '',
       partyChallanNumber: '',
-      rmSize: '',
-      quantity: '',
-      rate: '',
       grnDate: new Date().toISOString().split('T')[0],
     });
-    setFormErrors({});
+    setFormItems([{ rmSize: '', quantity: '', rate: '' }]);
     setShowForm(false);
     setShowConfirmation(false);
   };
 
-  const calculateTotal = () => {
-    const quantity = parseFloat(formData.quantity) || 0;
-    const rate = parseFloat(formData.rate) || 0;
-    return (quantity * rate).toFixed(2);
+  const calculateItemTotal = (quantity: string, rate: string) => {
+    const qty = parseFloat(quantity) || 0;
+    const rt = parseFloat(rate) || 0;
+    return (qty * rt).toFixed(2);
+  };
+
+  const calculateGrandTotal = () => {
+    return formItems.reduce((sum, item) => {
+      const qty = parseFloat(item.quantity) || 0;
+      const rt = parseFloat(item.rate) || 0;
+      return sum + (qty * rt);
+    }, 0).toFixed(2);
   };
 
   const handleDirectPDFExport = async (grn: GRN) => {
     try {
-      // Create a temporary container
       const tempContainer = document.createElement('div');
       tempContainer.id = 'temp-grn-print';
       tempContainer.style.position = 'absolute';
@@ -215,17 +235,26 @@ export default function GRNPage() {
       tempContainer.style.top = '0';
       document.body.appendChild(tempContainer);
 
-      // Render the GRN content
+      const itemsHtml = grn.items.map((item, index) => `
+        <tr>
+          <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: center;">${index + 1}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 0.75rem;">
+            <p style="font-weight: 600; margin: 0 0 0.25rem 0;">${item.rmSize.size} - ${item.rmSize.grade}</p>
+          </td>
+          <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right; font-weight: 600;">${item.quantity.toFixed(2)}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right;">₹${item.rate.toFixed(2)}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right; font-weight: 600;">₹${(item.quantity * item.rate).toFixed(2)}</td>
+        </tr>
+      `).join('');
+
       tempContainer.innerHTML = `
         <div style="background: white; padding: 2rem; width: 210mm;">
-          <!-- Company Header -->
           <div style="text-align: center; border-bottom: 2px solid #1e293b; padding-bottom: 1rem; margin-bottom: 2rem;">
             <h1 style="font-size: 2rem; font-weight: bold; color: #1e293b; margin: 0;">DWPL</h1>
             <p style="font-size: 0.875rem; color: #64748b; margin: 0.25rem 0 0 0;">Manufacturing Management System</p>
             <h2 style="font-size: 1.25rem; font-weight: 600; color: #475569; margin: 1rem 0 0 0;">GOODS RECEIPT NOTE</h2>
           </div>
 
-          <!-- GRN Details -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
             <div>
               <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">GRN Date:</p>
@@ -237,7 +266,6 @@ export default function GRNPage() {
             </div>
           </div>
 
-          <!-- Party Details -->
           <div style="margin-bottom: 2rem;">
             <h3 style="font-size: 1.125rem; font-weight: 600; color: #1e293b; margin-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Sending Party Details</h3>
             <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem;">
@@ -247,12 +275,12 @@ export default function GRNPage() {
             </div>
           </div>
 
-          <!-- Material Details -->
           <div style="margin-bottom: 2rem;">
             <h3 style="font-size: 1.125rem; font-weight: 600; color: #1e293b; margin-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Material Details</h3>
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
                 <tr style="background: #f1f5f9;">
+                  <th style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: center;">Sr.</th>
                   <th style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: left;">Description</th>
                   <th style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right;">Quantity</th>
                   <th style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right;">Rate</th>
@@ -260,26 +288,17 @@ export default function GRNPage() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td style="border: 1px solid #cbd5e1; padding: 0.75rem;">
-                    <p style="font-weight: 600; margin: 0 0 0.25rem 0;">${grn.rmSize.size} - ${grn.rmSize.grade}</p>
-                    <p style="font-size: 0.875rem; color: #64748b; margin: 0;">Mill: ${grn.rmSize.mill}</p>
-                  </td>
-                  <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right; font-weight: 600;">${grn.quantity.toFixed(2)}</td>
-                  <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right;">₹${grn.rate.toFixed(2)}</td>
-                  <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right; font-weight: 600;">₹${grn.totalValue.toFixed(2)}</td>
-                </tr>
+                ${itemsHtml}
               </tbody>
               <tfoot>
                 <tr style="background: #f1f5f9;">
-                  <td colspan="3" style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right; font-weight: bold;">Total Value:</td>
+                  <td colspan="4" style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right; font-weight: bold;">Total Value:</td>
                   <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right; font-weight: bold; font-size: 1.125rem;">₹${grn.totalValue.toFixed(2)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
-          <!-- Footer -->
           <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #cbd5e1;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
               <div>
@@ -299,11 +318,9 @@ export default function GRNPage() {
         </div>
       `;
 
-      // Generate PDF
       const filename = generatePDFFilename('GRN', grn.partyChallanNumber, grn.grnDate);
       await exportToPDF('temp-grn-print', filename);
 
-      // Clean up
       document.body.removeChild(tempContainer);
     } catch (error) {
       console.error('Error exporting PDF:', error);
@@ -338,8 +355,8 @@ export default function GRNPage() {
 
       {showForm && (
         <Card className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
               Create New GRN
             </h2>
             <button 
@@ -347,27 +364,20 @@ export default function GRNPage() {
               className="p-1 rounded transition-colors hover:bg-slate-100"
               style={{ color: 'var(--text-muted)' }}
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Party Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <ItemSelector
                 label="Sending Party"
                 value={formData.sendingParty}
-                onChange={(value) => {
-                  setFormData({ ...formData, sendingParty: value });
-                  if (formErrors.sendingParty) {
-                    setFormErrors({ ...formErrors, sendingParty: undefined });
-                  }
-                }}
+                onChange={(value) => setFormData({ ...formData, sendingParty: value })}
                 items={parties}
                 placeholder="Select Party"
                 required
-                error={formErrors.sendingParty}
-                showError={!!formErrors.sendingParty}
                 renderSelected={(party) => (
                   <span className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
                     {party.partyName}
@@ -385,158 +395,137 @@ export default function GRNPage() {
                 <label className="label">Party Challan Number *</label>
                 <input
                   type="text"
-                  className={`input ${formErrors.partyChallanNumber ? 'border-red-500' : ''}`}
+                  className="input"
                   value={formData.partyChallanNumber}
-                  onChange={(e) => {
-                    setFormData({ ...formData, partyChallanNumber: e.target.value });
-                    if (formErrors.partyChallanNumber) {
-                      setFormErrors({ ...formErrors, partyChallanNumber: undefined });
-                    }
-                  }}
+                  onChange={(e) => setFormData({ ...formData, partyChallanNumber: e.target.value })}
                   placeholder="Enter challan number"
+                  required
                 />
-                {formErrors.partyChallanNumber && (
-                  <p className="text-[11px] mt-0.5 text-red-600 font-medium">
-                    {formErrors.partyChallanNumber}
-                  </p>
-                )}
               </div>
 
-              {/* RM Size in same grid row */}
-              <ItemSelector
-                label="RM Size"
-                value={formData.rmSize}
-                onChange={(value) => {
-                  setFormData({ ...formData, rmSize: value });
-                  if (formErrors.rmSize) {
-                    setFormErrors({ ...formErrors, rmSize: undefined });
-                  }
-                }}
-                items={rmItems}
-                placeholder="Select RM Size"
-                required
-                helperText="Raw material size"
-                error={formErrors.rmSize}
-                showError={!!formErrors.rmSize}
-                renderSelected={(item) => (
-                  <span className="text-sm" style={{ color: 'var(--foreground)' }}>
-                    {item.size} - {item.grade} ({item.mill})
-                  </span>
-                )}
-                renderOption={(item) => (
-                  <div>
-                    <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
-                      {item.size} - {item.grade}
-                    </div>
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      Mill: {item.mill}
-                    </div>
-                  </div>
-                )}
-                getSearchableText={(item) => 
-                  `${item.size} ${item.grade} ${item.mill}`
-                }
-              />
-
-              {/* GRN Date in same grid row */}
               <div>
                 <label className="label">GRN Date *</label>
                 <input
                   type="date"
-                  className={`input ${formErrors.grnDate ? 'border-red-500' : ''}`}
+                  className="input"
                   value={formData.grnDate}
-                  onChange={(e) => {
-                    setFormData({ ...formData, grnDate: e.target.value });
-                    if (formErrors.grnDate) {
-                      setFormErrors({ ...formErrors, grnDate: undefined });
-                    }
-                  }}
+                  onChange={(e) => setFormData({ ...formData, grnDate: e.target.value })}
+                  required
                 />
-                {formErrors.grnDate && (
-                  <p className="text-[11px] mt-0.5 text-red-600 font-medium">
-                    {formErrors.grnDate}
-                  </p>
-                )}
               </div>
             </div>
 
-            {/* Quantity and Rate in one row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="label">Quantity *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className={`input ${formErrors.quantity ? 'border-red-500' : ''}`}
-                  value={formData.quantity}
-                  onChange={(e) => {
-                    setFormData({ ...formData, quantity: e.target.value });
-                    if (formErrors.quantity) {
-                      setFormErrors({ ...formErrors, quantity: undefined });
-                    }
-                  }}
-                  placeholder="0.00"
-                  min="0.01"
-                />
-                {formErrors.quantity && (
-                  <p className="text-[11px] mt-0.5 text-red-600 font-medium">
-                    {formErrors.quantity}
-                  </p>
-                )}
+            {/* Info Box */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                <strong>Note:</strong> Each party can have only one GRN with the same challan number. 
+                You can add multiple items (different sizes) to this single GRN.
+              </p>
+            </div>
+
+            {/* Items Section */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-blue-900">Items</h3>
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="btn btn-primary text-sm py-1 px-3"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Item
+                </button>
               </div>
 
-              <div>
-                <label className="label">Rate (per unit) *</label>
-                <div className="input-with-prefix">
-                  <span className="input-prefix">₹</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className={`input input-currency-padding ${formErrors.rate ? 'border-red-500' : ''}`}
-                    value={formData.rate}
-                    onChange={(e) => {
-                      setFormData({ ...formData, rate: e.target.value });
-                      if (formErrors.rate) {
-                        setFormErrors({ ...formErrors, rate: undefined });
-                      }
-                    }}
-                    placeholder="0.00"
-                    min="0.01"
-                  />
+              <div className="space-y-3">
+                {formItems.map((item, index) => (
+                  <div key={index} className="bg-white rounded-lg p-4 border border-blue-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-medium text-sm text-blue-900">Item {index + 1}</span>
+                      {formItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Remove item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="md:col-span-2">
+                        <ItemSelector
+                          label="RM Size"
+                          value={item.rmSize}
+                          onChange={(value) => updateItem(index, 'rmSize', value)}
+                          items={rmItems}
+                          placeholder="Select RM Size"
+                          required
+                          renderSelected={(rmItem) => (
+                            <span className="text-sm" style={{ color: 'var(--foreground)' }}>
+                              {rmItem.size} - {rmItem.grade}
+                            </span>
+                          )}
+                          renderOption={(rmItem) => (
+                            <div>
+                              <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
+                                {rmItem.size} - {rmItem.grade}
+                              </div>
+                            </div>
+                          )}
+                          getSearchableText={(rmItem) => `${rmItem.size} ${rmItem.grade}`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="label">Quantity *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="input"
+                          value={item.quantity}
+                          onChange={(e) => updateItem(index, 'quantity', e.target.value)}
+                          placeholder="0.00"
+                          min="0.01"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="label">Rate (₹) *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="input"
+                          value={item.rate}
+                          onChange={(e) => updateItem(index, 'rate', e.target.value)}
+                          placeholder="0.00"
+                          min="0"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Grand Total */}
+            <div className="flex justify-end">
+              <div className="bg-slate-50 rounded px-6 py-3 border-l-4 border-blue-600">
+                <div className="text-right">
+                  <div className="text-sm text-slate-600 mb-1">Total Amount</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    ₹{calculateGrandTotal()}
+                  </div>
                 </div>
-                {formErrors.rate && (
-                  <p className="text-[11px] mt-0.5 text-red-600 font-medium">
-                    {formErrors.rate}
-                  </p>
-                )}
               </div>
             </div>
-
-            {/* Total Value - Compact */}
-            <div 
-              className={`bg-slate-50 rounded p-2.5 transition-all ${valueUpdated ? 'value-updated' : ''}`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
-                  Total Value:
-                </span>
-                <span className="text-lg font-bold text-blue-600">
-                  ₹{calculateTotal()}
-                </span>
-              </div>
-            </div>
-
-            {/* Error Summary */}
-            {Object.keys(formErrors).length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded p-2.5">
-                <p className="text-[11px] text-red-800 font-medium">
-                  Please fix {Object.keys(formErrors).length} error{Object.keys(formErrors).length > 1 ? 's' : ''} before submitting
-                </p>
-              </div>
-            )}
 
             {/* Action Buttons */}
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-3">
               <button type="submit" className="btn btn-primary">
                 Create GRN
               </button>
@@ -548,37 +537,49 @@ export default function GRNPage() {
         </Card>
       )}
 
-      {/* Stock Confirmation Dialog */}
+      {/* Confirmation Dialog */}
       {showConfirmation && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowConfirmation(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
                 Confirm Stock Update
               </h3>
               
               <div className="space-y-3 mb-6">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm font-medium text-blue-900 mb-2">
-                    This action will increase RM stock:
+                  <p className="text-sm font-medium text-blue-900 mb-3">
+                    This action will increase RM stock for the following items:
                   </p>
-                  <div className="space-y-1 text-sm text-blue-800">
-                    <p>
-                      <strong>Material:</strong>{' '}
-                      {rmItems.find(item => item._id === formData.rmSize)?.size || 'N/A'} -{' '}
-                      {rmItems.find(item => item._id === formData.rmSize)?.grade || 'N/A'}
-                    </p>
-                    <p>
-                      <strong>Mill:</strong>{' '}
-                      {rmItems.find(item => item._id === formData.rmSize)?.mill || 'N/A'}
-                    </p>
-                    <p>
-                      <strong>Quantity Increase:</strong> +{formData.quantity} units
-                    </p>
-                    <p>
-                      <strong>Total Value:</strong> ₹{calculateTotal()}
-                    </p>
+                  <div className="space-y-2">
+                    {formItems.map((item, index) => {
+                      const rmItem = rmItems.find(rm => rm._id === item.rmSize);
+                      return (
+                        <div key={index} className="bg-white rounded p-3 text-sm text-blue-800">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-semibold">{index + 1}. {rmItem?.size} - {rmItem?.grade}</div>
+                              <div className="mt-1 text-xs">
+                                <span className="font-medium">Qty:</span> +{item.quantity} units @ ₹{item.rate}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-slate-500">Amount</div>
+                              <div className="font-semibold text-blue-900">₹{calculateItemTotal(item.quantity, item.rate)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-blue-200">
+                    <div className="flex justify-end">
+                      <div className="text-right">
+                        <div className="text-sm text-blue-700 mb-1">Total Value</div>
+                        <div className="text-xl font-bold text-blue-900">₹{calculateGrandTotal()}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -614,9 +615,8 @@ export default function GRNPage() {
                 <th>GRN Date</th>
                 <th>Sending Party</th>
                 <th>Challan No.</th>
-                <th>RM Size</th>
-                <th>Quantity</th>
-                <th>Rate</th>
+                <th>Items</th>
+                <th>Total Quantity</th>
                 <th>Total Value</th>
                 <th>Actions</th>
               </tr>
@@ -624,7 +624,7 @@ export default function GRNPage() {
             <tbody>
               {grns.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-slate-500">
+                  <td colSpan={7} className="text-center py-8 text-slate-500">
                     <FileText className="w-12 h-12 mx-auto mb-2 text-slate-400" />
                     <p>No GRNs found. Click "Create GRN" to add one.</p>
                   </td>
@@ -642,13 +642,20 @@ export default function GRNPage() {
                     <td className="font-medium">{grn.sendingParty.partyName}</td>
                     <td className="font-mono text-sm">{grn.partyChallanNumber}</td>
                     <td>
-                      {grn.rmSize.size} - {grn.rmSize.grade}
-                      <span className="text-xs text-slate-500 block">
-                        {grn.rmSize.mill}
-                      </span>
+                      <div className="space-y-1">
+                        {grn.items.map((item, idx) => (
+                          <div key={idx} className="text-sm">
+                            {item.rmSize.size} - {item.rmSize.grade}
+                            <span className="text-xs text-slate-500 ml-2">
+                              ({item.quantity.toFixed(2)} @ ₹{item.rate.toFixed(2)})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </td>
-                    <td className="font-semibold">{grn.quantity.toFixed(2)}</td>
-                    <td>₹{grn.rate.toFixed(2)}</td>
+                    <td className="font-semibold">
+                      {grn.items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)}
+                    </td>
                     <td className="font-bold text-green-600">
                       ₹{grn.totalValue.toFixed(2)}
                     </td>

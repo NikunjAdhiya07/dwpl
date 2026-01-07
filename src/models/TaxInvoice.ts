@@ -97,6 +97,14 @@ const TaxInvoiceSchema = new Schema<ITaxInvoice>(
       type: String,
       trim: true,
     },
+    transportName: {
+      type: String,
+      trim: true,
+    },
+    ownerName: {
+      type: String,
+      trim: true,
+    },
     eWayBillNo: {
       type: String,
       trim: true,

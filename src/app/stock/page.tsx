@@ -15,7 +15,6 @@ interface StockItem {
     _id: string;
     size: string;
     grade: string;
-    mill: string;
   };
   quantity: number;
   lastUpdated: string;
@@ -175,7 +174,6 @@ export default function StockPage() {
                 <th>Category</th>
                 <th>Size</th>
                 <th>Grade</th>
-                <th>Mill</th>
                 <th>Quantity</th>
                 <th>Last Updated</th>
                 <th>Status</th>
@@ -184,7 +182,7 @@ export default function StockPage() {
             <tbody>
               {stocks.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-500">
+                  <td colSpan={6} className="text-center py-8 text-slate-500">
                     No stock items found.
                   </td>
                 </tr>
@@ -202,7 +200,6 @@ export default function StockPage() {
                     </td>
                     <td className="font-medium">{stock.size.size}</td>
                     <td>{stock.size.grade}</td>
-                    <td>{stock.size.mill}</td>
                     <td className="font-semibold text-lg">
                       {stock.quantity.toFixed(2)}
                     </td>

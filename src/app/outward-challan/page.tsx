@@ -11,6 +11,7 @@ import { Plus, X, Send, AlertCircle, Printer, Eye, Edit, Trash2 } from 'lucide-r
 interface Party {
   _id: string;
   partyName: string;
+  rate: number;
   annealingCharge: number;
   drawCharge: number;
 }
@@ -19,7 +20,6 @@ interface Item {
   _id: string;
   size: string;
   grade: string;
-  mill: string;
 }
 
 interface BOM {
@@ -43,6 +43,7 @@ interface OutwardChallan {
     address: string;
     gstNumber: string;
     contactNumber: string;
+    rate: number;
     annealingCharge: number;
     drawCharge: number;
   };
@@ -50,7 +51,6 @@ interface OutwardChallan {
     _id: string;
     size: string;
     grade: string;
-    mill: string;
     hsnCode: string;
     category: string;
   };
@@ -58,7 +58,6 @@ interface OutwardChallan {
     _id: string;
     size: string;
     grade: string;
-    mill: string;
     hsnCode: string;
     category: string;
   };
@@ -127,6 +126,10 @@ export default function OutwardChallanPage() {
     if (formData.party) {
       const party = parties.find((p) => p._id === formData.party);
       setSelectedParty(party || null);
+      // Auto-fill rate from party master
+      if (party) {
+        setFormData((prev) => ({ ...prev, rate: party.rate }));
+      }
     }
   }, [formData.party, parties]);
 
@@ -215,7 +218,7 @@ export default function OutwardChallanPage() {
       }
 
       const matchingBOMs = boms.filter(
-        (bom) => bom.fgSize === fgItem.size && bom.grade === fgItem.grade
+        (bom) => bom.fgSize === fgItem.size
       );
 
       if (matchingBOMs.length > 0) {
@@ -231,14 +234,12 @@ export default function OutwardChallanPage() {
           setFormData((prev) => ({
             ...prev,
             originalSize: rmItem._id,
-            annealingCount: matchingBOMs[0].annealingMin,
-            drawPassCount: matchingBOMs[0].drawPassMin,
           }));
         } else {
           setError(`BOM found, but RM item with size "${matchingBOMs[0].rmSize}" not found in Item Master.`);
         }
       } else {
-        setError(`No BOM found for FG: ${fgItem.size} (${fgItem.grade}). Please add a BOM entry first.`);
+        setError(`No BOM found for FG: ${fgItem.size}. Please add a BOM entry first.`);
         setSelectedBOM(null);
       }
     } catch (err: any) {
@@ -273,15 +274,13 @@ export default function OutwardChallanPage() {
           
           // Find the corresponding FG item
           const fgItem = fgItems.find(
-            (item) => item.size === selectedBom.fgSize && item.grade === selectedBom.grade
+            (item) => item.size === selectedBom.fgSize
           );
           
           if (fgItem) {
             setFormData((prev) => ({
               ...prev,
               finishSize: fgItem._id,
-              annealingCount: selectedBom.annealingMin,
-              drawPassCount: selectedBom.drawPassMin,
             }));
           }
         } else {
@@ -290,8 +289,6 @@ export default function OutwardChallanPage() {
           setFormData((prev) => ({
             ...prev,
             finishSize: '',
-            annealingCount: 0,
-            drawPassCount: 0,
           }));
         }
       } else {
@@ -313,7 +310,7 @@ export default function OutwardChallanPage() {
 
     // Find the matching BOM for this FG
     const matchingBOM = availableFinishSizes.find(
-      (bom) => bom.fgSize === fgItem.size && bom.grade === fgItem.grade
+      (bom) => bom.fgSize === fgItem.size
     );
 
     if (matchingBOM) {
@@ -321,8 +318,6 @@ export default function OutwardChallanPage() {
       setFormData((prev) => ({
         ...prev,
         finishSize: fgItemId,
-        annealingCount: matchingBOM.annealingMin,
-        drawPassCount: matchingBOM.drawPassMin,
       }));
     }
   };
@@ -607,20 +602,13 @@ export default function OutwardChallanPage() {
 
             {/* FG and RM Selection */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
-              <h3 className="font-semibold text-blue-900">Size Conversion (BOM-Driven)</h3>
-              <p className="text-sm text-blue-700">
-                {availableFinishSizes.length > 1 
-                  ? `📋 ${availableFinishSizes.length} finish sizes available for the selected RM. Please select one below.`
-                  : 'Select either Finish Size or Original Size - the other will be auto-filled from BOM'
-                }
-              </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Show different FG selector based on flow */}
                 {availableFinishSizes.length > 1 ? (
                   // When RM selected first with multiple FG options - show filtered dropdown
                   <div>
-                    <label className="label">Finish Size (FG) - Select from available options *</label>
+                    <label className="label">Finish Size (FG) *</label>
                     <select
                       className="input"
                       value={formData.finishSize}
@@ -630,22 +618,20 @@ export default function OutwardChallanPage() {
                       <option value="">-- Select Finish Size --</option>
                       {availableFinishSizes.map((bom) => {
                         const fgItem = fgItems.find(
-                          (item) => item.size === bom.fgSize && item.grade === bom.grade
+                          (item) => item.size === bom.fgSize
                         );
                         return fgItem ? (
                           <option key={fgItem._id} value={fgItem._id}>
-                            {fgItem.size} - {fgItem.grade} ({fgItem.mill})
+                            {fgItem.size}
                           </option>
                         ) : (
                           <option key={bom._id} value="" disabled>
-                            {bom.fgSize} - {bom.grade} (Not in Item Master)
+                            {bom.fgSize} (Not in Item Master)
                           </option>
                         );
                       })}
                     </select>
-                    <p className="text-xs text-blue-600 mt-1">
-                      Available finish sizes for RM: {rmItems.find(r => r._id === formData.originalSize)?.size || 'N/A'}
-                    </p>
+
                   </div>
                 ) : (
                   // Normal flow - show full FG selector
@@ -660,14 +646,14 @@ export default function OutwardChallanPage() {
                     items={fgItems}
                     placeholder="Select FG Size"
                     required
-                    helperText="Select finish size - Original size will be auto-filled from BOM"
+
                     renderSelected={(item) => (
                       <div className="flex items-center gap-2">
                         <span className="font-medium" style={{ color: 'var(--foreground)' }}>
                           {item.size}
                         </span>
                         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                          {item.grade} ({item.mill})
+                          {item.grade}
                         </span>
                       </div>
                     )}
@@ -676,13 +662,10 @@ export default function OutwardChallanPage() {
                         <div className="font-medium" style={{ color: 'var(--foreground)' }}>
                           {item.size} - {item.grade}
                         </div>
-                        <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                          Mill: {item.mill}
-                        </div>
                       </div>
                     )}
                     getSearchableText={(item) => 
-                      `${item.size} ${item.grade} ${item.mill}`
+                      `${item.size} ${item.grade}`
                     }
                   />
                 )}
@@ -698,20 +681,14 @@ export default function OutwardChallanPage() {
                   items={rmItems}
                   placeholder="Select RM Size"
                   required
-                  helperText={
-                    rmStock > 0
-                      ? `✓ Available Stock: ${rmStock.toFixed(2)} units`
-                      : formData.originalSize && rmStock === 0
-                      ? '⚠ No stock available! Please create a GRN first.'
-                      : 'Select original size to see available finish sizes'
-                  }
+
                   renderSelected={(item) => (
                     <div className="flex items-center gap-2">
                       <span className="font-medium" style={{ color: 'var(--foreground)' }}>
                         {item.size}
                       </span>
                       <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                        {item.grade} ({item.mill})
+                        {item.grade}
                       </span>
                     </div>
                   )}
@@ -720,39 +697,15 @@ export default function OutwardChallanPage() {
                       <div className="font-medium" style={{ color: 'var(--foreground)' }}>
                         {item.size} - {item.grade}
                       </div>
-                      <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                        Mill: {item.mill}
-                      </div>
                     </div>
                   )}
                   getSearchableText={(item) => 
-                    `${item.size} ${item.grade} ${item.mill}`
+                    `${item.size} ${item.grade}`
                   }
                 />
               </div>
 
-              {/* Show available finish sizes summary when RM is selected with multiple options */}
-              {availableFinishSizes.length > 1 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
-                  <p className="text-sm text-amber-800 font-medium mb-2">
-                    📊 Available Finish Sizes for this RM:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {availableFinishSizes.map((bom) => (
-                      <span 
-                        key={bom._id} 
-                        className={`px-2 py-1 rounded text-xs font-medium ${
-                          fgItems.find(fg => fg.size === bom.fgSize && fg.grade === bom.grade)?._id === formData.finishSize
-                            ? 'bg-green-100 text-green-800 border border-green-300'
-                            : 'bg-white text-amber-800 border border-amber-200'
-                        }`}
-                      >
-                        {bom.fgSize} ({bom.grade})
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+
             </div>
 
             {/* Process Counts */}
@@ -998,7 +951,7 @@ export default function OutwardChallanPage() {
       {/* Print Modal */}
       {showPrintModal && printChallan && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto print-modal-container">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b no-print">
               <h2 className="text-xl font-semibold text-slate-900">Outward Challan</h2>
@@ -1022,138 +975,195 @@ export default function OutwardChallanPage() {
               </div>
             </div>
 
-            {/* Print Content */}
-            <div id="print-content" className="p-8">
-              {/* Company Header */}
-              <div className="text-center border-b-2 border-slate-900 pb-4 mb-6">
-                <h1 className="text-2xl font-bold text-slate-900">DWPL INDUSTRIES</h1>
-                <p className="text-sm text-slate-600 mt-1">Manufacturing Excellence in Wire Drawing</p>
-                <p className="text-xs text-slate-500 mt-1">GST No: 29XXXXXXXXXXXXXX | Phone: +91-XXXXXXXXXX</p>
-              </div>
-
-              {/* Document Title */}
-              <div className="text-center mb-6">
-                <h2 className="text-xl font-bold text-slate-900 border-2 border-slate-900 inline-block px-6 py-2">
-                  OUTWARD CHALLAN
-                </h2>
-              </div>
-
-              {/* Challan Details Row */}
-              <div className="grid grid-cols-2 gap-8 mb-6">
-                <div>
-                  <p className="text-sm"><strong>Challan No:</strong> {printChallan.challanNumber}</p>
-                  <p className="text-sm"><strong>Date:</strong> {new Date(printChallan.challanDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm"><strong>Created:</strong> {new Date(printChallan.createdAt).toLocaleDateString('en-IN')}</p>
-                </div>
-              </div>
-
-              {/* Party Details */}
-              <div className="border border-slate-300 rounded-lg p-4 mb-6 bg-slate-50">
-                <h3 className="font-semibold text-slate-900 mb-2 border-b pb-2">Party Details</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p><strong>Party Name:</strong> {printChallan.party.partyName}</p>
-                    <p><strong>Address:</strong> {printChallan.party.address}</p>
+            {/* Print Content - Original, Duplicate, Triplicate */}
+            {['Original', 'Duplicate', 'Triplicate'].map((copyType, copyIndex) => (
+              <div key={copyType} className="print-page page-break">
+                <div className="bg-white text-black font-sans w-full" style={{ fontSize: '9px' }}>
+                  {/* Top Header Labels */}
+                  <div className="flex justify-between items-end mb-1">
+                    <div className="flex-1 text-center font-bold text-sm translate-x-10">
+                      Tax Invoice
+                    </div>
+                    <div className="text-[10px] font-bold italic">
+                      ({copyIndex === 0 ? 'Original For Recipient' : copyType})
+                    </div>
                   </div>
-                  <div>
-                    <p><strong>GSTIN:</strong> {printChallan.party.gstNumber}</p>
-                    <p><strong>Contact:</strong> {printChallan.party.contactNumber}</p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Item Details Table */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-slate-900 mb-2">Item Details</h3>
-                <table className="w-full border-collapse border border-slate-300 text-sm">
-                  <thead>
-                    <tr className="bg-slate-100">
-                      <th className="border border-slate-300 p-2 text-left">Description</th>
-                      <th className="border border-slate-300 p-2 text-center">HSN Code</th>
-                      <th className="border border-slate-300 p-2 text-center">Quantity</th>
-                      <th className="border border-slate-300 p-2 text-right">Rate (₹)</th>
-                      <th className="border border-slate-300 p-2 text-right">Amount (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border border-slate-300 p-2">
-                        <div className="font-medium">Finish Size: {printChallan.finishSize.size}</div>
-                        <div className="text-xs text-slate-500">Grade: {printChallan.finishSize.grade} | Mill: {printChallan.finishSize.mill}</div>
-                        <div className="text-xs text-slate-500 mt-1">From RM: {printChallan.originalSize.size} ({printChallan.originalSize.grade})</div>
-                      </td>
-                      <td className="border border-slate-300 p-2 text-center">{printChallan.finishSize.hsnCode}</td>
-                      <td className="border border-slate-300 p-2 text-center font-semibold">{printChallan.quantity.toFixed(2)}</td>
-                      <td className="border border-slate-300 p-2 text-right">{printChallan.rate.toFixed(2)}</td>
-                      <td className="border border-slate-300 p-2 text-right">{(printChallan.quantity * printChallan.rate).toFixed(2)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                  {/* Main Invoice Border Box */}
+                  <div className="border border-black">
+                    {/* IRN Section */}
+                    <div className="p-1 px-2 border-b border-black text-[8px]">
+                      IRN :
+                    </div>
 
-              {/* Process Details */}
-              <div className="grid grid-cols-2 gap-8 mb-6">
-                <div className="border border-slate-300 rounded-lg p-4">
-                  <h3 className="font-semibold text-slate-900 mb-2">Process Details</h3>
-                  <div className="text-sm space-y-1">
-                    <p><strong>Annealing Count:</strong> {printChallan.annealingCount}</p>
-                    <p><strong>Draw Pass Count:</strong> {printChallan.drawPassCount}</p>
-                  </div>
-                </div>
-                <div className="border border-slate-300 rounded-lg p-4">
-                  <h3 className="font-semibold text-slate-900 mb-2">Charges (Per Unit)</h3>
-                  <div className="text-sm space-y-1">
-                    <p><strong>Annealing Charge:</strong> ₹{printChallan.annealingCharge.toFixed(2)}</p>
-                    <p><strong>Draw Charge:</strong> ₹{printChallan.drawCharge.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
+                    {/* Company and Meta Info Row */}
+                    <div className="flex border-b border-black">
+                      {/* Left: Supplier Details */}
+                      <div className="w-[55%] p-2 border-r border-black flex flex-col min-h-[120px]">
+                        <p className="font-bold text-[11px] mb-1 leading-none uppercase">DWPL INDUSTRIES</p>
+                        <p className="leading-tight">Plot No. 1005/B1, Phase-III, G.I.D.C.,</p>
+                        <p className="leading-tight">Vatva, Ahmedabad, Gujarat, India - 382445</p>
+                        <p className="mt-2"><strong>GSTIN :</strong> 24AADCP1234P1ZW</p>
+                        <p><strong>PAN No :</strong> AADCP1234P</p>
+                        <div className="flex gap-4">
+                          <span>State : Gujarat</span>
+                          <span>State Code : 24</span>
+                        </div>
+                      </div>
 
-              {/* Amount Summary */}
-              <div className="border-2 border-slate-900 rounded-lg p-4 bg-slate-50">
-                <h3 className="font-semibold text-slate-900 mb-3 border-b pb-2">Amount Summary</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span>Material Cost ({printChallan.quantity.toFixed(2)} × ₹{printChallan.rate.toFixed(2)}):</span>
-                  <span className="text-right">₹{(printChallan.quantity * printChallan.rate).toFixed(2)}</span>
-                  
-                  <span>Annealing Charge ({printChallan.quantity.toFixed(2)} × ₹{printChallan.annealingCharge.toFixed(2)} × {printChallan.annealingCount}):</span>
-                  <span className="text-right">₹{(printChallan.quantity * printChallan.annealingCharge * printChallan.annealingCount).toFixed(2)}</span>
-                  
-                  <span>Draw Charge ({printChallan.quantity.toFixed(2)} × ₹{printChallan.drawCharge.toFixed(2)} × {printChallan.drawPassCount}):</span>
-                  <span className="text-right">₹{(printChallan.quantity * printChallan.drawCharge * printChallan.drawPassCount).toFixed(2)}</span>
-                  
-                  <span className="font-bold text-lg border-t pt-2 mt-2">Total Amount:</span>
-                  <span className="font-bold text-lg text-right border-t pt-2 mt-2 text-blue-600">₹{printChallan.totalAmount.toFixed(2)}</span>
-                </div>
-              </div>
+                      {/* Right: Invoice Meta */}
+                      <div className="w-[45%] p-2 flex flex-col space-y-0.5">
+                        <div className="grid grid-cols-[100px_1fr] leading-none">
+                          <span className="font-bold">INVOICE No :</span>
+                          <span className="font-bold">{printChallan.challanNumber}</span>
+                          
+                          <span className="font-bold">Date :</span>
+                          <span className="font-bold">{new Date(printChallan.challanDate).toLocaleDateString('en-IN')}</span>
+                          
+                          <span>P.O. No. :</span>
+                          <span>-</span>
+                          
+                          <span>P.O. Date :</span>
+                          <span>-</span>
+                          
+                          <span>Payment Term :</span>
+                          <span>0 Days</span>
+                          
+                          <span>Supplier Code :</span>
+                          <span>0</span>
+                          
+                          <span>Vehicle No/LR No:</span>
+                          <span className="break-all">-</span>
+                          
+                          <span>E-Way Bill No :</span>
+                          <span>-</span>
+                          
+                          <span>Dispatched Through:</span>
+                          <span>By Road</span>
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Signature Section */}
-              <div className="grid grid-cols-3 gap-8 mt-12 pt-8 border-t">
-                <div className="text-center">
-                  <div className="border-t border-slate-400 pt-2 mt-16">
-                    <p className="text-sm font-medium">Prepared By</p>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="border-t border-slate-400 pt-2 mt-16">
-                    <p className="text-sm font-medium">Checked By</p>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="border-t border-slate-400 pt-2 mt-16">
-                    <p className="text-sm font-medium">Receiver's Signature</p>
-                  </div>
-                </div>
-              </div>
+                    {/* Parties Section */}
+                    <div className="flex border-b border-black">
+                      <div className="w-1/2 p-2 border-r border-black min-h-[90px] flex flex-col">
+                        <p className="font-bold underline mb-1 text-[8px]">Details of Receiver (Billed To)</p>
+                        <p className="font-bold text-[10px] uppercase">{printChallan.party.partyName}</p>
+                        <p className="leading-tight">{printChallan.party.address}</p>
+                        <p className="mt-auto font-bold pt-1">GSTIN : {printChallan.party.gstNumber}</p>
+                        <p>State Code: 24 Gujarat</p>
+                      </div>
+                      <div className="w-1/2 p-2 min-h-[90px] flex flex-col">
+                        <p className="font-bold underline mb-1 text-[8px]">Details of Consignee (Shipped To)</p>
+                        <p className="font-bold text-[10px] uppercase">{printChallan.party.partyName}</p>
+                        <p className="leading-tight">{printChallan.party.address}</p>
+                        <p className="mt-auto font-bold pt-1">GSTIN : {printChallan.party.gstNumber}</p>
+                        <p>State Code: 24 Gujarat</p>
+                      </div>
+                    </div>
 
-              {/* Footer Note */}
-              <div className="text-center mt-8 text-xs text-slate-500 border-t pt-4">
-                <p>This is a computer generated challan. No signature is required for digital copies.</p>
-                <p className="mt-1">Thank you for your business!</p>
+                    {/* Table Section */}
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-black text-center font-bold">
+                          <td className="border-r border-black w-[35px] py-1">Sr. No.</td>
+                          <td className="border-r border-black px-1">Description</td>
+                          <td className="border-r border-black w-[60px]">HSN/SAC</td>
+                          <td className="border-r border-black w-[80px]">No. & Type Of Packing</td>
+                          <td className="border-r border-black w-[80px]">Total Qty. Nos./ Kgs</td>
+                          <td className="border-r border-black w-[70px]">Rate Per Unit</td>
+                          <td className="w-[85px]">Amount Rs.</td>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-black h-[280px] align-top">
+                          <td className="border-r border-black py-2 text-center font-bold">1</td>
+                          <td className="border-r border-black p-2">
+                            <p className="font-bold text-[10px] mb-1">Wire - {printChallan.finishSize.size} ({printChallan.finishSize.grade})</p>
+                            <p className="text-[8px] italic">From RM: {printChallan.originalSize.size} ({printChallan.originalSize.grade})</p>
+                            <p className="text-[8px] italic">Anneal: {printChallan.annealingCount} | Draw: {printChallan.drawPassCount}</p>
+                          </td>
+                          <td className="border-r border-black py-2 text-center">{printChallan.finishSize.hsnCode}</td>
+                          <td className="border-r border-black py-2 text-center">1000<br/>KGS</td>
+                          <td className="border-r border-black py-2 text-center font-bold">
+                            {printChallan.quantity.toFixed(2)}<br/>KGS
+                          </td>
+                          <td className="border-r border-black py-2 text-center">
+                            {printChallan.rate.toFixed(2)}
+                          </td>
+                          <td className="py-2 px-1 text-right font-bold">{(printChallan.quantity * printChallan.rate).toFixed(2)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* Summary Row */}
+                    <div className="flex border-b border-black">
+                      <div className="w-[60%] border-r border-black">
+                        <div className="p-2 border-b border-black min-h-[35px]">
+                          <p className="italic">Rs. ZERO Rupees And Zero Paise Only</p>
+                        </div>
+                        <div className="p-2 font-bold flex items-center h-full">
+                          Net Total Rs {(printChallan.totalAmount).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="w-[40%] text-[8.5px]">
+                        <div className="grid grid-cols-[1fr_80px] divide-x divide-black border-collapse">
+                          <span className="p-1 px-2 border-b border-black">Transport Charges</span>
+                          <span className="p-1 px-2 border-b border-black text-right">0.00</span>
+                          
+                          <span className="p-1 px-2 border-b border-black font-bold">Ass Value :</span>
+                          <span className="p-1 px-2 border-b border-black text-right font-bold">{(printChallan.quantity * printChallan.rate).toFixed(2)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">CGST 9.00%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">0.00</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">SGST 9.00%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">0.00</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">IGST 0.00%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">0.00</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">TCS 0%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">0.00</span>
+                          
+                          <span className="p-1 px-2 font-bold bg-slate-50">Net Payable :</span>
+                          <span className="p-1 px-2 text-right font-bold bg-slate-50">{(printChallan.totalAmount).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Declaration */}
+                    <div className="p-2 border-b border-black text-[7.5px] leading-tight text-justify">
+                      <p>I / we certify that our registration certificate under the GST Act, 2017 is in force on the date on which the supply of goods specified in this Tax Invoice is made by me/us & the transaction of supply covered by this Tax Invoice had been effected by me/us & it shall be accounted for in the turnover of supplies while filing of return & the due tax if any payable on the supplies has been paid or shall be paid. Further certified that the particulars given above are true and correct & the amount indicated represents the prices actually charged and that there is no flow if additional consideration directly or indirectly from the buyer.</p>
+                      <p className="mt-1 font-bold">Date & time of Issue : {new Date().toLocaleString('en-IN')}</p>
+                    </div>
+
+                    {/* Signature Block */}
+                    <div className="flex min-h-[85px] divide-x divide-black">
+                      <div className="w-[35%] p-2">
+                        <p className="text-[7.5px] font-bold">(Customer's Seal and Signature)</p>
+                      </div>
+                      <div className="w-[65%] flex flex-col justify-between">
+                        <div className="text-right p-2 font-bold text-[10px]">
+                          For DWPL INDUSTRIES
+                        </div>
+                        <div className="flex border-t border-black text-[8px] font-bold divide-x divide-black h-[25px] items-center">
+                          <span className="px-2 flex-1">Prepared By : Admin</span>
+                          <span className="px-2 flex-1">Verified By :</span>
+                          <span className="px-2 flex-1 text-right">Authorised Signatory</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Operational Footer */}
+                  <div className="text-center font-bold text-[8px] mt-1 italic">
+                    <p>(SUBJECT TO SURENDRANAGAR JURISDICTION)</p>
+                    <p>(This is Computer Generated Invoice)</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       )}

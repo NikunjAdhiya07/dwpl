@@ -7,7 +7,8 @@ import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
 import { Plus, X, Receipt, FileText, Download } from 'lucide-react';
-import { exportToPDF, generatePDFFilename } from '@/lib/pdfExport';
+import { exportToPDF, exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
+import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 
 interface OutwardChallan {
   _id: string;
@@ -37,7 +38,6 @@ interface TaxInvoice {
   finishSize: {
     size: string;
     grade: string;
-    mill: string;
     hsnCode: string;
   };
   originalSize: {
@@ -56,6 +56,8 @@ interface TaxInvoice {
   paymentTerm?: string;
   supplierCode?: string;
   vehicleNumber?: string;
+  transportName?: string;
+  ownerName?: string;
   eWayBillNo?: string;
   dispatchedThrough?: string;
   packingType?: string;
@@ -92,6 +94,8 @@ export default function TaxInvoicePage() {
   const [showForm, setShowForm] = useState(false);
   const [selectedChallan, setSelectedChallan] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printInvoice, setPrintInvoice] = useState<TaxInvoice | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -193,6 +197,11 @@ export default function TaxInvoicePage() {
     setShowForm(false);
   };
 
+  const handlePrint = (invoice: TaxInvoice) => {
+    setPrintInvoice(invoice);
+    setShowPrintModal(true);
+  };
+
   const handleDirectPDFExport = async (invoice: TaxInvoice) => {
     try {
       // Create temporary hidden container
@@ -200,189 +209,253 @@ export default function TaxInvoicePage() {
       tempContainer.id = 'temp-invoice-print';
       tempContainer.style.position = 'absolute';
       tempContainer.style.left = '-9999px';
-      tempContainer.style.width = '210mm';
+      tempContainer.style.top = '0';
+      tempContainer.style.width = '210mm'; // A4 width
       tempContainer.style.background = 'white';
       document.body.appendChild(tempContainer);
 
-      // Generate 3 copies
-      const copies = ['Triplicate', 'Duplicate', 'Original For Recipient'];
-      let htmlContent = '';
+      // Create a React root and render
+      const { createRoot } = await import('react-dom/client');
+      const root = createRoot(tempContainer);
 
-      copies.forEach((copyType, index) => {
-        const pageBreak = index < 2 ? 'page-break-after: always;' : '';
-        
-        htmlContent += `
-          <div style="${pageBreak} padding: 15px; font-family: Arial, sans-serif; font-size: 11px; color: #000;">
-            <!-- IRN and Copy Type -->
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <div style="font-size: 10px;">${invoice.irnNumber ? `IRN: ${invoice.irnNumber}` : ''}</div>
-              <div style="font-weight: bold; font-size: 12px;">(${copyType})</div>
-            </div>
+      // Render all three copies
+      await new Promise<void>((resolve) => {
+        root.render(
+          <div style={{ background: 'white' }}>
+            {['Original For Recipient', 'Duplicate', 'Triplicate'].map((copyType, copyIndex) => (
+              <div 
+                key={copyType} 
+                className="print-page"
+                style={{
+                  width: '210mm',
+                  minHeight: '297mm',
+                  padding: '7mm',
+                  margin: 0,
+                  background: 'white',
+                  boxSizing: 'border-box',
+                  pageBreakAfter: copyIndex < 2 ? 'always' : 'auto',
+                  position: 'relative'
+                }}
+              >
+                <div className="bg-white text-black font-sans w-full" style={{ fontSize: '9px' }}>
+                  {/* Top Header Labels */}
+                  <div className="flex justify-between items-end mb-1">
+                    <div className="flex-1 text-center font-bold text-sm translate-x-10">
+                      Tax Invoice
+                    </div>
+                    <div className="text-[10px] font-bold italic">
+                      ({copyType})
+                    </div>
+                  </div>
 
-            <!-- Title -->
-            <div style="text-align: center; margin-bottom: 12px;">
-              <h2 style="margin: 0; font-size: 14px; font-weight: bold;">Tax Invoice</h2>
-            </div>
+                  {/* Main Invoice Border Box */}
+                  <div className="border border-black">
+                    {/* IRN Section */}
+                    <div className="p-1 px-2 border-b border-black text-[8px]">
+                      IRN : {invoice.irnNumber || '-'}
+                    </div>
 
-            <!-- Company and Invoice Details -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; border: 1px solid #000;">
-              <!-- Left: Company Details -->
-              <div style="border-right: 1px solid #000; padding: 10px;">
-                <p style="margin: 0 0 3px 0; font-weight: bold; font-size: 12px;">PINNACLE FASTENER</p>
-                <p style="margin: 2px 0; font-size: 10px;">Plot No. 1005/B1, Phase-III, G.I.D.C.,</p>
-                <p style="margin: 2px 0; font-size: 10px;">Wadhwancity, Surendranagar, Gujarat, India - 363035</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>GSTIN:</strong> 24AAQCP2416F1ZD</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>PAN No:</strong> AAQCP2416F</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>State:</strong> Gujarat</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>State Code:</strong> 24</p>
-              </div>
+                    {/* Company and Meta Info Row */}
+                    <div className="flex border-b border-black">
+                      {/* Left: Supplier Details */}
+                      <div className="w-[55%] p-2 border-r border-black flex flex-col min-h-[110px]">
+                        <p className="font-bold text-[11px] mb-1 leading-none uppercase">PINNACLE FASTENER</p>
+                        <p className="leading-tight">Plot No. 1005/B1, Phase-III, G.I.D.C.,</p>
+                        <p className="leading-tight">Wadhwancity, Surendranagar, Gujarat, India - 363035</p>
+                        <p className="mt-2"><strong>GSTIN :</strong> 24AAQCP2416F1ZD</p>
+                        <p><strong>PAN No :</strong> AAQCP2416F</p>
+                        <div className="flex gap-4">
+                          <span>State : Gujarat</span>
+                          <span>State Code : 24</span>
+                        </div>
+                      </div>
 
-              <!-- Right: Invoice Details -->
-              <div style="padding: 10px;">
-                <p style="margin: 2px 0; font-size: 10px;"><strong>INVOICE NO:</strong> ${invoice.invoiceNumber} <strong style="margin-left: 20px;">Date:</strong> ${new Date(invoice.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>P.O. No.:</strong> ${invoice.poNumber || 'checking invoice printing'} <strong>P.O. Date:</strong> ${new Date(invoice.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>Payment Term:</strong> ${invoice.paymentTerm || '0 Days'}</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>Supplier Code:</strong> ${invoice.supplierCode || '0'}</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>Vehicle No/LR No:</strong> ${invoice.vehicleNumber || 'EG13AW3140'} /</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>E-Way Bill No:</strong> ${invoice.eWayBillNo || ''}</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>Dispatched Through:</strong> ${invoice.dispatchedThrough || 'By Road'}</p>
-              </div>
-            </div>
+                      {/* Right: Invoice Meta */}
+                      <div className="w-[45%] p-2 flex flex-col space-y-0.5">
+                        <div className="grid grid-cols-[100px_1fr] leading-none">
+                          <span className="font-bold">INVOICE No :</span>
+                          <span className="font-bold">{invoice.invoiceNumber}</span>
+                          
+                          <span className="font-bold">Date :</span>
+                          <span className="font-bold">{new Date(invoice.invoiceDate).toLocaleDateString('en-IN')}</span>
+                          
+                          <span>P.O. No. :</span>
+                          <span>{invoice.poNumber || 'checking invoice printing'}</span>
+                          
+                          <span>P.O. Date :</span>
+                          <span>{new Date(invoice.invoiceDate).toLocaleDateString('en-IN')}</span>
+                          
+                          <span>Payment Term :</span>
+                          <span>{invoice.paymentTerm || '0 Days'}</span>
+                          
+                          <span>Supplier Code :</span>
+                          <span>{invoice.supplierCode || '0'}</span>
+                          
+                          <span>Transport Name:</span>
+                          <span className="break-all">{invoice.transportName || '-'}</span>
+                          
+                          <span>Vehicle No :</span>
+                          <span>{invoice.vehicleNumber || 'EG13AW3140'}</span>
+                          
+                          <span>Owner Name :</span>
+                          <span>{invoice.ownerName || '-'}</span>
+                          
+                          <span>E-Way Bill No :</span>
+                          <span>{invoice.eWayBillNo || '-'}</span>
+                          
+                          <span>Dispatched Through:</span>
+                          <span>{invoice.dispatchedThrough || 'By Road'}</span>
+                        </div>
+                      </div>
+                    </div>
 
-            <!-- Billed To and Shipped To -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 12px; border: 1px solid #000; border-top: none;">
-              <!-- Billed To -->
-              <div style="border-right: 1px solid #000; padding: 10px;">
-                <p style="margin: 0 0 5px 0; font-weight: bold; font-size: 10px;">Details of Receiver (Billed To)</p>
-                <p style="margin: 2px 0; font-weight: bold;">${invoice.party.partyName}</p>
-                <p style="margin: 2px 0; font-size: 10px;">${invoice.party.address}</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>GSTIN:</strong> ${invoice.party.gstNumber}</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>State Code:</strong> 24 Gujarat</p>
-              </div>
+                    {/* Parties Section */}
+                    <div className="flex border-b border-black">
+                      <div className="w-1/2 p-2 border-r border-black min-h-[85px] flex flex-col">
+                        <p className="font-bold underline mb-1 text-[8px]">Details of Receiver (Billed To)</p>
+                        <p className="font-bold text-[10px] uppercase">{invoice.party.partyName}</p>
+                        <p className="leading-tight">{invoice.party.address}</p>
+                        <p className="mt-auto font-bold pt-1">GSTIN : {invoice.party.gstNumber}</p>
+                        <p>State Code : 24 Gujarat</p>
+                      </div>
+                      <div className="w-1/2 p-2 min-h-[85px] flex flex-col">
+                        <p className="font-bold underline mb-1 text-[8px]">Details of Consignee (Shipped To)</p>
+                        <p className="font-bold text-[10px] uppercase">{invoice.party.partyName}</p>
+                        <p className="leading-tight">{invoice.party.address}</p>
+                        <p className="mt-auto font-bold pt-1">GSTIN : {invoice.party.gstNumber}</p>
+                        <p>State Code: 24 Gujarat</p>
+                      </div>
+                    </div>
 
-              <!-- Shipped To -->
-              <div style="padding: 10px;">
-                <p style="margin: 0 0 5px 0; font-weight: bold; font-size: 10px;">Details of Consignee (Shipped To)</p>
-                <p style="margin: 2px 0; font-weight: bold;">${invoice.party.partyName}</p>
-                <p style="margin: 2px 0; font-size: 10px;">${invoice.party.address}</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>GSTIN:</strong> ${invoice.party.gstNumber}</p>
-                <p style="margin: 2px 0; font-size: 10px;"><strong>State Code:</strong> 24 Gujarat</p>
-              </div>
-            </div>
+                    {/* Table Section */}
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-black text-center font-bold">
+                          <td className="border-r border-black w-[35px] py-1">Sr.<br/>No.</td>
+                          <td className="border-r border-black px-1">Description</td>
+                          <td className="border-r border-black w-[60px]">HSN/SAC</td>
+                          <td className="border-r border-black w-[80px] py-1">No. & Type Of<br/>Packing</td>
+                          <td className="border-r border-black w-[80px] py-1">Total Qty.<br/>Nos./ Kgs</td>
+                          <td className="border-r border-black w-[70px] py-1">Rate Per<br/>Unit</td>
+                          <td className="w-[85px] py-1">Amount<br/>Rs.</td>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-black h-[210px] align-top">
+                          <td className="border-r border-black py-2 text-center font-bold">1</td>
+                          <td className="border-r border-black p-2">
+                            <p className="font-bold text-[10px] mb-1">{invoice.finishSize.size} - {invoice.finishSize.grade}</p>
+                            <p className="text-[8px]">Item no 1</p>
+                          </td>
+                          <td className="border-r border-black py-2 text-center">{invoice.finishSize.hsnCode}</td>
+                          <td className="border-r border-black py-2 text-center">{invoice.quantity.toFixed(0)}<br/>{invoice.packingType || 'KGS'}</td>
+                          <td className="border-r border-black py-2 text-center font-bold">
+                            {invoice.quantity.toFixed(0)}<br/>{invoice.packingType || 'KGS'}
+                          </td>
+                          <td className="border-r border-black py-2 text-center">
+                            {invoice.rate.toFixed(2)}
+                          </td>
+                          <td className="py-2 px-1 text-right font-bold">{(invoice.quantity * invoice.rate).toFixed(2)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
 
-            <!-- Item Table -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
-              <thead>
-                <tr style="background: #f0f0f0;">
-                  <th style="border: 1px solid #000; padding: 6px; text-align: center; font-size: 10px;">Sr. No.</th>
-                  <th style="border: 1px solid #000; padding: 6px; text-align: left; font-size: 10px;">Description</th>
-                  <th style="border: 1px solid #000; padding: 6px; text-align: center; font-size: 10px;">HSN/SAC</th>
-                  <th style="border: 1px solid #000; padding: 6px; text-align: center; font-size: 10px;">No. & Type Of Packing</th>
-                  <th style="border: 1px solid #000; padding: 6px; text-align: center; font-size: 10px;">Total Qty. Nos./ Kgs</th>
-                  <th style="border: 1px solid #000; padding: 6px; text-align: center; font-size: 10px;">Rate Per Unit</th>
-                  <th style="border: 1px solid #000; padding: 6px; text-align: right; font-size: 10px;">Amount Rs.</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="border: 1px solid #000; padding: 6px; text-align: center;">1</td>
-                  <td style="border: 1px solid #000; padding: 6px;">
-                    <div style="font-weight: bold;">${invoice.finishSize.size} - ${invoice.finishSize.grade}</div>
-                    <div style="font-size: 9px;">Item no 1</div>
-                  </td>
-                  <td style="border: 1px solid #000; padding: 6px; text-align: center;">${invoice.finishSize.hsnCode}</td>
-                  <td style="border: 1px solid #000; padding: 6px; text-align: center;">
-                    <div>${invoice.quantity.toFixed(0)}</div>
-                    <div style="font-size: 9px;">${invoice.packingType || 'KGS'}</div>
-                  </td>
-                  <td style="border: 1px solid #000; padding: 6px; text-align: center;">
-                    <div>${invoice.quantity.toFixed(0)}</div>
-                    <div style="font-size: 9px;">${invoice.packingType || 'KGS'}</div>
-                  </td>
-                  <td style="border: 1px solid #000; padding: 6px; text-align: center;">${invoice.rate.toFixed(2)}</td>
-                  <td style="border: 1px solid #000; padding: 6px; text-align: right; font-weight: bold;">${(invoice.quantity * invoice.rate).toFixed(2)}</td>
-                </tr>
-              </tbody>
-            </table>
+                    {/* Summary Row */}
+                    <div className="flex border-b border-black">
+                      <div className="w-[60%] border-r border-black">
+                        <div className="p-2 border-b border-black min-h-[35px] flex items-center">
+                          <p className="italic text-[8px] leading-tight">Rs. {numberToIndianWords(invoice.baseAmount)}</p>
+                        </div>
+                        <div className="p-2 border-b border-black">
+                          <p className="font-bold text-[8px] leading-tight">Net Total Rs {numberToIndianWords(invoice.totalAmount)}</p>
+                        </div>
+                        <div className="p-2 font-bold text-[9px] flex items-center">
+                          Net Payable : {formatIndianCurrency(invoice.totalAmount)}
+                        </div>
+                      </div>
+                      <div className="w-[40%] text-[8.5px]">
+                        <div className="grid grid-cols-[1fr_80px] divide-x divide-black border-collapse">
+                          <span className="p-1 px-2 border-b border-black">Transport Charges</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(invoice.transportCharges || 0)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black font-bold">Ass Value :</span>
+                          <span className="p-1 px-2 border-b border-black text-right font-bold">{formatIndianCurrency(invoice.assessableValue || invoice.baseAmount)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">CGST {(invoice.cgstPercentage || 0).toFixed(2)}%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(invoice.cgstAmount || 0)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">SGST {(invoice.sgstPercentage || 0).toFixed(2)}%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(invoice.sgstAmount || 0)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">IGST {(invoice.igstPercentage || 0).toFixed(2)}%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(invoice.igstAmount || 0)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">TCS {(invoice.tcsPercentage || 0).toFixed(1)}%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(invoice.tcsAmount || 0)}</span>
+                          
+                          <span className="p-1 px-2 font-bold" style={{ backgroundColor: '#f8fafc' }}>Net Payable :</span>
+                          <span className="p-1 px-2 text-right font-bold" style={{ backgroundColor: '#f8fafc' }}>{formatIndianCurrency(invoice.totalAmount)}</span>
+                        </div>
+                      </div>
+                    </div>
 
-            <!-- GST Calculation Section -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px;">
-              <!-- Left: Amount in Words -->
-              <div style="border: 1px solid #000; padding: 10px; font-size: 10px;">
-                <p style="margin: 0 0 5px 0;">Rs ZERO Rupees And Zero Paise Only</p>
-                <p style="margin: 5px 0; font-weight: bold;">Net Total Rs ${invoice.totalAmount.toFixed(2)}</p>
-              </div>
+                    {/* Declaration */}
+                    <div className="p-2 border-b border-black text-[7.5px] leading-tight text-justify">
+                      <p>I / we certify that our registration certificate under the GST Act, 2017 is in force on the date on which the supply of goods specified in this Tax Invoice is made by me/us & the transaction of supply covered by this Tax Invoice had been effected by me/us & it shall be accounted for in the turnover of supplies while filing of return & the due tax if any payable on the supplies has been paid or shall be paid. Further certified that the particulars given above are true and correct & the amount indicated represents the prices actually charged and that there is no flow if additional consideration directly or indirectly from the buyer.</p>
+                      <p className="mt-1 font-bold">Date & time of Issue : {(() => {
+                        const date = new Date(); // Use current time
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const year = date.getFullYear();
+                        let hours = date.getHours();
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        const seconds = String(date.getSeconds()).padStart(2, '0');
+                        const ampm = hours >= 12 ? 'PM' : 'AM';
+                        hours = hours % 12 || 12;
+                        const hoursStr = String(hours).padStart(2, '0');
+                        return `${day}/${month}/${year}, ${hoursStr}:${minutes}:${seconds} ${ampm}`;
+                      })()}</p>
+                    </div>
 
-              <!-- Right: GST Breakdown -->
-              <div style="border: 1px solid #000; padding: 10px; font-size: 10px;">
-                <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                  <span>Transport Charges</span>
-                  <span>${(invoice.transportCharges || 0).toFixed(2)}</span>
+                    {/* Signature Block */}
+                    <div className="flex min-h-[70px] divide-x divide-black">
+                      <div className="w-[35%] p-2">
+                        <p className="text-[7.5px] font-bold">(Customer's Seal and Signature)</p>
+                      </div>
+                      <div className="w-[65%] flex flex-col justify-between">
+                        <div className="text-right p-2 font-bold text-[10px]">
+                          For PINNACLE FASTENER
+                        </div>
+                        <div className="flex border-t border-black text-[8px] font-bold divide-x divide-black h-[25px] items-center">
+                          <span className="px-2 flex-1">Prepared By : Himesh Trivedi</span>
+                          <span className="px-2 flex-1">Verified By :</span>
+                          <span className="px-2 flex-1 text-right">Authorised Signatory</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Operational Footer */}
+                  <div className="text-center font-bold text-[8px] mt-1 italic">
+                    <p>(SUBJECT TO SURENDRANAGAR JURISDICTION)</p>
+                    <p>(This is Computer Generated Invoice)</p>
+                  </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                  <span>Ass Value:</span>
-                  <span style="font-weight: bold;">${(invoice.assessableValue || invoice.baseAmount).toFixed(2)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                  <span>CGST ${(invoice.cgstPercentage || 0).toFixed(2)}%:</span>
-                  <span>${(invoice.cgstAmount || 0).toFixed(2)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                  <span>SGST ${(invoice.sgstPercentage || 0).toFixed(2)}%:</span>
-                  <span>${(invoice.sgstAmount || 0).toFixed(2)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                  <span>IGST ${(invoice.igstPercentage || 0).toFixed(2)}%:</span>
-                  <span>${(invoice.igstAmount || 0).toFixed(2)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                  <span>TCS ${(invoice.tcsPercentage || 0).toFixed(2)}%:</span>
-                  <span>${(invoice.tcsAmount || 0).toFixed(2)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin: 5px 0 0 0; padding-top: 5px; border-top: 1px solid #000; font-weight: bold;">
-                  <span>Net Payable:</span>
-                  <span>${invoice.totalAmount.toFixed(2)}</span>
-                </div>
               </div>
-            </div>
-
-            <!-- Terms & Conditions -->
-            <div style="border: 1px solid #000; padding: 10px; margin-bottom: 12px; font-size: 9px; line-height: 1.4;">
-              <p style="margin: 0;">I / we certify that our registration certificate under the GST Act, 2017 is in force on the date on which the supply of goods specified in this Tax Invoice is made by me/us & that the transaction of supply covered by this Tax Invoice had been effected by me/us & it shall be accounted for in the turnover of supplies while filing of return & the due tax, if any, payable on the supplies has been paid or shall be paid. Further certified that the particulars given above are true & correct & the amount indicated represents the prices actually charged & that there is no flow of additional consideration directly or indirectly from the buyer.</p>
-              <p style="margin: 5px 0 0 0;"><strong>Date & time of issue:</strong> ${new Date(invoice.createdAt).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</p>
-            </div>
-
-            <!-- Signature Section -->
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 12px;">
-              <div style="border: 1px solid #000; padding: 10px; text-align: center;">
-                <p style="margin: 0; font-size: 10px;">(Customer's Seal and Signature)</p>
-              </div>
-              <div style="border: 1px solid #000; padding: 10px; text-align: right;">
-                <p style="margin: 0; font-size: 10px;">For <strong>PINNACLE FASTENER</strong></p>
-                <div style="display: flex; justify-content: space-around; margin-top: 30px; font-size: 9px;">
-                  <span>Prepared By: Himesh Trivedi</span>
-                  <span>Verified By:</span>
-                  <span>Authorised Signatory</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Footer -->
-            <div style="text-align: center; font-size: 9px;">
-              <p style="margin: 2px 0; font-weight: bold;">(SUBJECT TO SURENDRANAGAR JURISDICTION)</p>
-              <p style="margin: 2px 0; font-style: italic;">(This is Computer Generated Invoice)</p>
-            </div>
+            ))}
           </div>
-        `;
+        );
+        
+        // Wait for render to complete
+        setTimeout(resolve, 200);
       });
 
-      tempContainer.innerHTML = htmlContent;
-
-      // Generate PDF
+      // Generate PDF using multi-page export
       const filename = generatePDFFilename('Invoice', invoice.invoiceNumber, invoice.invoiceDate);
-      await exportToPDF('temp-invoice-print', filename);
+      await exportMultiPageToPDF('temp-invoice-print', filename, { scale: 2 });
 
       // Clean up
+      root.unmount();
       document.body.removeChild(tempContainer);
     } catch (error) {
       console.error('Failed to export PDF:', error);
@@ -590,14 +663,23 @@ export default function TaxInvoicePage() {
                       ₹{invoice.totalAmount.toFixed(2)}
                     </td>
                     <td>
-                      <button
-                        onClick={() => handleDirectPDFExport(invoice)}
-                        className="btn btn-primary text-xs py-1 px-3 flex items-center gap-1"
-                        title="Export as PDF (3 copies)"
-                      >
-                        <Download className="w-3 h-3" />
-                        Export PDF
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handlePrint(invoice)}
+                          className="btn btn-secondary text-xs py-1 px-3 flex items-center gap-1"
+                        >
+                          <Receipt className="w-3 h-3" />
+                          Print
+                        </button>
+                        <button
+                          onClick={() => handleDirectPDFExport(invoice)}
+                          className="btn btn-outline text-xs py-1 px-3 flex items-center gap-1"
+                          title="Export as PDF"
+                        >
+                          <Download className="w-3 h-3" />
+                          PDF
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -606,6 +688,251 @@ export default function TaxInvoicePage() {
           </table>
         </div>
       </Card>
+
+      {/* Professional Print Modal */}
+      {showPrintModal && printInvoice && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-[100] p-4 overflow-y-auto pt-10 no-print">
+          <div className="print-modal-container bg-zinc-100 rounded-xl max-w-[230mm] w-full relative">
+            {/* Modal Header/Toolbar */}
+            <div className="flex items-center justify-between p-4 bg-white border-b sticky top-0 z-10 rounded-t-xl no-print">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Receipt className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900">Tax Invoice Preview</h3>
+                  <p className="text-xs text-slate-500">Invoice: {printInvoice.invoiceNumber}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="btn btn-primary flex items-center gap-2 px-6"
+                >
+                  <Download className="w-4 h-4" />
+                  Print Now
+                </button>
+                <button
+                  onClick={() => setShowPrintModal(false)}
+                  className="btn btn-outline p-2"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Print Content - Original, Duplicate, Triplicate */}
+            {['Original For Recipient', 'Duplicate', 'Triplicate'].map((copyType, copyIndex) => (
+              <div key={copyType} className="print-page page-break">
+                <div className="bg-white text-black font-sans w-full" style={{ fontSize: '9px' }}>
+                  {/* Top Header Labels */}
+                  <div className="flex justify-between items-end mb-1">
+                    <div className="flex-1 text-center font-bold text-sm translate-x-10">
+                      Tax Invoice
+                    </div>
+                    <div className="text-[10px] font-bold italic">
+                      ({copyType})
+                    </div>
+                  </div>
+
+                  {/* Main Invoice Border Box */}
+                  <div className="border border-black">
+                    {/* IRN Section */}
+                    <div className="p-1 px-2 border-b border-black text-[8px]">
+                      IRN : {printInvoice.irnNumber || '-'}
+                    </div>
+
+                    {/* Company and Meta Info Row */}
+                    <div className="flex border-b border-black">
+                      {/* Left: Supplier Details */}
+                      <div className="w-[55%] p-2 border-r border-black flex flex-col min-h-[120px]">
+                        <p className="font-bold text-[11px] mb-1 leading-none uppercase">PINNACLE FASTENER</p>
+                        <p className="leading-tight">Plot No. 1005/B1, Phase-III, G.I.D.C.,</p>
+                        <p className="leading-tight">Wadhwancity, Surendranagar, Gujarat, India - 363035</p>
+                        <p className="mt-2"><strong>GSTIN :</strong> 24AAQCP2416F1ZD</p>
+                        <p><strong>PAN No :</strong> AAQCP2416F</p>
+                        <div className="flex gap-4">
+                          <span>State : Gujarat</span>
+                          <span>State Code : 24</span>
+                        </div>
+                      </div>
+
+                      {/* Right: Invoice Meta */}
+                      <div className="w-[45%] p-2 flex flex-col space-y-0.5">
+                        <div className="grid grid-cols-[100px_1fr] leading-none">
+                          <span className="font-bold">INVOICE No :</span>
+                          <span className="font-bold">{printInvoice.invoiceNumber}</span>
+                          
+                          <span className="font-bold">Date :</span>
+                          <span className="font-bold">{new Date(printInvoice.invoiceDate).toLocaleDateString('en-IN')}</span>
+                          
+                          <span>P.O. No. :</span>
+                          <span>{printInvoice.poNumber || 'checking invoice printing'}</span>
+                          
+                          <span>P.O. Date :</span>
+                          <span>{new Date(printInvoice.invoiceDate).toLocaleDateString('en-IN')}</span>
+                          
+                          <span>Payment Term :</span>
+                          <span>{printInvoice.paymentTerm || '0 Days'}</span>
+                          
+                          <span>Supplier Code :</span>
+                          <span>{printInvoice.supplierCode || '0'}</span>
+                          
+                          <span>Transport Name:</span>
+                          <span className="break-all">{printInvoice.transportName || '-'}</span>
+                          
+                          <span>Vehicle No :</span>
+                          <span>{printInvoice.vehicleNumber || 'EG13AW3140'}</span>
+                          
+                          <span>Owner Name :</span>
+                          <span>{printInvoice.ownerName || '-'}</span>
+                          
+                          <span>E-Way Bill No :</span>
+                          <span>{printInvoice.eWayBillNo || '-'}</span>
+                          
+                          <span>Dispatched Through:</span>
+                          <span>{printInvoice.dispatchedThrough || 'By Road'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Parties Section */}
+                    <div className="flex border-b border-black">
+                      <div className="w-1/2 p-2 border-r border-black min-h-[90px] flex flex-col">
+                        <p className="font-bold underline mb-1 text-[8px]">Details of Receiver (Billed To)</p>
+                        <p className="font-bold text-[10px] uppercase">{printInvoice.party.partyName}</p>
+                        <p className="leading-tight">{printInvoice.party.address}</p>
+                        <p className="mt-auto font-bold pt-1">GSTIN : {printInvoice.party.gstNumber}</p>
+                        <p>State Code: 24 Gujarat</p>
+                      </div>
+                      <div className="w-1/2 p-2 min-h-[90px] flex flex-col">
+                        <p className="font-bold underline mb-1 text-[8px]">Details of Consignee (Shipped To)</p>
+                        <p className="font-bold text-[10px] uppercase">{printInvoice.party.partyName}</p>
+                        <p className="leading-tight">{printInvoice.party.address}</p>
+                        <p className="mt-auto font-bold pt-1">GSTIN : {printInvoice.party.gstNumber}</p>
+                        <p>State Code: 24 Gujarat</p>
+                      </div>
+                    </div>
+
+                    {/* Table Section */}
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-black text-center font-bold">
+                          <td className="border-r border-black w-[35px] py-1">Sr.<br/>No.</td>
+                          <td className="border-r border-black px-1">Description</td>
+                          <td className="border-r border-black w-[60px]">HSN/SAC</td>
+                          <td className="border-r border-black w-[80px] py-1">No. & Type Of<br/>Packing</td>
+                          <td className="border-r border-black w-[80px] py-1">Total Qty.<br/>Nos./ Kgs</td>
+                          <td className="border-r border-black w-[70px] py-1">Rate Per<br/>Unit</td>
+                          <td className="w-[85px] py-1">Amount<br/>Rs.</td>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-black h-[240px] align-top">
+                          <td className="border-r border-black py-2 text-center font-bold">1</td>
+                          <td className="border-r border-black p-2">
+                            <p className="font-bold text-[10px] mb-1">{printInvoice.finishSize.size} - {printInvoice.finishSize.grade}</p>
+                            <p className="text-[8px]">Item no 1</p>
+                          </td>
+                          <td className="border-r border-black py-2 text-center">{printInvoice.finishSize.hsnCode}</td>
+                          <td className="border-r border-black py-2 text-center">{printInvoice.quantity.toFixed(0)}<br/>{printInvoice.packingType || 'KGS'}</td>
+                          <td className="border-r border-black py-2 text-center font-bold">
+                            {printInvoice.quantity.toFixed(0)}<br/>{printInvoice.packingType || 'KGS'}
+                          </td>
+                          <td className="border-r border-black py-2 text-center">
+                            {printInvoice.rate.toFixed(2)}
+                          </td>
+                          <td className="py-2 px-1 text-right font-bold">{(printInvoice.quantity * printInvoice.rate).toFixed(2)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* Summary Row */}
+                    <div className="flex border-b border-black">
+                      <div className="w-[60%] border-r border-black">
+                        <div className="p-2 border-b border-black min-h-[35px] flex items-center">
+                          <p className="italic text-[8px] leading-tight">Rs. {numberToIndianWords(printInvoice.baseAmount)}</p>
+                        </div>
+                        <div className="p-2 border-b border-black">
+                          <p className="font-bold text-[8px] leading-tight">Net Total Rs {numberToIndianWords(printInvoice.totalAmount)}</p>
+                        </div>
+                        <div className="p-2 font-bold text-[9px] flex items-center">
+                          Net Payable : {formatIndianCurrency(printInvoice.totalAmount)}
+                        </div>
+                      </div>
+                      <div className="w-[40%] text-[8.5px]">
+                        <div className="grid grid-cols-[1fr_80px] divide-x divide-black border-collapse">
+                          <span className="p-1 px-2 border-b border-black">Transport Charges</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(printInvoice.transportCharges || 0)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black font-bold">Ass Value :</span>
+                          <span className="p-1 px-2 border-b border-black text-right font-bold">{formatIndianCurrency(printInvoice.assessableValue || printInvoice.baseAmount)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">CGST {(printInvoice.cgstPercentage || 0).toFixed(2)}%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(printInvoice.cgstAmount || 0)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">SGST {(printInvoice.sgstPercentage || 0).toFixed(2)}%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(printInvoice.sgstAmount || 0)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">IGST {(printInvoice.igstPercentage || 0).toFixed(2)}%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(printInvoice.igstAmount || 0)}</span>
+                          
+                          <span className="p-1 px-2 border-b border-black">TCS {(printInvoice.tcsPercentage || 0).toFixed(1)}%:</span>
+                          <span className="p-1 px-2 border-b border-black text-right">{formatIndianCurrency(printInvoice.tcsAmount || 0)}</span>
+                          
+                          <span className="p-1 px-2 font-bold bg-slate-50">Net Payable :</span>
+                          <span className="p-1 px-2 text-right font-bold bg-slate-50">{formatIndianCurrency(printInvoice.totalAmount)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Declaration */}
+                    <div className="p-2 border-b border-black text-[7.5px] leading-tight text-justify">
+                      <p>I / we certify that our registration certificate under the GST Act, 2017 is in force on the date on which the supply of goods specified in this Tax Invoice is made by me/us & the transaction of supply covered by this Tax Invoice had been effected by me/us & it shall be accounted for in the turnover of supplies while filing of return & the due tax if any payable on the supplies has been paid or shall be paid. Further certified that the particulars given above are true and correct & the amount indicated represents the prices actually charged and that there is no flow if additional consideration directly or indirectly from the buyer.</p>
+                      <p className="mt-1 font-bold">Date & time of Issue : {(() => {
+                        const date = new Date(); // Use current time
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const year = date.getFullYear();
+                        let hours = date.getHours();
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        const seconds = String(date.getSeconds()).padStart(2, '0');
+                        const ampm = hours >= 12 ? 'PM' : 'AM';
+                        hours = hours % 12 || 12;
+                        const hoursStr = String(hours).padStart(2, '0');
+                        return `${day}/${month}/${year}, ${hoursStr}:${minutes}:${seconds} ${ampm}`;
+                      })()}</p>
+                    </div>
+
+                    {/* Signature Block */}
+                    <div className="flex min-h-[70px] divide-x divide-black">
+                      <div className="w-[35%] p-2">
+                        <p className="text-[7.5px] font-bold">(Customer's Seal and Signature)</p>
+                      </div>
+                      <div className="w-[65%] flex flex-col justify-between">
+                        <div className="text-right p-2 font-bold text-[10px]">
+                          For PINNACLE FASTENER
+                        </div>
+                        <div className="flex border-t border-black text-[8px] font-bold divide-x divide-black h-[25px] items-center">
+                          <span className="px-2 flex-1">Prepared By : Himesh Trivedi</span>
+                          <span className="px-2 flex-1">Verified By :</span>
+                          <span className="px-2 flex-1 text-right">Authorised Signatory</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Operational Footer */}
+                  <div className="text-center font-bold text-[8px] mt-1 italic">
+                    <p>(SUBJECT TO SURENDRANAGAR JURISDICTION)</p>
+                    <p>(This is Computer Generated Invoice)</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

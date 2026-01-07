@@ -44,17 +44,16 @@ export async function POST(request: NextRequest) {
     
     if (!fgItem) {
       if (autoCreateFG) {
-        // Auto-create the FG item using RM item's grade and mill
+        // Auto-create the FG item using RM item's grade
         try {
           fgItem = await ItemMaster.create({
             category: 'FG',
             size: body.fgSize,
             grade: body.grade || rmItem.grade,
-            mill: rmItem.mill,
             hsnCode: rmItem.hsnCode || '7223',
             status: 'Active'
           });
-          console.log(`✅ Auto-created FG item: ${body.fgSize} (Grade: ${fgItem.grade}, Mill: ${fgItem.mill})`);
+          console.log(`✅ Auto-created FG item: ${body.fgSize} (Grade: ${fgItem.grade})`);
         } catch (createError: any) {
           // If it already exists with different attributes, try to find it
           fgItem = await ItemMaster.findOne({ size: body.fgSize, category: 'FG' });

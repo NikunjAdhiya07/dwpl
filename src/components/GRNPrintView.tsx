@@ -4,6 +4,15 @@ import React from 'react';
 import { X, Download } from 'lucide-react';
 import { exportToPDF, generatePDFFilename } from '@/lib/pdfExport';
 
+interface GRNItem {
+  rmSize: {
+    size: string;
+    grade: string;
+  };
+  quantity: number;
+  rate: number;
+}
+
 interface GRNDocument {
   _id: string;
   grnDate: string;
@@ -13,13 +22,7 @@ interface GRNDocument {
     gstNumber?: string;
   };
   partyChallanNumber: string;
-  rmSize: {
-    size: string;
-    grade: string;
-    mill: string;
-  };
-  quantity: number;
-  rate: number;
+  items: GRNItem[];
   totalValue: number;
 }
 
@@ -131,6 +134,7 @@ export default function GRNPrintView({ grn, onClose }: GRNPrintViewProps) {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-slate-100">
+                    <th className="border border-slate-300 px-4 py-2 text-left">Sr.</th>
                     <th className="border border-slate-300 px-4 py-2 text-left">Description</th>
                     <th className="border border-slate-300 px-4 py-2 text-right">Quantity</th>
                     <th className="border border-slate-300 px-4 py-2 text-right">Rate</th>
@@ -138,25 +142,27 @@ export default function GRNPrintView({ grn, onClose }: GRNPrintViewProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="border border-slate-300 px-4 py-3">
-                      <p className="font-semibold">{grn.rmSize.size} - {grn.rmSize.grade}</p>
-                      <p className="text-sm text-slate-600">Mill: {grn.rmSize.mill}</p>
-                    </td>
-                    <td className="border border-slate-300 px-4 py-3 text-right font-semibold">
-                      {grn.quantity.toFixed(2)}
-                    </td>
-                    <td className="border border-slate-300 px-4 py-3 text-right">
-                      ₹{grn.rate.toFixed(2)}
-                    </td>
-                    <td className="border border-slate-300 px-4 py-3 text-right font-semibold">
-                      ₹{grn.totalValue.toFixed(2)}
-                    </td>
-                  </tr>
+                  {grn.items.map((item, index) => (
+                    <tr key={index}>
+                      <td className="border border-slate-300 px-4 py-3 text-center">{index + 1}</td>
+                      <td className="border border-slate-300 px-4 py-3">
+                        <p className="font-semibold">{item.rmSize.size} - {item.rmSize.grade}</p>
+                      </td>
+                      <td className="border border-slate-300 px-4 py-3 text-right font-semibold">
+                        {item.quantity.toFixed(2)}
+                      </td>
+                      <td className="border border-slate-300 px-4 py-3 text-right">
+                        ₹{item.rate.toFixed(2)}
+                      </td>
+                      <td className="border border-slate-300 px-4 py-3 text-right font-semibold">
+                        ₹{(item.quantity * item.rate).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-100">
-                    <td colSpan={3} className="border border-slate-300 px-4 py-3 text-right font-bold">
+                    <td colSpan={4} className="border border-slate-300 px-4 py-3 text-right font-bold">
                       Total Value:
                     </td>
                     <td className="border border-slate-300 px-4 py-3 text-right font-bold text-lg">

@@ -26,6 +26,11 @@ const PartyMasterSchema = new Schema<IPartyMaster>(
       required: [true, 'Contact number is required'],
       trim: true,
     },
+    rate: {
+      type: Number,
+      required: [true, 'Rate is required'],
+      min: [0, 'Rate cannot be negative'],
+    },
     annealingCharge: {
       type: Number,
       required: [true, 'Annealing charge is required'],

@@ -12,22 +12,12 @@ interface BOM {
   _id: string;
   fgSize: string;
   rmSize: string;
-  grade: string;
-  annealingMin: number;
-  annealingMax: number;
-  drawPassMin: number;
-  drawPassMax: number;
   status: 'Active' | 'Inactive';
 }
 
 interface BOMForm {
   fgSizes: string; // Changed to support multiple comma-separated sizes
   rmSize: string;
-  grade: string;
-  annealingMin: number;
-  annealingMax: number;
-  drawPassMin: number;
-  drawPassMax: number;
   status: 'Active' | 'Inactive';
 }
 
@@ -42,11 +32,6 @@ export default function BOMPage() {
   const [formData, setFormData] = useState<BOMForm>({
     fgSizes: '',
     rmSize: '',
-    grade: '',
-    annealingMin: 0,
-    annealingMax: 7,
-    drawPassMin: 0,
-    drawPassMax: 10,
     status: 'Active',
   });
 
@@ -74,15 +59,7 @@ export default function BOMPage() {
     e.preventDefault();
     setError('');
 
-    // Validation
-    if (formData.annealingMin > formData.annealingMax) {
-      setError('Annealing minimum cannot be greater than maximum');
-      return;
-    }
-    if (formData.drawPassMin > formData.drawPassMax) {
-      setError('Draw pass minimum cannot be greater than maximum');
-      return;
-    }
+
 
     // Parse multiple FG sizes (comma-separated)
     const fgSizeList = formData.fgSizes
@@ -106,11 +83,6 @@ export default function BOMPage() {
           body: JSON.stringify({
             fgSize: fgSizeList[0], // Use first size when editing
             rmSize: formData.rmSize,
-            grade: formData.grade,
-            annealingMin: formData.annealingMin,
-            annealingMax: formData.annealingMax,
-            drawPassMin: formData.drawPassMin,
-            drawPassMax: formData.drawPassMax,
             status: formData.status,
           }),
         });
@@ -136,11 +108,6 @@ export default function BOMPage() {
               body: JSON.stringify({
                 fgSize,
                 rmSize: formData.rmSize,
-                grade: formData.grade,
-                annealingMin: formData.annealingMin,
-                annealingMax: formData.annealingMax,
-                drawPassMin: formData.drawPassMin,
-                drawPassMax: formData.drawPassMax,
                 status: formData.status,
                 autoCreateFG: true, // Enable auto-creation of FG items
               }),
@@ -185,11 +152,6 @@ export default function BOMPage() {
     setFormData({
       fgSizes: bom.fgSize, // When editing, show single size
       rmSize: bom.rmSize,
-      grade: bom.grade,
-      annealingMin: bom.annealingMin,
-      annealingMax: bom.annealingMax,
-      drawPassMin: bom.drawPassMin,
-      drawPassMax: bom.drawPassMax,
       status: bom.status,
     });
     setEditingId(bom._id);
@@ -220,11 +182,6 @@ export default function BOMPage() {
     setFormData({
       fgSizes: '',
       rmSize: '',
-      grade: '',
-      annealingMin: 0,
-      annealingMax: 7,
-      drawPassMin: 0,
-      drawPassMax: 10,
       status: 'Active',
     });
     setEditingId(null);
@@ -236,8 +193,7 @@ export default function BOMPage() {
     const query = searchQuery.toLowerCase();
     return (
       bom.fgSize.toLowerCase().includes(query) ||
-      bom.rmSize.toLowerCase().includes(query) ||
-      bom.grade.toLowerCase().includes(query)
+      bom.rmSize.toLowerCase().includes(query)
     );
   });
 
@@ -248,8 +204,8 @@ export default function BOMPage() {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="BOM & Routing"
-        description="Define size conversion rules and process limits"
+        title="BOM (Bill of Materials)"
+        description="Define size conversion mapping from RM to FG"
         action={
           !showForm && (
             <button onClick={() => setShowForm(true)} className="btn btn-primary">
@@ -278,7 +234,7 @@ export default function BOMPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="label">
                   {editingId ? 'Finish Size (FG) *' : 'Finish Sizes (FG) - Multiple allowed *'}
@@ -312,92 +268,6 @@ export default function BOMPage() {
                 <p className="text-xs text-slate-500 mt-1">
                   Must exist in Item Master as RM. <span className="text-blue-600">Multiple FG sizes can use the same RM.</span>
                 </p>
-              </div>
-
-              <div>
-                <label className="label">Grade *</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={formData.grade}
-                  onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                  placeholder="e.g., MS"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-3">Routing Rules</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-blue-800">Annealing Range (0-7)</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="label text-xs">Minimum</label>
-                      <input
-                        type="number"
-                        className="input"
-                        value={formData.annealingMin}
-                        onChange={(e) =>
-                          setFormData({ ...formData, annealingMin: parseInt(e.target.value) })
-                        }
-                        min="0"
-                        max="7"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="label text-xs">Maximum</label>
-                      <input
-                        type="number"
-                        className="input"
-                        value={formData.annealingMax}
-                        onChange={(e) =>
-                          setFormData({ ...formData, annealingMax: parseInt(e.target.value) })
-                        }
-                        min="0"
-                        max="7"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-blue-800">Draw Pass Range (0-10)</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="label text-xs">Minimum</label>
-                      <input
-                        type="number"
-                        className="input"
-                        value={formData.drawPassMin}
-                        onChange={(e) =>
-                          setFormData({ ...formData, drawPassMin: parseInt(e.target.value) })
-                        }
-                        min="0"
-                        max="10"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="label text-xs">Maximum</label>
-                      <input
-                        type="number"
-                        className="input"
-                        value={formData.drawPassMax}
-                        onChange={(e) =>
-                          setFormData({ ...formData, drawPassMax: parseInt(e.target.value) })
-                        }
-                        min="0"
-                        max="10"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -433,7 +303,7 @@ export default function BOMPage() {
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Search by FG size, RM size, or grade..."
+          placeholder="Search by FG size or RM size..."
         />
       </div>
 
@@ -444,9 +314,6 @@ export default function BOMPage() {
               <tr>
                 <th>FG Size</th>
                 <th>RM Size</th>
-                <th>Grade</th>
-                <th>Annealing Range</th>
-                <th>Draw Pass Range</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -454,7 +321,7 @@ export default function BOMPage() {
             <tbody>
               {filteredBoms.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-500">
+                  <td colSpan={4} className="text-center py-8 text-slate-500">
                     {searchQuery ? 'No BOMs found matching your search.' : 'No BOMs found. Click "Add BOM" to create one.'}
                   </td>
                 </tr>
@@ -463,17 +330,6 @@ export default function BOMPage() {
                   <tr key={bom._id}>
                     <td className="font-medium">{bom.fgSize}</td>
                     <td className="font-medium">{bom.rmSize}</td>
-                    <td>{bom.grade}</td>
-                    <td>
-                      <span className="badge badge-info">
-                        {bom.annealingMin} - {bom.annealingMax}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="badge badge-info">
-                        {bom.drawPassMin} - {bom.drawPassMax}
-                      </span>
-                    </td>
                     <td>
                       <span
                         className={`badge ${

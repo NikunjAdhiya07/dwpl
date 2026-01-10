@@ -42,18 +42,29 @@ const ItemMasterSchema = new Schema<IItemMaster>(
 );
 
 // Auto-generate itemCode before saving
-ItemMasterSchema.pre('save', function () {
+ItemMasterSchema.pre('save', async function () {
   if (!this.itemCode) {
-    // Generate unique item code: CATEGORY-SIZE-GRADE-TIMESTAMP
-    const timestamp = Date.now().toString(36).toUpperCase();
-    this.itemCode = `${this.category}-${this.size.replace(/[^a-zA-Z0-9]/g, '')}-${this.grade.replace(/[^a-zA-Z0-9]/g, '')}-${timestamp}`;
+    // Generate serial item code: A0001, A0002, etc.
+    const ItemMasterModel = this.constructor as any;
+    const lastItem = await ItemMasterModel.findOne({}, {}, { sort: { createdAt: -1 } });
+    
+    let nextNumber = 1;
+    if (lastItem && lastItem.itemCode) {
+      // Extract number from last item code (e.g., "A0001" -> 1)
+      const match = lastItem.itemCode.match(/A(\d+)/);
+      if (match) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      }
+    }
+    
+    // Format as A0001, A0002, etc. (padded to 4 digits)
+    this.itemCode = `A${nextNumber.toString().padStart(4, '0')}`;
   }
 });
 
 // Create compound index for uniqueness (category, size, grade must be unique together)
 ItemMasterSchema.index({ category: 1, size: 1, grade: 1 }, { unique: true });
 ItemMasterSchema.index({ hsnCode: 1 });
-ItemMasterSchema.index({ itemCode: 1 }, { unique: true });
 
 export const ItemMaster = mongoose.models.ItemMaster || mongoose.model<IItemMaster>('ItemMaster', ItemMasterSchema);
 

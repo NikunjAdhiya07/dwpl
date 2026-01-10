@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { TaxInvoice } from '@/models/TaxInvoice';
 import { OutwardChallan } from '@/models/OutwardChallan';
+import { PartyMaster } from '@/models/PartyMaster';
 import { ItemMaster } from '@/models/ItemMaster';
 import { GSTMaster } from '@/models/GSTMaster';
 import { generateSequentialNumber } from '@/lib/utils';

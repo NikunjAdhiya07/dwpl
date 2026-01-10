@@ -28,6 +28,7 @@ interface ItemForm {
 
 export default function ItemMasterPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [hsnCodes, setHsnCodes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -45,6 +46,7 @@ export default function ItemMasterPage() {
 
   useEffect(() => {
     fetchItems();
+    fetchHSNCodes();
   }, []);
 
   const fetchItems = async () => {
@@ -60,6 +62,22 @@ export default function ItemMasterPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHSNCodes = async () => {
+    try {
+      const response = await fetch('/api/gst-master');
+      const data = await response.json();
+      if (data.success) {
+        // Extract unique HSN codes from active GST records
+        const codes = data.data
+          .filter((gst: any) => gst.isActive)
+          .map((gst: any) => gst.hsnCode);
+        setHsnCodes(codes);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch HSN codes:', err);
     }
   };
 
@@ -228,14 +246,22 @@ export default function ItemMasterPage() {
 
               <div>
                 <label className="label">HSN Code *</label>
-                <input
-                  type="text"
+                <select
                   className="input"
                   value={formData.hsnCode}
                   onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })}
-                  placeholder="e.g., 7217"
                   required
-                />
+                >
+                  <option value="">Select HSN Code</option>
+                  {hsnCodes.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">
+                  Select from GST Master. Add new HSN codes in GST Master if needed.
+                </p>
               </div>
 
               <div className="flex items-center gap-2 mt-6">

@@ -21,8 +21,20 @@ interface BOMForm {
   status: 'Active' | 'Inactive';
 }
 
+interface ItemMaster {
+  _id: string;
+  itemCode: string;
+  category: 'RM' | 'FG';
+  size: string;
+  grade: string;
+  hsnCode: string;
+  isActive: boolean;
+}
+
 export default function BOMPage() {
   const [boms, setBoms] = useState<BOM[]>([]);
+  const [rmItems, setRmItems] = useState<ItemMaster[]>([]);
+  const [fgItems, setFgItems] = useState<ItemMaster[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -37,6 +49,7 @@ export default function BOMPage() {
 
   useEffect(() => {
     fetchBOMs();
+    fetchItems();
   }, []);
 
   const fetchBOMs = async () => {
@@ -52,6 +65,21 @@ export default function BOMPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchItems = async () => {
+    try {
+      const response = await fetch('/api/item-master');
+      const data = await response.json();
+      if (data.success) {
+        // Filter active items by category
+        const items = data.data.filter((item: ItemMaster) => item.isActive);
+        setRmItems(items.filter((item: ItemMaster) => item.category === 'RM'));
+        setFgItems(items.filter((item: ItemMaster) => item.category === 'FG'));
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch items:', err);
     }
   };
 
@@ -239,17 +267,33 @@ export default function BOMPage() {
                 <label className="label">
                   {editingId ? 'Finish Size (FG) *' : 'Finish Sizes (FG) - Multiple allowed *'}
                 </label>
-                <input
-                  type="text"
-                  className="input"
-                  value={formData.fgSizes}
-                  onChange={(e) => setFormData({ ...formData, fgSizes: e.target.value })}
-                  placeholder={editingId ? 'e.g., 6mm' : 'e.g., 6mm, 5.5mm, 5mm'}
-                  required
-                />
+                {editingId ? (
+                  <select
+                    className="input"
+                    value={formData.fgSizes}
+                    onChange={(e) => setFormData({ ...formData, fgSizes: e.target.value })}
+                    required
+                  >
+                    <option value="">Select FG Item</option>
+                    {fgItems.map((item) => (
+                      <option key={item._id} value={item.size}>
+                        {item.itemCode} - {item.size} ({item.grade})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.fgSizes}
+                    onChange={(e) => setFormData({ ...formData, fgSizes: e.target.value })}
+                    placeholder="e.g., 6mm, 5.5mm, 5mm"
+                    required
+                  />
+                )}
                 <p className="text-xs mt-1">
                   {editingId 
-                    ? <span className="text-slate-500">Must exist in Item Master as FG</span>
+                    ? <span className="text-slate-500">Select from Item Master (FG items only)</span>
                     : <span className="text-green-600">💡 Enter multiple sizes (e.g., 13.55, 12.50, 11.00). <strong>Missing FG items will be auto-created!</strong></span>
                   }
                 </p>
@@ -257,16 +301,21 @@ export default function BOMPage() {
 
               <div>
                 <label className="label">Original Size (RM) *</label>
-                <input
-                  type="text"
+                <select
                   className="input"
                   value={formData.rmSize}
                   onChange={(e) => setFormData({ ...formData, rmSize: e.target.value })}
-                  placeholder="e.g., 8mm"
                   required
-                />
+                >
+                  <option value="">Select RM Item</option>
+                  {rmItems.map((item) => (
+                    <option key={item._id} value={item.size}>
+                      {item.itemCode} - {item.size} ({item.grade})
+                    </option>
+                  ))}
+                </select>
                 <p className="text-xs text-slate-500 mt-1">
-                  Must exist in Item Master as RM. <span className="text-blue-600">Multiple FG sizes can use the same RM.</span>
+                  Select from Item Master (RM items only). <span className="text-blue-600">Multiple FG sizes can use the same RM.</span>
                 </p>
               </div>
             </div>

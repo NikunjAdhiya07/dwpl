@@ -249,7 +249,6 @@ TaxInvoiceSchema.pre('save', async function () {
 
 // Create indexes
 TaxInvoiceSchema.index({ party: 1, invoiceDate: -1 });
-TaxInvoiceSchema.index({ invoiceNumber: 1 });
 TaxInvoiceSchema.index({ outwardChallan: 1 });
 
 export const TaxInvoice = mongoose.models.TaxInvoice || mongoose.model<ITaxInvoice>('TaxInvoice', TaxInvoiceSchema);

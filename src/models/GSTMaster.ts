@@ -25,7 +25,6 @@ const GSTMasterSchema = new Schema<IGSTMaster>(
   }
 );
 
-// Create index
-GSTMasterSchema.index({ hsnCode: 1 });
+// Indexing is handled by unique: true in schema definition
 
 export const GSTMaster = mongoose.models.GSTMaster || mongoose.model<IGSTMaster>('GSTMaster', GSTMasterSchema);

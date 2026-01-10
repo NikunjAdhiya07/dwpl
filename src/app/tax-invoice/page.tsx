@@ -29,6 +29,10 @@ interface TaxInvoice {
   _id: string;
   invoiceNumber: string;
   irnNumber?: string;
+  outwardChallan?: {
+    _id: string;
+    challanNumber: string;
+  };
   party: {
     partyName: string;
     address: string;
@@ -109,10 +113,34 @@ export default function TaxInvoicePage() {
         fetch('/api/outward-challan'),
       ]);
 
-      const [invoicesData, challansData] = await Promise.all([
-        invoicesRes.json(),
-        challansRes.json(),
-      ]);
+      // Check if responses are OK
+      if (!invoicesRes.ok) {
+        const errorText = await invoicesRes.text();
+        console.error('Tax Invoice API error:', errorText);
+        throw new Error(`Failed to fetch invoices: ${invoicesRes.status} ${invoicesRes.statusText}`);
+      }
+
+      if (!challansRes.ok) {
+        const errorText = await challansRes.text();
+        console.error('Outward Challan API error:', errorText);
+        throw new Error(`Failed to fetch challans: ${challansRes.status} ${challansRes.statusText}`);
+      }
+
+      // Parse JSON with error handling
+      let invoicesData, challansData;
+      try {
+        invoicesData = await invoicesRes.json();
+      } catch (jsonError) {
+        console.error('Failed to parse invoices JSON:', jsonError);
+        throw new Error('Tax Invoice API returned invalid response. Please check server logs.');
+      }
+
+      try {
+        challansData = await challansRes.json();
+      } catch (jsonError) {
+        console.error('Failed to parse challans JSON:', jsonError);
+        throw new Error('Outward Challan API returned invalid response. Please check server logs.');
+      }
 
       console.log('Tax Invoices API Response:', invoicesData);
       console.log('Outward Challans API Response:', challansData);
@@ -241,7 +269,7 @@ export default function TaxInvoicePage() {
                   {/* Top Header Labels */}
                   <div className="flex justify-between items-end mb-1">
                     <div className="flex-1 text-center font-bold text-sm translate-x-10">
-                      Tax Invoice
+                      Delivery Challan
                     </div>
                     <div className="text-[10px] font-bold italic">
                       ({copyType})
@@ -250,10 +278,7 @@ export default function TaxInvoicePage() {
 
                   {/* Main Invoice Border Box */}
                   <div className="border border-black">
-                    {/* IRN Section */}
-                    <div className="p-1 px-2 border-b border-black text-[8px]">
-                      IRN : {invoice.irnNumber || '-'}
-                    </div>
+
 
                     {/* Company and Meta Info Row */}
                     <div className="flex border-b border-black">
@@ -273,23 +298,11 @@ export default function TaxInvoicePage() {
                       {/* Right: Invoice Meta */}
                       <div className="w-[45%] p-2 flex flex-col space-y-0.5">
                         <div className="grid grid-cols-[100px_1fr] leading-none">
-                          <span className="font-bold">INVOICE No :</span>
+                          <span className="font-bold">CHALLAN No :</span>
                           <span className="font-bold">{invoice.invoiceNumber}</span>
                           
                           <span className="font-bold">Date :</span>
                           <span className="font-bold">{new Date(invoice.invoiceDate).toLocaleDateString('en-IN')}</span>
-                          
-                          <span>P.O. No. :</span>
-                          <span>{invoice.poNumber || 'checking invoice printing'}</span>
-                          
-                          <span>P.O. Date :</span>
-                          <span>{new Date(invoice.invoiceDate).toLocaleDateString('en-IN')}</span>
-                          
-                          <span>Payment Term :</span>
-                          <span>{invoice.paymentTerm || '0 Days'}</span>
-                          
-                          <span>Supplier Code :</span>
-                          <span>{invoice.supplierCode || '0'}</span>
                           
                           <span>Transport Name:</span>
                           <span className="break-all">{invoice.transportName || '-'}</span>
@@ -351,6 +364,11 @@ export default function TaxInvoicePage() {
                           <td className="border-r border-black p-2">
                             <p className="font-bold text-[10px] mb-1">{invoice.finishSize.size} - {invoice.finishSize.grade}</p>
                             <p className="text-[8px]">Item no 1</p>
+                            {invoice.outwardChallan?.challanNumber && (
+                              <p className="text-[8px] mt-1 text-slate-600">
+                                Incoming Challan: {invoice.outwardChallan.challanNumber}
+                              </p>
+                            )}
                           </td>
                           <td className="border-r border-black py-2 text-center">{invoice.finishSize.hsnCode}</td>
                           <td className="border-r border-black py-2 text-center">{invoice.quantity.toFixed(0)}<br/>{invoice.packingType || 'KGS'}</td>
@@ -451,8 +469,34 @@ export default function TaxInvoicePage() {
           </div>
         );
         
-        // Wait for render to complete
-        setTimeout(resolve, 200);
+        // Wait longer for render to complete and for styles to settle
+        setTimeout(() => {
+          try {
+            // Pre-sanitize the temp container before sending to html2canvas
+            const colorFnRegex = /(lab|oklch|oklab|color)\s*\([^)]*\)/gi;
+            const styleTags = tempContainer.getElementsByTagName('style');
+            for (let i = 0; i < styleTags.length; i++) {
+              const tag = styleTags[i];
+              if (tag.textContent && (tag.textContent.includes('lab(') || tag.textContent.includes('oklch(') || tag.textContent.includes('oklab(') || tag.textContent.includes('color('))) {
+                tag.textContent = tag.textContent.replace(colorFnRegex, 'white');
+              }
+            }
+
+            // Also sanitize all inline styles in the temp container
+            const allElements = tempContainer.getElementsByTagName('*');
+            for (let i = 0; i < allElements.length; i++) {
+              const el = allElements[i] as HTMLElement;
+              const styleStr = el.getAttribute('style');
+              if (styleStr && colorFnRegex.test(styleStr)) {
+                el.setAttribute('style', styleStr.replace(colorFnRegex, 'white'));
+              }
+            }
+            resolve();
+          } catch (e) {
+            console.error('Error during pre-sanitization:', e);
+            resolve(); // Still attempt to export
+          }
+        }, 500);
       });
 
       // Generate PDF using multi-page export
@@ -461,10 +505,12 @@ export default function TaxInvoicePage() {
 
       // Clean up
       root.unmount();
-      document.body.removeChild(tempContainer);
-    } catch (error) {
+      if (document.body.contains(tempContainer)) {
+        document.body.removeChild(tempContainer);
+      }
+    } catch (error: any) {
       console.error('Failed to export PDF:', error);
-      alert('Failed to export PDF. Please try again.');
+      alert(`Failed to export PDF: ${error.message || 'Unknown error'}. Please check console for details.`);
     }
   };
 
@@ -705,8 +751,8 @@ export default function TaxInvoicePage() {
                   <Receipt className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900">Tax Invoice Preview</h3>
-                  <p className="text-xs text-slate-500">Invoice: {printInvoice.invoiceNumber}</p>
+                  <h3 className="font-bold text-slate-900">Delivery Challan Preview</h3>
+                  <p className="text-xs text-slate-500">Challan: {printInvoice.invoiceNumber}</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -733,7 +779,7 @@ export default function TaxInvoicePage() {
                   {/* Top Header Labels */}
                   <div className="flex justify-between items-end mb-1">
                     <div className="flex-1 text-center font-bold text-sm translate-x-10">
-                      Tax Invoice
+                      Delivery Challan
                     </div>
                     <div className="text-[10px] font-bold italic">
                       ({copyType})
@@ -742,10 +788,7 @@ export default function TaxInvoicePage() {
 
                   {/* Main Invoice Border Box */}
                   <div className="border border-black">
-                    {/* IRN Section */}
-                    <div className="p-1 px-2 border-b border-black text-[8px]">
-                      IRN : {printInvoice.irnNumber || '-'}
-                    </div>
+
 
                     {/* Company and Meta Info Row */}
                     <div className="flex border-b border-black">
@@ -765,23 +808,11 @@ export default function TaxInvoicePage() {
                       {/* Right: Invoice Meta */}
                       <div className="w-[45%] p-2 flex flex-col space-y-0.5">
                         <div className="grid grid-cols-[100px_1fr] leading-none">
-                          <span className="font-bold">INVOICE No :</span>
+                          <span className="font-bold">CHALLAN No :</span>
                           <span className="font-bold">{printInvoice.invoiceNumber}</span>
                           
                           <span className="font-bold">Date :</span>
                           <span className="font-bold">{new Date(printInvoice.invoiceDate).toLocaleDateString('en-IN')}</span>
-                          
-                          <span>P.O. No. :</span>
-                          <span>{printInvoice.poNumber || 'checking invoice printing'}</span>
-                          
-                          <span>P.O. Date :</span>
-                          <span>{new Date(printInvoice.invoiceDate).toLocaleDateString('en-IN')}</span>
-                          
-                          <span>Payment Term :</span>
-                          <span>{printInvoice.paymentTerm || '0 Days'}</span>
-                          
-                          <span>Supplier Code :</span>
-                          <span>{printInvoice.supplierCode || '0'}</span>
                           
                           <span>Transport Name:</span>
                           <span className="break-all">{printInvoice.transportName || '-'}</span>
@@ -843,6 +874,11 @@ export default function TaxInvoicePage() {
                           <td className="border-r border-black p-2">
                             <p className="font-bold text-[10px] mb-1">{printInvoice.finishSize.size} - {printInvoice.finishSize.grade}</p>
                             <p className="text-[8px]">Item no 1</p>
+                            {printInvoice.outwardChallan?.challanNumber && (
+                              <p className="text-[8px] mt-1 text-slate-600">
+                                Incoming Challan: {printInvoice.outwardChallan.challanNumber}
+                              </p>
+                            )}
                           </td>
                           <td className="border-r border-black py-2 text-center">{printInvoice.finishSize.hsnCode}</td>
                           <td className="border-r border-black py-2 text-center">{printInvoice.quantity.toFixed(0)}<br/>{printInvoice.packingType || 'KGS'}</td>

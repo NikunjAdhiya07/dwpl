@@ -68,6 +68,7 @@ export interface IGRN extends Document {
   updatedAt: Date;
 }
 
+
 export interface IStock extends Document {
   category: 'RM' | 'FG';
   size: string; // Item ID reference

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { GRN } from '@/models/GRN';
+import { PartyMaster } from '@/models/PartyMaster';
 import { ItemMaster } from '@/models/ItemMaster';
 import { updateStockAfterGRN } from '@/lib/stockManager';
 

@@ -47,6 +47,13 @@ interface BOM {
   status?: 'Active' | 'Inactive';
 }
 
+interface Stock {
+  _id: string;
+  category: 'RM' | 'FG';
+  size: string; // Item ID
+  quantity: number;
+}
+
 interface ChallanItem {
   finishSize: string;
   originalSize: string;
@@ -125,6 +132,7 @@ export default function OutwardChallanPage() {
   const [rmItems, setRmItems] = useState<Item[]>([]);
   const [transports, setTransports] = useState<Transport[]>([]);
   const [boms, setBoms] = useState<BOM[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -157,22 +165,24 @@ export default function OutwardChallanPage() {
 
   const fetchData = async () => {
     try {
-      const [challansRes, partiesRes, fgRes, rmRes, bomsRes, transportsRes] = await Promise.all([
+      const [challansRes, partiesRes, fgRes, rmRes, bomsRes, transportsRes, stocksRes] = await Promise.all([
         fetch('/api/outward-challan'),
         fetch('/api/party-master'),
         fetch('/api/item-master?category=FG'),
         fetch('/api/item-master?category=RM'),
         fetch('/api/bom'),
         fetch('/api/transport-master'),
+        fetch('/api/stock?category=RM'),
       ]);
 
-      const [challansData, partiesData, fgData, rmData, bomsData, transportsData] = await Promise.all([
+      const [challansData, partiesData, fgData, rmData, bomsData, transportsData, stocksData] = await Promise.all([
         challansRes.json(),
         partiesRes.json(),
         fgRes.json(),
         rmRes.json(),
         bomsRes.json(),
         transportsRes.json(),
+        stocksRes.json(),
       ]);
 
       if (challansData.success) setChallans(challansData.data);
@@ -181,6 +191,7 @@ export default function OutwardChallanPage() {
       if (rmData.success) setRmItems(rmData.data);
       if (bomsData.success) setBoms(bomsData.data);
       if (transportsData.success) setTransports(transportsData.data);
+      if (stocksData.success) setStocks(stocksData.data);
       
       if (!partiesData.success || partiesData.data.length === 0) {
         console.warn('No parties found. Please add parties first.');
@@ -194,12 +205,20 @@ export default function OutwardChallanPage() {
       if (!bomsData.success || bomsData.data.length === 0) {
         console.warn('No BOMs found. Please add BOM entries first.');
       }
+      if (!stocksData.success || stocksData.data.length === 0) {
+        console.warn('No stock data found.');
+      }
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError(`Failed to load data: ${err.message}. Please refresh the page.`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getStockForItem = (itemId: string) => {
+    const stock = stocks.find((s) => s.size === itemId);
+    return stock ? stock.quantity : 0;
   };
 
   const addItem = () => {
@@ -234,6 +253,42 @@ export default function OutwardChallanPage() {
   const updateItem = (index: number, field: keyof ChallanItem, value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
+    
+    // If finishSize (FG) is selected, automatically fetch originalSize (RM) from BOM
+    if (field === 'finishSize' && value) {
+      // Find the FG item object to get its size string
+      const fgItem = fgItems.find(item => item._id === value);
+      if (fgItem) {
+        // Find BOM entry where fgSize matches FG item's size
+        const bom = boms.find((b) => b.fgSize === fgItem.size);
+        if (bom) {
+          // Find RM item object where size matches BOM's rmSize
+          const rmItem = rmItems.find(item => item.size === bom.rmSize);
+          if (rmItem) {
+            newItems[index].originalSize = rmItem._id;
+            console.log(`✅ Auto-filled RM: ${rmItem.size} based on FG: ${fgItem.size}`);
+          }
+        }
+      }
+    }
+
+    // If originalSize (RM) is selected, automatically fetch finishSize (FG) from BOM
+    if (field === 'originalSize' && value) {
+      // Find the RM item object to get its size string
+      const rmItem = rmItems.find(item => item._id === value);
+      if (rmItem) {
+        // Find FIRST BOM entry where rmSize matches RM item's size
+        const bom = boms.find((b) => b.rmSize === rmItem.size);
+        if (bom) {
+          // Find FG item object where size matches BOM's fgSize
+          const fgItem = fgItems.find(item => item.size === bom.fgSize);
+          if (fgItem) {
+            newItems[index].finishSize = fgItem._id;
+            console.log(`✅ Auto-filled FG: ${fgItem.size} based on RM: ${rmItem.size}`);
+          }
+        }
+      }
+    }
     
     // Recalculate item total
     const item = newItems[index];
@@ -900,13 +955,14 @@ export default function OutwardChallanPage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* FG Selection */}
-                        <ItemSelector
-                          label="Finish Size (FG)"
-                          value={item.finishSize}
-                          onChange={(value) => updateItem(index, 'finishSize', value)}
-                          items={fgItems}
-                          placeholder="Select FG Size"
-                          required
+                        <div className="space-y-1">
+                          <ItemSelector
+                            label="Finish Size (FG)"
+                            value={item.finishSize}
+                            onChange={(value) => updateItem(index, 'finishSize', value)}
+                            items={fgItems}
+                            placeholder="Select FG Size"
+                            required
                           renderSelected={(fgItem) => (
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
@@ -936,15 +992,20 @@ export default function OutwardChallanPage() {
                             `${fgItem.itemCode} ${fgItem.size} ${fgItem.grade}`
                           }
                         />
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Select finish size – Original size will be auto-filled from BOM
+                        </p>
+                      </div>
 
                         {/* RM Selection */}
-                        <ItemSelector
-                          label="Original Size (RM)"
-                          value={item.originalSize}
-                          onChange={(value) => updateItem(index, 'originalSize', value)}
-                          items={rmItems}
-                          placeholder="Select RM Size"
-                          required
+                        <div className="space-y-1">
+                          <ItemSelector
+                            label="Original Size (RM)"
+                            value={item.originalSize}
+                            onChange={(value) => updateItem(index, 'originalSize', value)}
+                            items={rmItems}
+                            placeholder="Select RM Size"
+                            required
                           renderSelected={(rmItem) => (
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
@@ -974,6 +1035,15 @@ export default function OutwardChallanPage() {
                             `${rmItem.itemCode} ${rmItem.size} ${rmItem.grade}`
                           }
                         />
+                        <p className="text-[10px] text-slate-400 mt-1 flex justify-between">
+                          <span>Select original size – Finish size will be auto-filled from BOM</span>
+                          {item.originalSize && (
+                            <span className={getStockForItem(item.originalSize) > 0 ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
+                              Stock: {getStockForItem(item.originalSize).toFixed(2)} Kgs
+                            </span>
+                          )}
+                        </p>
+                      </div>
 
                         {/* Annealing Count */}
                         <div>

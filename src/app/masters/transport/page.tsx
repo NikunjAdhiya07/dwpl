@@ -10,12 +10,14 @@ import { Plus, Edit2, X, Truck } from 'lucide-react';
 interface Transport {
   _id: string;
   vehicleNumber: string;
+  transporterName: string;
   ownerName: string;
   isActive: boolean;
 }
 
 interface TransportForm {
   vehicleNumber: string;
+  transporterName: string;
   ownerName: string;
   isActive: boolean;
 }
@@ -28,6 +30,7 @@ export default function TransportMasterPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<TransportForm>({
     vehicleNumber: '',
+    transporterName: '',
     ownerName: '',
     isActive: true,
   });
@@ -82,6 +85,7 @@ export default function TransportMasterPage() {
   const handleEdit = (transport: Transport) => {
     setFormData({
       vehicleNumber: transport.vehicleNumber,
+      transporterName: transport.transporterName || '',
       ownerName: transport.ownerName,
       isActive: transport.isActive,
     });
@@ -92,6 +96,7 @@ export default function TransportMasterPage() {
   const resetForm = () => {
     setFormData({
       vehicleNumber: '',
+      transporterName: '',
       ownerName: '',
       isActive: true,
     });
@@ -136,7 +141,7 @@ export default function TransportMasterPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="label">Vehicle Number *</label>
                 <input
@@ -147,6 +152,18 @@ export default function TransportMasterPage() {
                     setFormData({ ...formData, vehicleNumber: e.target.value.toUpperCase() })
                   }
                   placeholder="e.g., MH12AB1234"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label">Transporter Name *</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={formData.transporterName}
+                  onChange={(e) => setFormData({ ...formData, transporterName: e.target.value })}
+                  placeholder="e.g., ABC Transport Co."
                   required
                 />
               </div>
@@ -194,6 +211,7 @@ export default function TransportMasterPage() {
             <thead>
               <tr>
                 <th>Vehicle Number</th>
+                <th>Transporter Name</th>
                 <th>Owner Name</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -202,7 +220,7 @@ export default function TransportMasterPage() {
             <tbody>
               {transports.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-8 text-slate-500">
+                  <td colSpan={5} className="text-center py-8 text-slate-500">
                     <Truck className="w-12 h-12 mx-auto mb-2 text-slate-400" />
                     <p>No vehicles found. Click "Add Vehicle" to create one.</p>
                   </td>
@@ -213,6 +231,7 @@ export default function TransportMasterPage() {
                     <td className="font-mono font-semibold text-lg">
                       {transport.vehicleNumber}
                     </td>
+                    <td className="font-medium">{transport.transporterName || '-'}</td>
                     <td className="font-medium">{transport.ownerName}</td>
                     <td>
                       <span

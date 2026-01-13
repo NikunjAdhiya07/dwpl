@@ -1,19 +1,8 @@
 import mongoose, { Schema } from 'mongoose';
-import { IOutwardChallan } from '@/types';
+import { IOutwardChallan, IOutwardChallanItem } from '@/types';
 
-const OutwardChallanSchema = new Schema<IOutwardChallan>(
+const OutwardChallanItemSchema = new Schema<IOutwardChallanItem>(
   {
-    challanNumber: {
-      type: String,
-      required: [true, 'Challan number is required'],
-      unique: true,
-      trim: true,
-    },
-    party: {
-      type: String,
-      ref: 'PartyMaster',
-      required: [true, 'Party is required'],
-    },
     finishSize: {
       type: String,
       ref: 'ItemMaster',
@@ -27,14 +16,14 @@ const OutwardChallanSchema = new Schema<IOutwardChallan>(
     annealingCount: {
       type: Number,
       required: [true, 'Annealing count is required'],
-      min: [0, 'Annealing count cannot be less than 0'],
-      max: [7, 'Annealing count cannot exceed 7'],
+      min: [1, 'Annealing count must be at least 1'],
+      max: [10, 'Annealing count cannot exceed 10'],
     },
     drawPassCount: {
       type: Number,
       required: [true, 'Draw pass count is required'],
-      min: [0, 'Draw pass count cannot be less than 0'],
-      max: [10, 'Draw pass count cannot exceed 10'],
+      min: [1, 'Draw pass count must be at least 1'],
+      max: [8, 'Draw pass count cannot exceed 8'],
     },
     quantity: {
       type: Number,
@@ -56,9 +45,42 @@ const OutwardChallanSchema = new Schema<IOutwardChallan>(
       required: true,
       default: 0,
     },
+    itemTotal: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+  },
+  { _id: false }
+);
+
+const OutwardChallanSchema = new Schema<IOutwardChallan>(
+  {
+    challanNumber: {
+      type: String,
+      required: [true, 'Challan number is required'],
+      unique: true,
+      trim: true,
+    },
+    party: {
+      type: String,
+      ref: 'PartyMaster',
+      required: [true, 'Party is required'],
+    },
+    items: {
+      type: [OutwardChallanItemSchema],
+      required: [true, 'At least one item is required'],
+      validate: {
+        validator: function(items: IOutwardChallanItem[]) {
+          return items && items.length > 0;
+        },
+        message: 'Outward Challan must have at least one item',
+      },
+    },
     totalAmount: {
       type: Number,
       required: true,
+      default: 0,
     },
     challanDate: {
       type: Date,
@@ -89,12 +111,18 @@ const OutwardChallanSchema = new Schema<IOutwardChallan>(
   }
 );
 
-// Auto-calculate charges and total amount before saving
+// Auto-calculate charges and totals before saving
 OutwardChallanSchema.pre('save', function () {
-  const baseAmount = this.quantity * this.rate;
-  const totalAnnealingCharge = this.annealingCharge * this.quantity * this.annealingCount;
-  const totalDrawCharge = this.drawCharge * this.quantity * this.drawPassCount;
-  this.totalAmount = baseAmount + totalAnnealingCharge + totalDrawCharge;
+  // Calculate item totals
+  this.items.forEach((item) => {
+    const baseAmount = item.quantity * item.rate;
+    const totalAnnealingCharge = item.annealingCharge * item.quantity * item.annealingCount;
+    const totalDrawCharge = item.drawCharge * item.quantity * item.drawPassCount;
+    item.itemTotal = baseAmount + totalAnnealingCharge + totalDrawCharge;
+  });
+  
+  // Calculate overall total
+  this.totalAmount = this.items.reduce((sum, item) => sum + item.itemTotal, 0);
 });
 
 // Create indexes

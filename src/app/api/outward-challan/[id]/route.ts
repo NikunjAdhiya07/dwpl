@@ -14,8 +14,8 @@ export async function GET(
     const { id } = await params;
     const challan = await OutwardChallan.findById(id)
       .populate('party')
-      .populate('finishSize')
-      .populate('originalSize');
+      .populate('items.finishSize')
+      .populate('items.originalSize');
     
     if (!challan) {
       return NextResponse.json(
@@ -41,10 +41,10 @@ export async function DELETE(
     await connectDB();
     const { id } = await params;
     
-    // First, find the challan to get the quantities
+    // First, find the challan to get the items
     const challan = await OutwardChallan.findById(id)
-      .populate('finishSize')
-      .populate('originalSize');
+      .populate('items.finishSize')
+      .populate('items.originalSize');
     
     if (!challan) {
       return NextResponse.json(
@@ -54,35 +54,37 @@ export async function DELETE(
     }
     
     console.log('Deleting challan:', challan.challanNumber);
-    console.log('Quantity to reverse:', challan.quantity);
     
-    // Reverse stock changes:
-    // 1. Add back to RM stock (was deducted when challan was created)
-    const rmStock = await Stock.findOneAndUpdate(
-      { size: challan.originalSize._id || challan.originalSize, category: 'RM' },
-      { $inc: { quantity: challan.quantity } },
-      { new: true }
-    );
-    console.log('RM Stock restored:', rmStock?.quantity);
-    
-    // 2. Deduct from FG stock (was added when challan was created)
-    const fgStock = await Stock.findOneAndUpdate(
-      { size: challan.finishSize._id || challan.finishSize, category: 'FG' },
-      { $inc: { quantity: -challan.quantity } },
-      { new: true }
-    );
-    console.log('FG Stock reduced:', fgStock?.quantity);
+    // Reverse stock changes for each item:
+    for (const item of challan.items) {
+      console.log(`Reversing stock for item - FG: ${item.finishSize}, RM: ${item.originalSize}, Qty: ${item.quantity}`);
+      
+      // 1. Add back to RM stock (was deducted when challan was created)
+      const rmStock = await Stock.findOneAndUpdate(
+        { size: item.originalSize._id || item.originalSize, category: 'RM' },
+        { $inc: { quantity: item.quantity } },
+        { new: true }
+      );
+      console.log(`RM Stock restored for ${item.originalSize}:`, rmStock?.quantity);
+      
+      // 2. Deduct from FG stock (was added when challan was created)
+      const fgStock = await Stock.findOneAndUpdate(
+        { size: item.finishSize._id || item.finishSize, category: 'FG' },
+        { $inc: { quantity: -item.quantity } },
+        { new: true }
+      );
+      console.log(`FG Stock reduced for ${item.finishSize}:`, fgStock?.quantity);
+    }
     
     // 3. Delete the challan
     await OutwardChallan.findByIdAndDelete(id);
     
     return NextResponse.json({ 
       success: true, 
-      message: `Challan ${challan.challanNumber} deleted successfully. Stock has been reversed.`,
+      message: `Challan ${challan.challanNumber} deleted successfully. Stock has been reversed for all items.`,
       data: {
         challan: challan.challanNumber,
-        rmStockRestored: challan.quantity,
-        fgStockRemoved: challan.quantity
+        itemsReversed: challan.items.length
       }
     });
   } catch (error: any) {
@@ -113,27 +115,46 @@ export async function PUT(
       );
     }
     
-    const oldQuantity = existingChallan.quantity;
-    const newQuantity = body.quantity;
-    const quantityDiff = newQuantity - oldQuantity;
-    
     console.log('Updating challan:', existingChallan.challanNumber);
-    console.log('Old quantity:', oldQuantity, 'New quantity:', newQuantity, 'Diff:', quantityDiff);
     
-    // If quantity changed, adjust stock
-    if (quantityDiff !== 0) {
-      // Adjust RM stock (deduct more or restore some)
+    // Reverse stock changes for old items
+    for (const oldItem of existingChallan.items) {
+      // Add back RM stock
       await Stock.findOneAndUpdate(
-        { size: existingChallan.originalSize, category: 'RM' },
-        { $inc: { quantity: -quantityDiff } },
+        { size: oldItem.originalSize, category: 'RM' },
+        { $inc: { quantity: oldItem.quantity } },
         { new: true }
       );
       
-      // Adjust FG stock (add more or reduce some)
+      // Deduct FG stock
       await Stock.findOneAndUpdate(
-        { size: existingChallan.finishSize, category: 'FG' },
-        { $inc: { quantity: quantityDiff } },
+        { size: oldItem.finishSize, category: 'FG' },
+        { $inc: { quantity: -oldItem.quantity } },
         { new: true }
+      );
+    }
+    
+    // Apply stock changes for new items
+    for (const newItem of body.items) {
+      // Deduct RM stock
+      await Stock.findOneAndUpdate(
+        { size: newItem.originalSize, category: 'RM' },
+        { $inc: { quantity: -newItem.quantity } },
+        { new: true }
+      );
+      
+      // Add FG stock
+      await Stock.findOneAndUpdate(
+        { size: newItem.finishSize, category: 'FG' },
+        { 
+          $inc: { quantity: newItem.quantity },
+          $set: { lastUpdated: new Date() }
+        },
+        { 
+          new: true, 
+          upsert: true,
+          setDefaultsOnInsert: true 
+        }
       );
     }
     
@@ -142,19 +163,18 @@ export async function PUT(
       id,
       {
         party: body.party,
-        finishSize: body.finishSize,
-        originalSize: body.originalSize,
-        annealingCount: body.annealingCount,
-        drawPassCount: body.drawPassCount,
-        quantity: body.quantity,
-        rate: body.rate,
-        annealingCharge: body.annealingCharge,
-        drawCharge: body.drawCharge,
-        totalAmount: body.totalAmount,
+        items: body.items,
         challanDate: body.challanDate,
+        vehicleNumber: body.vehicleNumber,
+        transportName: body.transportName,
+        ownerName: body.ownerName,
+        dispatchedThrough: body.dispatchedThrough,
       },
       { new: true }
-    ).populate('party').populate('finishSize').populate('originalSize');
+    )
+      .populate('party')
+      .populate('items.finishSize')
+      .populate('items.originalSize');
     
     return NextResponse.json({ 
       success: true, 

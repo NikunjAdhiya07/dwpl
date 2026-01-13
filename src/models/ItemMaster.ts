@@ -44,21 +44,28 @@ const ItemMasterSchema = new Schema<IItemMaster>(
 // Auto-generate itemCode before saving
 ItemMasterSchema.pre('save', async function () {
   if (!this.itemCode) {
-    // Generate serial item code: A0001, A0002, etc.
+    // Generate serial item code based on category: FG-0001, RM-0001, etc.
     const ItemMasterModel = this.constructor as any;
-    const lastItem = await ItemMasterModel.findOne({}, {}, { sort: { createdAt: -1 } });
+    const prefix = this.category; // 'FG' or 'RM'
+    
+    // Find the last item with the same category prefix
+    const lastItem = await ItemMasterModel.findOne(
+      { category: this.category },
+      {},
+      { sort: { createdAt: -1 } }
+    );
     
     let nextNumber = 1;
     if (lastItem && lastItem.itemCode) {
-      // Extract number from last item code (e.g., "A0001" -> 1)
-      const match = lastItem.itemCode.match(/A(\d+)/);
+      // Extract number from last item code (e.g., "FG-0001" -> 1)
+      const match = lastItem.itemCode.match(/[A-Z]+-(\d+)/);
       if (match) {
         nextNumber = parseInt(match[1], 10) + 1;
       }
     }
     
-    // Format as A0001, A0002, etc. (padded to 4 digits)
-    this.itemCode = `A${nextNumber.toString().padStart(4, '0')}`;
+    // Format as FG-0001, RM-0001, etc. (padded to 4 digits)
+    this.itemCode = `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
   }
 });
 

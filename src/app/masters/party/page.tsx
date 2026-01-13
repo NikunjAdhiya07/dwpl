@@ -17,6 +17,8 @@ interface Party {
   rate: number;
   annealingCharge: number;
   drawCharge: number;
+  annealingMax: number;
+  drawMax: number;
   isActive: boolean;
 }
 
@@ -28,6 +30,8 @@ interface PartyForm {
   rate: number;
   annealingCharge: number;
   drawCharge: number;
+  annealingMax: number;
+  drawMax: number;
   isActive: boolean;
 }
 
@@ -47,6 +51,8 @@ export default function PartyMasterPage() {
     rate: 0,
     annealingCharge: 0,
     drawCharge: 0,
+    annealingMax: 10,
+    drawMax: 8,
     isActive: true,
   });
 
@@ -106,6 +112,8 @@ export default function PartyMasterPage() {
       rate: party.rate,
       annealingCharge: party.annealingCharge,
       drawCharge: party.drawCharge,
+      annealingMax: party.annealingMax || 10,
+      drawMax: party.drawMax || 8,
       isActive: party.isActive,
     });
     setEditingId(party._id);
@@ -141,6 +149,8 @@ export default function PartyMasterPage() {
       rate: 0,
       annealingCharge: 0,
       drawCharge: 0,
+      annealingMax: 10,
+      drawMax: 8,
       isActive: true,
     });
     setEditingId(null);
@@ -290,6 +300,38 @@ export default function PartyMasterPage() {
                 />
               </div>
 
+              <div>
+                <label className="label">Annealing Max (1-10) *</label>
+                <input
+                  type="number"
+                  className="input"
+                  value={formData.annealingMax}
+                  onChange={(e) =>
+                    setFormData({ ...formData, annealingMax: parseInt(e.target.value) || 10 })
+                  }
+                  min="1"
+                  max="10"
+                  required
+                />
+                <p className="text-xs text-slate-500 mt-1">Maximum annealing count allowed for this party</p>
+              </div>
+
+              <div>
+                <label className="label">Draw Max (1-8) *</label>
+                <input
+                  type="number"
+                  className="input"
+                  value={formData.drawMax}
+                  onChange={(e) =>
+                    setFormData({ ...formData, drawMax: parseInt(e.target.value) || 8 })
+                  }
+                  min="1"
+                  max="8"
+                  required
+                />
+                <p className="text-xs text-slate-500 mt-1">Maximum draw count allowed for this party</p>
+              </div>
+
               <div className="flex items-center gap-2 mt-6">
                 <input
                   type="checkbox"
@@ -337,6 +379,8 @@ export default function PartyMasterPage() {
                 <th>Rate</th>
                 <th>Annealing Charge</th>
                 <th>Draw Charge</th>
+                <th>Annealing Max</th>
+                <th>Draw Max</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -344,7 +388,7 @@ export default function PartyMasterPage() {
             <tbody>
               {filteredParties.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-slate-500">
+                  <td colSpan={10} className="text-center py-8 text-slate-500">
                     {searchQuery ? 'No parties found matching your search.' : 'No parties found. Click "Add Party" to create one.'}
                   </td>
                 </tr>
@@ -357,6 +401,16 @@ export default function PartyMasterPage() {
                     <td>₹{(party.rate ?? 0).toFixed(2)}</td>
                     <td>₹{(party.annealingCharge ?? 0).toFixed(2)}</td>
                     <td>₹{(party.drawCharge ?? 0).toFixed(2)}</td>
+                    <td>
+                      <span className="badge badge-blue">
+                        {party.annealingMax || 10}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="badge badge-green">
+                        {party.drawMax || 8}
+                      </span>
+                    </td>
                     <td>
                       <span
                         className={`badge ${

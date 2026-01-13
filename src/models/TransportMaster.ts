@@ -10,6 +10,11 @@ const TransportMasterSchema = new Schema<ITransportMaster>(
       uppercase: true,
       unique: true,
     },
+    transporterName: {
+      type: String,
+      required: [true, 'Transporter name is required'],
+      trim: true,
+    },
     ownerName: {
       type: String,
       required: [true, 'Owner name is required'],

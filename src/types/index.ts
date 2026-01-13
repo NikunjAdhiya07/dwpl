@@ -10,6 +10,8 @@ export interface IPartyMaster extends Document {
   rate: number; // base rate per unit
   annealingCharge: number; // per unit
   drawCharge: number; // per pass/unit
+  annealingMax: number; // max annealing count (1-10)
+  drawMax: number; // max draw count (1-8)
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +30,7 @@ export interface IItemMaster extends Document {
 
 export interface ITransportMaster extends Document {
   vehicleNumber: string;
+  transporterName: string;
   ownerName: string;
   isActive: boolean;
   createdAt: Date;
@@ -76,18 +79,23 @@ export interface IStock extends Document {
   lastUpdated: Date;
 }
 
-export interface IOutwardChallan extends Document {
-  challanNumber: string;
-  party: string; // Party ID
+export interface IOutwardChallanItem {
   finishSize: string; // FG Item ID
   originalSize: string; // RM Item ID (from BOM)
-  annealingCount: number; // 0-7
-  drawPassCount: number; // 0-10
+  annealingCount: number; // 1-10 (from party master)
+  drawPassCount: number; // 1-8 (from party master)
   quantity: number;
   rate: number;
   annealingCharge: number; // auto-calculated from Party Master
   drawCharge: number; // auto-calculated from Party Master
-  totalAmount: number;
+  itemTotal: number; // total for this item
+}
+
+export interface IOutwardChallan extends Document {
+  challanNumber: string;
+  party: string; // Party ID
+  items: IOutwardChallanItem[]; // Array of items
+  totalAmount: number; // sum of all item totals
   challanDate: Date;
   
   // Transport Details
@@ -160,5 +168,5 @@ export type TransportMasterForm = Omit<ITransportMaster, keyof Document | 'creat
 export type BOMForm = Omit<IBOM, keyof Document | 'createdAt' | 'updatedAt'>;
 export type GSTMasterForm = Omit<IGSTMaster, keyof Document | 'createdAt' | 'updatedAt'>;
 export type GRNForm = Omit<IGRN, keyof Document | 'createdAt' | 'updatedAt' | 'totalValue'>;
-export type OutwardChallanForm = Omit<IOutwardChallan, keyof Document | 'createdAt' | 'updatedAt' | 'totalAmount' | 'annealingCharge' | 'drawCharge' | 'challanNumber'>;
+export type OutwardChallanForm = Omit<IOutwardChallan, keyof Document | 'createdAt' | 'updatedAt' | 'totalAmount' | 'challanNumber'>;
 export type TaxInvoiceForm = Omit<ITaxInvoice, keyof Document | 'createdAt' | 'updatedAt' | 'baseAmount' | 'gstAmount' | 'totalAmount' | 'invoiceNumber'>;

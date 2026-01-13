@@ -41,6 +41,20 @@ const PartyMasterSchema = new Schema<IPartyMaster>(
       required: [true, 'Draw charge is required'],
       min: [0, 'Draw charge cannot be negative'],
     },
+    annealingMax: {
+      type: Number,
+      required: [true, 'Annealing max is required'],
+      min: [1, 'Annealing max must be at least 1'],
+      max: [10, 'Annealing max cannot exceed 10'],
+      default: 10,
+    },
+    drawMax: {
+      type: Number,
+      required: [true, 'Draw max is required'],
+      min: [1, 'Draw max must be at least 1'],
+      max: [8, 'Draw max cannot exceed 8'],
+      default: 8,
+    },
     isActive: {
       type: Boolean,
       default: true,

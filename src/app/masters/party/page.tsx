@@ -51,8 +51,8 @@ export default function PartyMasterPage() {
     rate: 0,
     annealingCharge: 0,
     drawCharge: 0,
-    annealingMax: 10,
-    drawMax: 8,
+    annealingMax: 8,
+    drawMax: 10,
     isActive: true,
   });
 
@@ -301,32 +301,32 @@ export default function PartyMasterPage() {
               </div>
 
               <div>
-                <label className="label">Annealing Max (1-10) *</label>
+                <label className="label">Annealing Max (0-8) *</label>
                 <input
                   type="number"
                   className="input"
                   value={formData.annealingMax}
                   onChange={(e) =>
-                    setFormData({ ...formData, annealingMax: parseInt(e.target.value) || 10 })
+                    setFormData({ ...formData, annealingMax: parseInt(e.target.value) || 0 })
                   }
-                  min="1"
-                  max="10"
+                  min="0"
+                  max="8"
                   required
                 />
                 <p className="text-xs text-slate-500 mt-1">Maximum annealing count allowed for this party</p>
               </div>
 
               <div>
-                <label className="label">Draw Max (1-8) *</label>
+                <label className="label">Draw Max (0-10) *</label>
                 <input
                   type="number"
                   className="input"
                   value={formData.drawMax}
                   onChange={(e) =>
-                    setFormData({ ...formData, drawMax: parseInt(e.target.value) || 8 })
+                    setFormData({ ...formData, drawMax: parseInt(e.target.value) || 0 })
                   }
-                  min="1"
-                  max="8"
+                  min="0"
+                  max="10"
                   required
                 />
                 <p className="text-xs text-slate-500 mt-1">Maximum draw count allowed for this party</p>

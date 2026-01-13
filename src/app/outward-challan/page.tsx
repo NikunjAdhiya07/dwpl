@@ -230,8 +230,8 @@ export default function OutwardChallanPage() {
     const newItem: ChallanItem = {
       finishSize: '',
       originalSize: '',
-      annealingCount: 1,
-      drawPassCount: 1,
+      annealingCount: 0,
+      drawPassCount: 0,
       quantity: 0,
       rate: selectedParty.rate,
       annealingCharge: selectedParty.annealingCharge,
@@ -1048,7 +1048,7 @@ export default function OutwardChallanPage() {
                         {/* Annealing Count */}
                         <div>
                           <label className="label">
-                            Annealing Count (1-{selectedParty?.annealingMax || 10}) *
+                            Annealing Count (0-{selectedParty?.annealingMax || 8}) *
                           </label>
                           <select
                             className="input"
@@ -1059,8 +1059,8 @@ export default function OutwardChallanPage() {
                             required
                           >
                             {Array.from(
-                              { length: (selectedParty?.annealingMax || 10) },
-                              (_, i) => i + 1
+                              { length: (selectedParty?.annealingMax || 8) + 1 },
+                              (_, i) => i
                             ).map((count) => (
                               <option key={count} value={count}>
                                 {count}
@@ -1072,7 +1072,7 @@ export default function OutwardChallanPage() {
                         {/* Draw Pass Count */}
                         <div>
                           <label className="label">
-                            Draw Pass Count (1-{selectedParty?.drawMax || 8}) *
+                            Draw Pass Count (0-{selectedParty?.drawMax || 10}) *
                           </label>
                           <select
                             className="input"
@@ -1083,8 +1083,8 @@ export default function OutwardChallanPage() {
                             required
                           >
                             {Array.from(
-                              { length: (selectedParty?.drawMax || 8) },
-                              (_, i) => i + 1
+                              { length: (selectedParty?.drawMax || 10) + 1 },
+                              (_, i) => i
                             ).map((count) => (
                               <option key={count} value={count}>
                                 {count}

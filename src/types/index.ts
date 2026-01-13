@@ -10,8 +10,8 @@ export interface IPartyMaster extends Document {
   rate: number; // base rate per unit
   annealingCharge: number; // per unit
   drawCharge: number; // per pass/unit
-  annealingMax: number; // max annealing count (1-10)
-  drawMax: number; // max draw count (1-8)
+  annealingMax: number; // max annealing count (0-8)
+  drawMax: number; // max draw count (0-10)
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

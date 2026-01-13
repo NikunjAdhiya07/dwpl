@@ -44,16 +44,16 @@ const PartyMasterSchema = new Schema<IPartyMaster>(
     annealingMax: {
       type: Number,
       required: [true, 'Annealing max is required'],
-      min: [1, 'Annealing max must be at least 1'],
+      min: [0, 'Annealing max must be at least 0'],
       max: [10, 'Annealing max cannot exceed 10'],
-      default: 10,
+      default: 8,
     },
     drawMax: {
       type: Number,
       required: [true, 'Draw max is required'],
-      min: [1, 'Draw max must be at least 1'],
-      max: [8, 'Draw max cannot exceed 8'],
-      default: 8,
+      min: [0, 'Draw max must be at least 0'],
+      max: [10, 'Draw max cannot exceed 10'],
+      default: 10,
     },
     isActive: {
       type: Boolean,

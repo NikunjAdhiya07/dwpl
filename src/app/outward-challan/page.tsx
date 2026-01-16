@@ -50,7 +50,7 @@ interface BOM {
 interface Stock {
   _id: string;
   category: 'RM' | 'FG';
-  size: string; // Item ID
+  size: string | Item; // Can be Item ID (string) or populated Item object
   quantity: number;
 }
 
@@ -191,7 +191,27 @@ export default function OutwardChallanPage() {
       if (rmData.success) setRmItems(rmData.data);
       if (bomsData.success) setBoms(bomsData.data);
       if (transportsData.success) setTransports(transportsData.data);
-      if (stocksData.success) setStocks(stocksData.data);
+      if (stocksData.success) {
+        setStocks(stocksData.data);
+        console.log('📊 [Stock Data] Loaded RM stocks:', stocksData.data.length);
+        if (stocksData.data.length > 0) {
+          const firstStock = stocksData.data[0];
+          const sizeIsPopulated = typeof firstStock.size === 'object' && firstStock.size !== null;
+          console.log('  Sample stock entry:', {
+            id: firstStock._id,
+            category: firstStock.category,
+            sizeType: sizeIsPopulated ? 'populated object' : 'string ID',
+            sizeId: sizeIsPopulated ? (firstStock.size as any)._id : firstStock.size,
+            sizeDetails: sizeIsPopulated ? `${(firstStock.size as any).itemCode} - ${(firstStock.size as any).size}` : 'N/A',
+            quantity: firstStock.quantity
+          });
+          
+          // Log all stock IDs for reference
+          console.log('  All stock item IDs:', stocksData.data.map((s: any) => 
+            typeof s.size === 'object' ? s.size._id : s.size
+          ));
+        }
+      }
       
       if (!partiesData.success || partiesData.data.length === 0) {
         console.warn('No parties found. Please add parties first.');
@@ -217,8 +237,28 @@ export default function OutwardChallanPage() {
   };
 
   const getStockForItem = (itemId: string) => {
-    const stock = stocks.find((s) => s.size === itemId);
-    return stock ? stock.quantity : 0;
+    // Convert both IDs to strings for proper comparison
+    // Handle both populated (size is object with _id) and non-populated (size is string) cases
+    const stock = stocks.find((s) => {
+      const stockSizeId = typeof s.size === 'object' && s.size !== null 
+        ? String((s.size as any)._id) 
+        : String(s.size);
+      return stockSizeId === String(itemId);
+    });
+    
+    const quantity = stock ? stock.quantity : 0;
+    
+    // Debug logging (can be removed after issue is resolved)
+    if (itemId) {
+      console.log('🔍 [Stock Lookup]', {
+        searchingFor: itemId,
+        foundStock: stock ? `Yes (${quantity} Kgs)` : 'No',
+        totalStocksAvailable: stocks.length,
+        stockSizeType: stock ? (typeof stock.size === 'object' ? 'populated object' : 'string ID') : 'N/A'
+      });
+    }
+    
+    return quantity;
   };
 
   const addItem = () => {

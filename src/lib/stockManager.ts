@@ -5,26 +5,43 @@ import { ItemMaster } from '@/models/ItemMaster';
  * Update stock after GRN - Increases RM stock
  */
 export async function updateStockAfterGRN(rmSizeId: string, quantity: number) {
+  console.log('📦 [Stock Manager] Updating stock after GRN...');
+  console.log('  RM Size ID:', rmSizeId);
+  console.log('  Quantity to add:', quantity);
+  
   // Verify RM exists
   const rmItem = await ItemMaster.findById(rmSizeId);
   if (!rmItem || rmItem.category !== 'RM') {
+    console.error('❌ [Stock Manager] Invalid RM size:', rmSizeId);
     throw new Error('Invalid RM size');
   }
+  
+  console.log('  ✅ RM Item found:', rmItem.itemCode, rmItem.size, rmItem.grade);
 
   // Find or create stock entry
   let stock = await Stock.findOne({ category: 'RM', size: rmSizeId });
   
   if (!stock) {
+    console.log('  📝 Creating NEW stock entry...');
     stock = new Stock({
       category: 'RM',
       size: rmSizeId,
       quantity: quantity,
     });
   } else {
+    console.log('  📝 Updating EXISTING stock entry...');
+    console.log('    Previous quantity:', stock.quantity);
     stock.quantity += quantity;
+    console.log('    New quantity:', stock.quantity);
   }
 
   await stock.save();
+  console.log('  ✅ Stock saved successfully!');
+  console.log('    Stock ID:', stock._id);
+  console.log('    Category:', stock.category);
+  console.log('    Size (Item ID):', stock.size);
+  console.log('    Final Quantity:', stock.quantity);
+  
   return stock;
 }
 

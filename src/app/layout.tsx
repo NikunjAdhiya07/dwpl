@@ -11,6 +11,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "DWPL - Manufacturing Management System",
   description: "Wire Drawing & Annealing Operations Management",
+  icons: {
+    icon: [
+      { url: '/icon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' }
+    ],
+    apple: '/apple-icon.png',
+  },
 };
 
 export default function RootLayout({

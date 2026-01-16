@@ -46,8 +46,8 @@ export async function GET() {
     const invoices = await TaxInvoice.find()
       .populate('party')
       .populate('outwardChallan')
-      .populate('finishSize')
-      .populate('originalSize')
+      .populate('items.finishSize')
+      .populate('items.originalSize')
       .sort({ invoiceDate: -1 });
     
     console.log(`Successfully fetched ${invoices.length} invoice(s)`);
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
     // Validate outward challan exists
     const challan = await OutwardChallan.findById(body.outwardChallan)
       .populate('party')
-      .populate('finishSize')
-      .populate('originalSize');
+      .populate('items.finishSize')
+      .populate('items.originalSize');
     
     if (!challan) {
       return NextResponse.json(
@@ -97,9 +97,48 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Get FG item to fetch HSN code
-    // challan.finishSize is already populated, so we can use it directly
-    const fgItem = challan.finishSize as any;
+    // Handle both old (single item) and new (multi item) challans
+    let items = [];
+    if (challan.items && challan.items.length > 0) {
+      items = challan.items.map((item: any) => ({
+        finishSize: item.finishSize._id || item.finishSize,
+        originalSize: item.originalSize._id || item.originalSize,
+        annealingCount: item.annealingCount,
+        drawPassCount: item.drawPassCount,
+        quantity: item.quantity,
+        rate: item.rate,
+        annealingCharge: item.annealingCharge,
+        drawCharge: item.drawCharge,
+        itemTotal: item.itemTotal
+      }));
+    } else if ((challan as any).finishSize) {
+      // Legacy support for single item challans
+      items = [{
+        finishSize: (challan as any).finishSize._id || (challan as any).finishSize,
+        originalSize: (challan as any).originalSize._id || (challan as any).originalSize,
+        annealingCount: (challan as any).annealingCount,
+        drawPassCount: (challan as any).drawPassCount,
+        quantity: (challan as any).quantity,
+        rate: (challan as any).rate,
+        annealingCharge: (challan as any).annealingCharge,
+        drawCharge: (challan as any).drawCharge,
+        itemTotal: (challan as any).totalAmount
+      }];
+    }
+
+    if (items.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No items found in the outward challan' },
+        { status: 400 }
+      );
+    }
+
+    // Get FG item to fetch HSN code (from the first item)
+    const firstItemFinishSize = challan.items && challan.items.length > 0 
+      ? challan.items[0].finishSize 
+      : (challan as any).finishSize;
+
+    const fgItem = firstItemFinishSize as any;
     if (!fgItem) {
       return NextResponse.json(
         { success: false, error: 'Finish Size item not found' },
@@ -122,33 +161,18 @@ export async function POST(request: NextRequest) {
     // Split GST into CGST and SGST (for intra-state transactions)
     const halfGST = gstMaster.gstPercentage / 2;
     
-    console.log('Creating Tax Invoice with data:', {
+    console.log('Creating Tax Invoice with multi-items:', {
       invoiceNumber,
-      quantity: challan.quantity,
-      rate: challan.rate,
-      annealingCharge: challan.annealingCharge,
-      drawCharge: challan.drawCharge,
-      annealingCount: challan.annealingCount,
-      drawPassCount: challan.drawPassCount,
+      itemCount: items.length,
       gstPercentage: gstMaster.gstPercentage,
-      cgstPercentage: halfGST,
-      sgstPercentage: halfGST,
     });
     
     // Create tax invoice with data from outward challan
-    // Extract IDs from populated references to avoid validation errors
     const invoice = await TaxInvoice.create({
       invoiceNumber,
       outwardChallan: challan._id,
       party: (challan.party as any)?._id || challan.party,
-      finishSize: (challan.finishSize as any)?._id || challan.finishSize,
-      originalSize: (challan.originalSize as any)?._id || challan.originalSize,
-      annealingCount: challan.annealingCount,
-      drawPassCount: challan.drawPassCount,
-      quantity: challan.quantity,
-      rate: challan.rate,
-      annealingCharge: challan.annealingCharge,
-      drawCharge: challan.drawCharge,
+      items,
       gstPercentage: gstMaster.gstPercentage,
       cgstPercentage: halfGST, // Split GST equally
       sgstPercentage: halfGST, // Split GST equally
@@ -169,7 +193,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Populate and return
-    await invoice.populate(['party', 'outwardChallan', 'finishSize', 'originalSize']);
+    await invoice.populate(['party', 'outwardChallan', 'items.finishSize', 'items.originalSize']);
     
     return NextResponse.json(
       { success: true, data: invoice },

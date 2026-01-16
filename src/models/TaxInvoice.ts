@@ -1,6 +1,47 @@
 import mongoose, { Schema, HydratedDocument } from 'mongoose';
 import { ITaxInvoice } from '@/types';
 
+const TaxInvoiceItemSchema = new Schema({
+  finishSize: {
+    type: String,
+    ref: 'ItemMaster',
+    required: [true, 'Finish Size is required'],
+  },
+  originalSize: {
+    type: String,
+    ref: 'ItemMaster',
+    required: [true, 'Original Size is required'],
+  },
+  annealingCount: {
+    type: Number,
+    required: true,
+  },
+  drawPassCount: {
+    type: Number,
+    required: true,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+  },
+  rate: {
+    type: Number,
+    required: true,
+  },
+  annealingCharge: {
+    type: Number,
+    required: true,
+  },
+  drawCharge: {
+    type: Number,
+    required: true,
+  },
+  itemTotal: {
+    type: Number,
+    required: true,
+  }
+}, { _id: false });
+
 const TaxInvoiceSchema = new Schema<ITaxInvoice>(
   {
     invoiceNumber: {
@@ -19,39 +60,15 @@ const TaxInvoiceSchema = new Schema<ITaxInvoice>(
       ref: 'PartyMaster',
       required: [true, 'Party is required'],
     },
-    finishSize: {
-      type: String,
-      ref: 'ItemMaster',
-      required: [true, 'Finish Size is required'],
-    },
-    originalSize: {
-      type: String,
-      ref: 'ItemMaster',
-      required: [true, 'Original Size is required'],
-    },
-    annealingCount: {
-      type: Number,
-      required: true,
-    },
-    drawPassCount: {
-      type: Number,
-      required: true,
-    },
-    quantity: {
-      type: Number,
-      required: true,
-    },
-    rate: {
-      type: Number,
-      required: true,
-    },
-    annealingCharge: {
-      type: Number,
-      required: true,
-    },
-    drawCharge: {
-      type: Number,
-      required: true,
+    items: {
+      type: [TaxInvoiceItemSchema],
+      required: [true, 'At least one item is required'],
+      validate: {
+        validator: function(items: any[]) {
+          return items && items.length > 0;
+        },
+        message: 'Tax Invoice must have at least one item',
+      },
     },
     baseAmount: {
       type: Number,
@@ -166,19 +183,17 @@ const TaxInvoiceSchema = new Schema<ITaxInvoice>(
 TaxInvoiceSchema.pre('save', async function () {
   console.log('Pre-save hook triggered for TaxInvoice');
   
-  // Calculate base amount (material + processing charges)
-  const materialAmount = this.quantity * this.rate;
-  const totalAnnealingCharge = this.annealingCharge * this.quantity * this.annealingCount;
-  const totalDrawCharge = this.drawCharge * this.quantity * this.drawPassCount;
-  
-  this.baseAmount = materialAmount + totalAnnealingCharge + totalDrawCharge;
-  
-  console.log('Base amount calculated:', {
-    materialAmount,
-    totalAnnealingCharge,
-    totalDrawCharge,
-    baseAmount: this.baseAmount,
+  // Calculate item totals and base amount
+  this.items.forEach(item => {
+    const materialAmount = item.quantity * item.rate;
+    const totalAnnealingCharge = item.annealingCharge * item.quantity * item.annealingCount;
+    const totalDrawCharge = item.drawCharge * item.quantity * item.drawPassCount;
+    item.itemTotal = materialAmount + totalAnnealingCharge + totalDrawCharge;
   });
+
+  this.baseAmount = this.items.reduce((sum, item) => sum + item.itemTotal, 0);
+  
+  console.log('Base amount calculated from items:', this.baseAmount);
   
   // Calculate assessable value (base + transport charges)
   const transportCharges = this.transportCharges || 0;

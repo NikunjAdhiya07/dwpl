@@ -108,19 +108,24 @@ export interface IOutwardChallan extends Document {
   updatedAt: Date;
 }
 
-export interface ITaxInvoice extends Document {
-  invoiceNumber: string;
-  irnNumber?: string; // IRN number (optional)
-  outwardChallan: string; // Outward Challan ID
-  party: string; // Party ID
-  finishSize: string;
-  originalSize: string;
+export interface ITaxInvoiceItem {
+  finishSize: string; // FG Item ID
+  originalSize: string; // RM Item ID
   annealingCount: number;
   drawPassCount: number;
   quantity: number;
   rate: number;
   annealingCharge: number;
   drawCharge: number;
+  itemTotal: number;
+}
+
+export interface ITaxInvoice extends Document {
+  invoiceNumber: string;
+  irnNumber?: string; // IRN number (optional)
+  outwardChallan: string; // Outward Challan ID
+  party: string; // Party ID
+  items: ITaxInvoiceItem[];
   
   // Additional Invoice Details
   poNumber?: string; // Purchase Order Number
@@ -136,7 +141,7 @@ export interface ITaxInvoice extends Document {
   packingType?: string; // e.g., "KGS", "NOS"
   
   // Amount Breakdown
-  baseAmount: number; // Material + Processing charges
+  baseAmount: number; // Sum of all items (Material + Processing charges)
   transportCharges?: number; // Transport charges (default: 0)
   assessableValue?: number; // Base + Transport (for GST calculation)
   

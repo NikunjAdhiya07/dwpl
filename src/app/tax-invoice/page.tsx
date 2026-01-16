@@ -10,6 +10,21 @@ import { Plus, X, Receipt, FileText, Download } from 'lucide-react';
 import { exportToPDF, exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 
+interface OutwardChallanItem {
+  finishSize: {
+    _id: string;
+    size: string;
+    hsnCode: string;
+  };
+  originalSize: {
+    _id: string;
+    size: string;
+  };
+  quantity: number;
+  rate: number;
+  itemTotal: number;
+}
+
 interface OutwardChallan {
   _id: string;
   challanNumber: string;
@@ -17,12 +32,35 @@ interface OutwardChallan {
     _id: string;
     partyName: string;
   };
-  finishSize: {
+  items?: OutwardChallanItem[];
+  // Legacy support
+  finishSize?: {
     _id: string;
     size: string;
     hsnCode: string;
   };
   challanDate: string;
+}
+
+interface TaxInvoiceItem {
+  finishSize: {
+    _id: string;
+    size: string;
+    grade: string;
+    hsnCode: string;
+  };
+  originalSize: {
+    _id: string;
+    size: string;
+    grade: string;
+  };
+  annealingCount: number;
+  drawPassCount: number;
+  quantity: number;
+  rate: number;
+  annealingCharge: number;
+  drawCharge: number;
+  itemTotal: number;
 }
 
 interface TaxInvoice {
@@ -39,22 +77,21 @@ interface TaxInvoice {
     gstNumber: string;
     contactNumber: string;
   };
-  finishSize: {
+  items: TaxInvoiceItem[];
+  
+  // Legacy support
+  finishSize?: {
     size: string;
     grade: string;
     hsnCode: string;
   };
-  originalSize: {
+  originalSize?: {
     size: string;
     grade: string;
   };
-  annealingCount: number;
-  drawPassCount: number;
-  quantity: number;
-  rate: number;
-  annealingCharge: number;
-  drawCharge: number;
-  
+  quantity?: number;
+  rate?: number;
+
   // Invoice details
   poNumber?: string;
   paymentTerm?: string;
@@ -359,27 +396,54 @@ export default function TaxInvoicePage() {
                         </tr>
                       </thead>
                       <tbody>
-                        <tr className="border-b border-black h-[210px] align-top">
-                          <td className="border-r border-black py-2 text-center font-bold">1</td>
-                          <td className="border-r border-black p-2">
-                            <p className="font-bold text-[10px] mb-1">{invoice.finishSize.size} - {invoice.finishSize.grade}</p>
-                            <p className="text-[8px]">Item no 1</p>
-                            {invoice.outwardChallan?.challanNumber && (
-                              <p className="text-[8px] mt-1 text-slate-600">
-                                Incoming Challan: {invoice.outwardChallan.challanNumber}
-                              </p>
-                            )}
-                          </td>
-                          <td className="border-r border-black py-2 text-center">{invoice.finishSize.hsnCode}</td>
-                          <td className="border-r border-black py-2 text-center">{invoice.quantity.toFixed(0)}<br/>{invoice.packingType || 'KGS'}</td>
-                          <td className="border-r border-black py-2 text-center font-bold">
-                            {invoice.quantity.toFixed(0)}<br/>{invoice.packingType || 'KGS'}
-                          </td>
-                          <td className="border-r border-black py-2 text-center">
-                            {invoice.rate.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-1 text-right font-bold">{(invoice.quantity * invoice.rate).toFixed(2)}</td>
-                        </tr>
+                        {invoice.items && invoice.items.length > 0 ? (
+                          invoice.items.map((item, idx) => (
+                            <tr key={idx} className="border-b border-black align-top" style={{ height: invoice.items.length === 1 ? '210px' : 'auto' }}>
+                              <td className="border-r border-black py-2 text-center font-bold">{idx + 1}</td>
+                              <td className="border-r border-black p-2">
+                                <p className="font-bold text-[10px] mb-1">{item.finishSize.size} - {item.finishSize.grade}</p>
+                                <p className="text-[8px]">Item no {idx + 1}</p>
+                                {idx === 0 && invoice.outwardChallan?.challanNumber && (
+                                  <p className="text-[8px] mt-1 text-slate-600">
+                                    Incoming Challan: {invoice.outwardChallan.challanNumber}
+                                  </p>
+                                )}
+                              </td>
+                              <td className="border-r border-black py-2 text-center">{item.finishSize.hsnCode}</td>
+                              <td className="border-r border-black py-2 text-center">{item.quantity.toFixed(0)}<br/>{invoice.packingType || 'KGS'}</td>
+                              <td className="border-r border-black py-2 text-center font-bold">
+                                {item.quantity.toFixed(0)}<br/>{invoice.packingType || 'KGS'}
+                              </td>
+                              <td className="border-r border-black py-2 text-center">
+                                {item.rate.toFixed(2)}
+                              </td>
+                              <td className="py-2 px-1 text-right font-bold">{item.itemTotal.toFixed(2)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          // Legacy support
+                          <tr className="border-b border-black h-[210px] align-top">
+                            <td className="border-r border-black py-2 text-center font-bold">1</td>
+                            <td className="border-r border-black p-2">
+                              <p className="font-bold text-[10px] mb-1">{(invoice as any).finishSize?.size} - {(invoice as any).finishSize?.grade}</p>
+                              <p className="text-[8px]">Item no 1</p>
+                              {invoice.outwardChallan?.challanNumber && (
+                                <p className="text-[8px] mt-1 text-slate-600">
+                                  Incoming Challan: {invoice.outwardChallan.challanNumber}
+                                </p>
+                              )}
+                            </td>
+                            <td className="border-r border-black py-2 text-center">{(invoice as any).finishSize?.hsnCode}</td>
+                            <td className="border-r border-black py-2 text-center">{(invoice as any).quantity?.toFixed(0)}<br/>{invoice.packingType || 'KGS'}</td>
+                            <td className="border-r border-black py-2 text-center font-bold">
+                              {(invoice as any).quantity?.toFixed(0)}<br/>{invoice.packingType || 'KGS'}
+                            </td>
+                            <td className="border-r border-black py-2 text-center">
+                              {(invoice as any).rate?.toFixed(2)}
+                            </td>
+                            <td className="py-2 px-1 text-right font-bold">{invoice.baseAmount.toFixed(2)}</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
 
@@ -607,12 +671,23 @@ export default function TaxInvoicePage() {
                       {challan.party.partyName}
                     </div>
                     <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                      {challan.finishSize.size}
+                      {challan.items && challan.items.length > 0 ? (
+                        <span>
+                          {challan.items[0].finishSize?.size}
+                          {challan.items.length > 1 && ` (+${challan.items.length - 1} more items)`}
+                        </span>
+                      ) : (
+                        challan.finishSize?.size || 'No items'
+                      )}
                     </div>
                   </div>
                 )}
                 getSearchableText={(challan) => 
-                  `${challan.challanNumber} ${challan.party.partyName} ${challan.finishSize.size}`
+                  `${challan.challanNumber} ${challan.party.partyName} ${
+                    challan.items && challan.items.length > 0 
+                      ? challan.items.map(i => i.finishSize?.size).join(' ') 
+                      : (challan.finishSize?.size || '')
+                  }`
                 }
               />
 
@@ -697,12 +772,27 @@ export default function TaxInvoicePage() {
                     <td className="font-medium">{invoice.party.partyName}</td>
                     <td>
                       <div className="text-sm">
-                        <span className="font-semibold">{invoice.finishSize.size}</span>
-                        <span className="text-slate-400 mx-1">←</span>
-                        <span className="text-slate-600">{invoice.originalSize.size}</span>
+                        {invoice.items && invoice.items.length > 0 ? (
+                          <>
+                            <span className="font-semibold">{invoice.items[0].finishSize.size}</span>
+                            {invoice.items.length > 1 && (
+                              <span className="text-blue-600 ml-1">+{invoice.items.length - 1} items</span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-semibold">{invoice.finishSize?.size || '-'}</span>
+                            <span className="text-slate-400 mx-1">←</span>
+                            <span className="text-slate-600">{invoice.originalSize?.size || '-'}</span>
+                          </>
+                        )}
                       </div>
                     </td>
-                    <td className="font-semibold">{invoice.quantity.toFixed(2)}</td>
+                    <td className="font-semibold">
+                      {invoice.items && invoice.items.length > 0 
+                        ? invoice.items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)
+                        : (invoice.quantity || 0).toFixed(2)}
+                    </td>
                     <td>₹{invoice.baseAmount.toFixed(2)}</td>
                     <td>
                       <span className="badge badge-info">{invoice.gstPercentage}%</span>
@@ -869,27 +959,54 @@ export default function TaxInvoicePage() {
                         </tr>
                       </thead>
                       <tbody>
-                        <tr className="border-b border-black h-[240px] align-top">
-                          <td className="border-r border-black py-2 text-center font-bold">1</td>
-                          <td className="border-r border-black p-2">
-                            <p className="font-bold text-[10px] mb-1">{printInvoice.finishSize.size} - {printInvoice.finishSize.grade}</p>
-                            <p className="text-[8px]">Item no 1</p>
-                            {printInvoice.outwardChallan?.challanNumber && (
-                              <p className="text-[8px] mt-1 text-slate-600">
-                                Incoming Challan: {printInvoice.outwardChallan.challanNumber}
-                              </p>
-                            )}
-                          </td>
-                          <td className="border-r border-black py-2 text-center">{printInvoice.finishSize.hsnCode}</td>
-                          <td className="border-r border-black py-2 text-center">{printInvoice.quantity.toFixed(0)}<br/>{printInvoice.packingType || 'KGS'}</td>
-                          <td className="border-r border-black py-2 text-center font-bold">
-                            {printInvoice.quantity.toFixed(0)}<br/>{printInvoice.packingType || 'KGS'}
-                          </td>
-                          <td className="border-r border-black py-2 text-center">
-                            {printInvoice.rate.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-1 text-right font-bold">{(printInvoice.quantity * printInvoice.rate).toFixed(2)}</td>
-                        </tr>
+                        {printInvoice.items && printInvoice.items.length > 0 ? (
+                          printInvoice.items.map((item, idx) => (
+                            <tr key={idx} className="border-b border-black align-top" style={{ height: printInvoice.items.length === 1 ? '240px' : 'auto' }}>
+                              <td className="border-r border-black py-2 text-center font-bold">{idx + 1}</td>
+                              <td className="border-r border-black p-2">
+                                <p className="font-bold text-[10px] mb-1">{item.finishSize.size} - {item.finishSize.grade}</p>
+                                <p className="text-[8px]">Item no {idx + 1}</p>
+                                {idx === 0 && printInvoice.outwardChallan?.challanNumber && (
+                                  <p className="text-[8px] mt-1 text-slate-600">
+                                    Incoming Challan: {printInvoice.outwardChallan.challanNumber}
+                                  </p>
+                                )}
+                              </td>
+                              <td className="border-r border-black py-2 text-center">{item.finishSize.hsnCode}</td>
+                              <td className="border-r border-black py-2 text-center">{item.quantity.toFixed(0)}<br/>{printInvoice.packingType || 'KGS'}</td>
+                              <td className="border-r border-black py-2 text-center font-bold">
+                                {item.quantity.toFixed(0)}<br/>{printInvoice.packingType || 'KGS'}
+                              </td>
+                              <td className="border-r border-black py-2 text-center">
+                                {item.rate.toFixed(2)}
+                              </td>
+                              <td className="py-2 px-1 text-right font-bold">{item.itemTotal.toFixed(2)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          // Legacy support
+                          <tr className="border-b border-black h-[240px] align-top">
+                            <td className="border-r border-black py-2 text-center font-bold">1</td>
+                            <td className="border-r border-black p-2">
+                              <p className="font-bold text-[10px] mb-1">{(printInvoice as any).finishSize?.size} - {(printInvoice as any).finishSize?.grade}</p>
+                              <p className="text-[8px]">Item no 1</p>
+                              {printInvoice.outwardChallan?.challanNumber && (
+                                <p className="text-[8px] mt-1 text-slate-600">
+                                  Incoming Challan: {printInvoice.outwardChallan.challanNumber}
+                                </p>
+                              )}
+                            </td>
+                            <td className="border-r border-black py-2 text-center">{(printInvoice as any).finishSize?.hsnCode}</td>
+                            <td className="border-r border-black py-2 text-center">{(printInvoice as any).quantity?.toFixed(0)}<br/>{printInvoice.packingType || 'KGS'}</td>
+                            <td className="border-r border-black py-2 text-center font-bold">
+                              {(printInvoice as any).quantity?.toFixed(0)}<br/>{printInvoice.packingType || 'KGS'}
+                            </td>
+                            <td className="border-r border-black py-2 text-center">
+                              {(printInvoice as any).rate?.toFixed(2)}
+                            </td>
+                            <td className="py-2 px-1 text-right font-bold">{printInvoice.baseAmount.toFixed(2)}</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
 

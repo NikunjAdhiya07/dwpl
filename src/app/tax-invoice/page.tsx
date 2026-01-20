@@ -9,6 +9,7 @@ import ItemSelector from '@/components/ItemSelector';
 import { Plus, X, Receipt, FileText, Download } from 'lucide-react';
 import { exportToPDF, exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
+import JobWorkInvoicePrintView from '@/components/JobWorkInvoicePrintView';
 
 interface OutwardChallanItem {
   finishSize: {
@@ -61,6 +62,9 @@ interface TaxInvoiceItem {
   annealingCharge: number;
   drawCharge: number;
   itemTotal: number;
+  issuedChallanNo?: string;
+  coilNumber?: string;
+  coilReference?: string;
 }
 
 interface TaxInvoice {
@@ -306,7 +310,7 @@ export default function TaxInvoicePage() {
                   {/* Top Header Labels */}
                   <div className="flex justify-between items-end mb-1">
                     <div className="flex-1 text-center font-bold text-sm translate-x-10">
-                      Delivery Challan
+                      Job Work Invoice
                     </div>
                     <div className="text-[10px] font-bold italic">
                       ({copyType})
@@ -585,8 +589,8 @@ export default function TaxInvoicePage() {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Tax Invoice"
-        description="Generate GST invoices from outward challans"
+        title="Job Work Invoice"
+        description="Generate job work invoices from outward challans"
         action={
           !showForm && (
             <button

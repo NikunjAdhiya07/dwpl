@@ -57,19 +57,21 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
   return (
     <div className="print-page bg-white text-black font-sans p-[10mm] w-[210mm] min-h-[297mm] box-border mx-auto border border-gray-200">
       {/* Header Section */}
-      <div className="flex justify-between items-start mb-6">
-        <div className="w-1/3 text-[12px] leading-tight">
-          <p className="font-bold text-[14px]">Drawwell Wires Pvt. Ltd.</p>
-          <p className="text-[10px] font-semibold mt-2 mb-1">Regd. Office Address:</p>
-          <p>Plot No. G-2114, Phase III, Gate No.2</p>
-          <p>GIDC Metoda, Dist. Rajkot-360021</p>
-          <p>Gujarat, India</p>
+      <div className="flex justify-between items-start mb-4">
+        <div className="w-2/5 text-[11px] leading-snug">
+          <p className="font-bold text-[15px] mb-1">Drawwell Wires Pvt. Ltd.</p>
+          <p className="mt-1">S'nagar–Lakhtar Highway, At. Zamar</p>
+          <p>Dist. Surendranagar</p>
+          <p className="mt-2"><span className="font-semibold">Reg. Off.:</span> Plot No. 1005/B1, Phase-III, GIDC, Wadhwan</p>
+          <p className="mt-2 text-[10px]"><span className="font-semibold">CIN:</span> U27100GJ2020PTC118828</p>
+          <p className="text-[10px]"><span className="font-semibold">GSTIN/UIN:</span> 24AAECL4523G1ZT</p>
+          <p className="text-[10px]"><span className="font-semibold">State Name:</span> Gujarat, Code: 24</p>
         </div>
-        <div className="w-1/3 text-center">
+        <div className="w-1/5 text-center">
           <h1 className="text-[18px] font-bold underline uppercase tracking-wider">Delivery Challan</h1>
         </div>
-        <div className="w-1/3 text-right text-[12px]">
-          <p>({copyType})</p>
+        <div className="w-2/5 text-right text-[12px]">
+          <p className="font-semibold">({copyType})</p>
         </div>
       </div>
 

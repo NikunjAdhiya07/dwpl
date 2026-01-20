@@ -195,7 +195,18 @@ export async function POST(request: NextRequest) {
     }
     
     // Handle both old (single item) and new (multi item) challans
-    let items = [];
+    let items: Array<{
+      finishSize: any;
+      originalSize: any;
+      annealingCount: number;
+      drawPassCount: number;
+      quantity: number;
+      rate: number;
+      annealingCharge: number;
+      drawCharge: number;
+      itemTotal: number;
+    }> = [];
+    
     if (challan.items && challan.items.length > 0) {
       items = challan.items.map((item: any) => ({
         finishSize: item.finishSize._id || item.finishSize,
@@ -231,8 +242,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate all item references exist in ItemMaster
-    const finishSizeIds = items.map(item => item.finishSize);
-    const originalSizeIds = items.map(item => item.originalSize);
+    const finishSizeIds = items.map((item) => item.finishSize);
+    const originalSizeIds = items.map((item) => item.originalSize);
     
     const [existingFinishSizes, existingOriginalSizes] = await Promise.all([
       ItemMaster.find({ _id: { $in: finishSizeIds } }).select('_id').lean(),

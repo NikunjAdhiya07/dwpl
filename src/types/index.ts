@@ -89,6 +89,9 @@ export interface IOutwardChallanItem {
   annealingCharge: number; // auto-calculated from Party Master
   drawCharge: number; // auto-calculated from Party Master
   itemTotal: number; // total for this item
+  issuedChallanNo?: string; // Reference to incoming challan
+  coilNumber?: string; // Coil number for tracking
+  coilReference?: string; // Coil reference/identifier
 }
 
 export interface IOutwardChallan extends Document {
@@ -103,6 +106,7 @@ export interface IOutwardChallan extends Document {
   transportName?: string;
   ownerName?: string;
   dispatchedThrough?: string; // e.g., "By Road"
+  eWayBillNo?: string;
   
   createdAt: Date;
   updatedAt: Date;

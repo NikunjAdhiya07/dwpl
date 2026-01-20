@@ -50,6 +50,18 @@ const OutwardChallanItemSchema = new Schema<IOutwardChallanItem>(
       required: true,
       default: 0,
     },
+    issuedChallanNo: {
+      type: String,
+      trim: true,
+    },
+    coilNumber: {
+      type: String,
+      trim: true,
+    },
+    coilReference: {
+      type: String,
+      trim: true,
+    },
   },
   { _id: false }
 );
@@ -105,6 +117,10 @@ const OutwardChallanSchema = new Schema<IOutwardChallan>(
       type: String,
       default: 'By Road',
     },
+    eWayBillNo: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
@@ -114,15 +130,14 @@ const OutwardChallanSchema = new Schema<IOutwardChallan>(
 // Auto-calculate charges and totals before saving
 OutwardChallanSchema.pre('save', function () {
   // Calculate item totals
-  this.items.forEach((item) => {
-    const baseAmount = item.quantity * item.rate;
-    const totalAnnealingCharge = item.annealingCharge * item.quantity * item.annealingCount;
-    const totalDrawCharge = item.drawCharge * item.quantity * item.drawPassCount;
-    item.itemTotal = baseAmount + totalAnnealingCharge + totalDrawCharge;
+  // @ts-ignore - items might not be typed correctly in pre-save
+  this.items.forEach((item: any) => {
+    item.itemTotal = item.quantity * item.rate;
   });
   
   // Calculate overall total
-  this.totalAmount = this.items.reduce((sum, item) => sum + item.itemTotal, 0);
+  // @ts-ignore
+  this.totalAmount = this.items.reduce((sum: number, item: any) => sum + item.itemTotal, 0);
 });
 
 // Create indexes

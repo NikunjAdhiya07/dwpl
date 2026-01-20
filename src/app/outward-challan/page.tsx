@@ -9,6 +9,7 @@ import ItemSelector from '@/components/ItemSelector';
 import { Plus, X, Send, AlertCircle, Edit, Trash2, Minus, Download } from 'lucide-react';
 import { exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
+import ChallanPrintView from '@/components/ChallanPrintView';
 
 interface Party {
   _id: string;
@@ -64,6 +65,9 @@ interface ChallanItem {
   annealingCharge: number;
   drawCharge: number;
   itemTotal: number;
+  issuedChallanNo?: string;
+  coilNumber?: string;
+  coilReference?: string;
 }
 
 interface OutwardChallan {
@@ -105,6 +109,9 @@ interface OutwardChallan {
     annealingCharge: number;
     drawCharge: number;
     itemTotal: number;
+    issuedChallanNo?: string;
+    coilNumber?: string;
+    coilReference?: string;
   }[];
   totalAmount: number;
   challanDate: string;
@@ -112,6 +119,7 @@ interface OutwardChallan {
   transportName?: string;
   ownerName?: string;
   dispatchedThrough?: string;
+  eWayBillNo?: string;
   createdAt: string;
 }
 
@@ -123,6 +131,7 @@ interface ChallanForm {
   transportName?: string;
   ownerName?: string;
   dispatchedThrough?: string;
+  eWayBillNo?: string;
 }
 
 export default function OutwardChallanPage() {
@@ -150,6 +159,7 @@ export default function OutwardChallanPage() {
     transportName: '',
     ownerName: '',
     dispatchedThrough: 'By Road',
+    eWayBillNo: '',
   });
 
   useEffect(() => {
@@ -277,6 +287,9 @@ export default function OutwardChallanPage() {
       annealingCharge: selectedParty.annealingCharge,
       drawCharge: selectedParty.drawCharge,
       itemTotal: 0,
+      issuedChallanNo: '',
+      coilNumber: '',
+      coilReference: '',
     };
 
     setFormData({
@@ -330,12 +343,9 @@ export default function OutwardChallanPage() {
       }
     }
     
-    // Recalculate item total
+    // Recalculate item total: Qty * Rate = Total Amount (as per user requirement)
     const item = newItems[index];
-    const baseAmount = item.quantity * item.rate;
-    const annealingTotal = item.annealingCharge * item.quantity * item.annealingCount;
-    const drawTotal = item.drawCharge * item.quantity * item.drawPassCount;
-    item.itemTotal = baseAmount + annealingTotal + drawTotal;
+    item.itemTotal = item.quantity * item.rate;
     
     setFormData({ ...formData, items: newItems });
   };
@@ -441,6 +451,7 @@ export default function OutwardChallanPage() {
       transportName: '',
       ownerName: '',
       dispatchedThrough: 'By Road',
+      eWayBillNo: '',
     });
     setSelectedParty(null);
     setShowForm(false);
@@ -461,12 +472,16 @@ export default function OutwardChallanPage() {
         annealingCharge: item.annealingCharge,
         drawCharge: item.drawCharge,
         itemTotal: item.itemTotal,
+        issuedChallanNo: item.issuedChallanNo || '',
+        coilNumber: item.coilNumber || '',
+        coilReference: item.coilReference || '',
       })),
       challanDate: new Date(challan.challanDate).toISOString().split('T')[0],
       vehicleNumber: challan.vehicleNumber || '',
       transportName: challan.transportName || '',
       ownerName: challan.ownerName || '',
       dispatchedThrough: challan.dispatchedThrough || 'By Road',
+      eWayBillNo: challan.eWayBillNo || '',
     });
     setSelectedParty(parties.find(p => p._id === challan.party._id) || null);
     setShowForm(true);
@@ -520,275 +535,25 @@ export default function OutwardChallanPage() {
       const { createRoot } = await import('react-dom/client');
       const root = createRoot(tempContainer);
 
-      // Render all three copies
+      // Render copies
       await new Promise<void>((resolve) => {
         root.render(
           <div style={{ background: 'white' }}>
-            {['Original For Recipient', 'Duplicate', 'Triplicate'].map((copyType, copyIndex) => (
+            {['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'].map((copyType, copyIndex) => (
               <div 
                 key={copyType} 
-                className="print-page"
                 style={{
-                  width: '210mm',
-                  minHeight: '297mm',
-                  padding: '7mm',
-                  margin: 0,
-                  background: 'white',
-                  boxSizing: 'border-box',
                   pageBreakAfter: copyIndex < 2 ? 'always' : 'auto',
-                  position: 'relative'
                 }}
               >
-                <div className="bg-white text-black font-sans w-full" style={{ fontSize: '9px' }}>
-                  {/* Top Header Labels */}
-                  <div className="flex justify-between items-end mb-1">
-                    <div className="flex-1 text-center font-bold text-sm translate-x-10">
-                      Delivery Challan
-                    </div>
-                    <div className="text-[10px] font-bold italic">
-                      ({copyType})
-                    </div>
-                  </div>
-
-                  {/* Main Invoice Border Box */}
-                  <div className="border border-black">
-                    {/* Company and Meta Info Row */}
-                    <div className="flex border-b border-black">
-                      {/* Left: Supplier Details */}
-                      <div className="w-[55%] p-2 border-r border-black flex flex-col min-h-[110px]">
-                        <p className="font-bold text-[11px] mb-1 leading-none uppercase">PINNACLE FASTENER</p>
-                        <p className="leading-tight">Plot No. 1005/B1, Phase-III, G.I.D.C.,</p>
-                        <p className="leading-tight">Wadhwancity, Surendranagar, Gujarat, India - 363035</p>
-                        <p className="mt-2"><strong>GSTIN :</strong> 24AAQCP2416F1ZD</p>
-                        <p><strong>PAN No :</strong> AAQCP2416F</p>
-                        <div className="flex gap-4">
-                          <span>State : Gujarat</span>
-                          <span>State Code : 24</span>
-                        </div>
-                      </div>
-
-                      {/* Right: Challan Meta */}
-                      <div className="w-[45%] p-2 flex flex-col space-y-0.5">
-                        <div className="grid grid-cols-[100px_1fr] leading-none">
-                          <span className="font-bold">CHALLAN No :</span>
-                          <span className="font-bold">{challan.challanNumber}</span>
-                          
-                          <span className="font-bold">Date :</span>
-                          <span className="font-bold">{new Date(challan.challanDate).toLocaleDateString('en-IN')}</span>
-                          
-                          {challan.transportName && (
-                            <>
-                              <span>Transport Name:</span>
-                              <span className="break-all">{challan.transportName}</span>
-                            </>
-                          )}
-                          
-                          {challan.vehicleNumber && (
-                            <>
-                              <span>Vehicle No :</span>
-                              <span>{challan.vehicleNumber}</span>
-                            </>
-                          )}
-                          
-                          {challan.ownerName && (
-                            <>
-                              <span>Owner Name :</span>
-                              <span>{challan.ownerName}</span>
-                            </>
-                          )}
-                          
-                          <span>Dispatched Through:</span>
-                          <span>
-                            {challan.dispatchedThrough || 'By Road'}
-                            {(challan.transportName || challan.ownerName) && 
-                              ` / ${challan.transportName || challan.ownerName}`
-                            }
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Parties Section */}
-                    <div className="flex border-b border-black">
-                      <div className="w-1/2 p-2 border-r border-black min-h-[85px] flex flex-col">
-                        <p className="font-bold underline mb-1 text-[8px]">Details of Receiver (Billed To)</p>
-                        <p className="font-bold text-[10px] uppercase">{challan.party.partyName}</p>
-                        <p className="leading-tight">{challan.party.address}</p>
-                        <p className="mt-auto font-bold pt-1">GSTIN : {challan.party.gstNumber}</p>
-                        <p>State Code : 24 Gujarat</p>
-                      </div>
-                      <div className="w-1/2 p-2 min-h-[85px] flex flex-col">
-                        <p className="font-bold underline mb-1 text-[8px]">Details of Consignee (Shipped To)</p>
-                        <p className="font-bold text-[10px] uppercase">{challan.party.partyName}</p>
-                        <p className="leading-tight">{challan.party.address}</p>
-                        <p className="mt-auto font-bold pt-1">GSTIN : {challan.party.gstNumber}</p>
-                        <p>State Code: 24 Gujarat</p>
-                      </div>
-                    </div>
-
-                    {/* Table Section */}
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b border-black text-center font-bold">
-                          <td className="border-r border-black w-[35px] py-1">Sr.<br/>No.</td>
-                          <td className="border-r border-black px-1">Description</td>
-                          <td className="border-r border-black w-[60px]">Process<br/>Details</td>
-                          <td className="border-r border-black w-[70px] py-1">Quantity<br/>Kgs</td>
-                          <td className="border-r border-black w-[70px] py-1">Rate Per<br/>Unit</td>
-                          <td className="w-[85px] py-1">Amount<br/>Rs.</td>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {challan.items.map((item, index) => (
-                          <tr key={index} className="border-b border-black align-top">
-                            <td className="border-r border-black py-2 text-center font-bold">{index + 1}</td>
-                            <td className="border-r border-black p-2">
-                              <p className="font-bold text-[10px] mb-1">
-                                FG: {item.finishSize.itemCode} - {item.finishSize.size} - {item.finishSize.grade}
-                              </p>
-                              <p className="text-[9px] mb-1">
-                                RM: {item.originalSize.itemCode} - {item.originalSize.size} - {item.originalSize.grade}
-                              </p>
-                              <p className="text-[8px] text-slate-600">
-                                HSN: {item.finishSize.hsnCode}
-                              </p>
-                            </td>
-                            <td className="border-r border-black py-2 px-1 text-[8px]">
-                              <p>Annealing: {item.annealingCount}</p>
-                              <p>Draw: {item.drawPassCount}</p>
-                              <p className="mt-1 text-[7px] text-slate-600">
-                                Ann Chg: ₹{item.annealingCharge}
-                              </p>
-                              <p className="text-[7px] text-slate-600">
-                                Draw Chg: ₹{item.drawCharge}
-                              </p>
-                            </td>
-                            <td className="border-r border-black py-2 text-center font-bold">
-                              {item.quantity.toFixed(2)}
-                            </td>
-                            <td className="border-r border-black py-2 text-center">
-                              {item.rate.toFixed(2)}
-                            </td>
-                            <td className="py-2 px-1 text-right font-bold">{item.itemTotal.toFixed(2)}</td>
-                          </tr>
-                        ))}
-                        {/* Empty rows to fill space if needed */}
-                        {challan.items.length < 5 && Array.from({ length: 5 - challan.items.length }).map((_, i) => (
-                          <tr key={`empty-${i}`} className="border-b border-black" style={{ height: '40px' }}>
-                            <td className="border-r border-black"></td>
-                            <td className="border-r border-black"></td>
-                            <td className="border-r border-black"></td>
-                            <td className="border-r border-black"></td>
-                            <td className="border-r border-black"></td>
-                            <td></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    {/* Summary Row */}
-                    <div className="flex border-b border-black">
-                      <div className="w-[60%] border-r border-black">
-                        <div className="p-2 border-b border-black min-h-[35px] flex items-center">
-                          <p className="italic text-[8px] leading-tight">Rs. {numberToIndianWords(challan.totalAmount)}</p>
-                        </div>
-                        <div className="p-2 border-b border-black">
-                          <p className="font-bold text-[8px] leading-tight">Net Total Rs {numberToIndianWords(challan.totalAmount)}</p>
-                        </div>
-                        <div className="p-2 font-bold text-[9px] flex items-center">
-                          Net Payable : {formatIndianCurrency(challan.totalAmount)}
-                        </div>
-                      </div>
-                      <div className="w-[40%] text-[8.5px]">
-                        <div className="grid grid-cols-[1fr_80px] divide-x divide-black border-collapse">
-                          <span className="p-1 px-2 border-b border-black font-bold">Total Items:</span>
-                          <span className="p-1 px-2 border-b border-black text-right font-bold">{challan.items.length}</span>
-                          
-                          <span className="p-1 px-2 border-b border-black font-bold">Total Qty:</span>
-                          <span className="p-1 px-2 border-b border-black text-right font-bold">
-                            {challan.items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)} Kgs
-                          </span>
-                          
-                          <span className="p-1 px-2 font-bold" style={{ backgroundColor: '#f8fafc' }}>Net Payable :</span>
-                          <span className="p-1 px-2 text-right font-bold" style={{ backgroundColor: '#f8fafc' }}>{formatIndianCurrency(challan.totalAmount)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Declaration */}
-                    <div className="p-2 border-b border-black text-[7.5px] leading-tight text-justify">
-                      <p>This is a job work invoice for processing services provided. The materials mentioned above have been processed as per the specifications and returned to the party. This document serves as proof of job work completion and should be retained for record purposes.</p>
-                      <p className="mt-1 font-bold">Date & time of Issue : {(() => {
-                        const date = new Date();
-                        const day = String(date.getDate()).padStart(2, '0');
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const year = date.getFullYear();
-                        let hours = date.getHours();
-                        const minutes = String(date.getMinutes()).padStart(2, '0');
-                        const seconds = String(date.getSeconds()).padStart(2, '0');
-                        const ampm = hours >= 12 ? 'PM' : 'AM';
-                        hours = hours % 12 || 12;
-                        const hoursStr = String(hours).padStart(2, '0');
-                        return `${day}/${month}/${year}, ${hoursStr}:${minutes}:${seconds} ${ampm}`;
-                      })()}</p>
-                    </div>
-
-                    {/* Signature Block */}
-                    <div className="flex min-h-[70px] divide-x divide-black">
-                      <div className="w-[35%] p-2">
-                        <p className="text-[7.5px] font-bold">(Customer's Seal and Signature)</p>
-                      </div>
-                      <div className="w-[65%] flex flex-col justify-between">
-                        <div className="text-right p-2 font-bold text-[10px]">
-                          For PINNACLE FASTENER
-                        </div>
-                        <div className="flex border-t border-black text-[8px] font-bold divide-x divide-black h-[25px] items-center">
-                          <span className="px-2 flex-1">Prepared By : Himesh Trivedi</span>
-                          <span className="px-2 flex-1">Verified By :</span>
-                          <span className="px-2 flex-1 text-right">Authorised Signatory</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Operational Footer */}
-                  <div className="text-center font-bold text-[8px] mt-1 italic">
-                    <p>(SUBJECT TO SURENDRANAGAR JURISDICTION)</p>
-                    <p>(This is Computer Generated Invoice)</p>
-                  </div>
-                </div>
+                <ChallanPrintView challan={challan as any} copyType={copyType} />
               </div>
             ))}
           </div>
         );
         
         // Wait for render to complete
-        setTimeout(() => {
-          try {
-            // Pre-sanitize the temp container
-            const colorFnRegex = /(lab|oklch|oklab|color)\s*\([^)]*\)/gi;
-            const styleTags = tempContainer.getElementsByTagName('style');
-            for (let i = 0; i < styleTags.length; i++) {
-              const tag = styleTags[i];
-              if (tag.textContent && (tag.textContent.includes('lab(') || tag.textContent.includes('oklch(') || tag.textContent.includes('oklab(') || tag.textContent.includes('color('))) {
-                tag.textContent = tag.textContent.replace(colorFnRegex, 'white');
-              }
-            }
-
-            const allElements = tempContainer.getElementsByTagName('*');
-            for (let i = 0; i < allElements.length; i++) {
-              const el = allElements[i] as HTMLElement;
-              const styleStr = el.getAttribute('style');
-              if (styleStr && colorFnRegex.test(styleStr)) {
-                el.setAttribute('style', styleStr.replace(colorFnRegex, 'white'));
-              }
-            }
-            resolve();
-          } catch (e) {
-            console.error('Error during pre-sanitization:', e);
-            resolve();
-          }
-        }, 500);
+        setTimeout(resolve, 500);
       });
 
       // Generate PDF
@@ -948,6 +713,19 @@ export default function OutwardChallanPage() {
                       setFormData({ ...formData, ownerName: e.target.value })
                     }
                     placeholder="e.g., John Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="label">E-Way Bill No</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.eWayBillNo || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, eWayBillNo: e.target.value })
+                    }
+                    placeholder="e.g., 123456789012"
                   />
                 </div>
               </div>
@@ -1131,6 +909,48 @@ export default function OutwardChallanPage() {
                               </option>
                             ))}
                           </select>
+                        </div>
+
+                        {/* Issued Challan No */}
+                        <div>
+                          <label className="label">Issued Challan No.</label>
+                          <input
+                            type="text"
+                            className="input"
+                            value={item.issuedChallanNo || ''}
+                            onChange={(e) =>
+                              updateItem(index, 'issuedChallanNo', e.target.value)
+                            }
+                            placeholder="Incoming Challan Ref"
+                          />
+                        </div>
+
+                        {/* Coil Number */}
+                        <div>
+                          <label className="label">Coil Number</label>
+                          <input
+                            type="text"
+                            className="input"
+                            value={item.coilNumber || ''}
+                            onChange={(e) =>
+                              updateItem(index, 'coilNumber', e.target.value)
+                            }
+                            placeholder="Coil No."
+                          />
+                        </div>
+
+                        {/* Coil Reference */}
+                        <div>
+                          <label className="label">Coil Reference</label>
+                          <input
+                            type="text"
+                            className="input"
+                            value={item.coilReference || ''}
+                            onChange={(e) =>
+                              updateItem(index, 'coilReference', e.target.value)
+                            }
+                            placeholder="Coil Ref/ID"
+                          />
                         </div>
 
                         {/* Quantity */}

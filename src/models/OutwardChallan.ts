@@ -150,6 +150,5 @@ OutwardChallanSchema.pre('save', function () {
 
 // Create indexes
 OutwardChallanSchema.index({ party: 1, challanDate: -1 });
-OutwardChallanSchema.index({ challanNumber: 1 });
 
 export const OutwardChallan = mongoose.models.OutwardChallan || mongoose.model<IOutwardChallan>('OutwardChallan', OutwardChallanSchema);

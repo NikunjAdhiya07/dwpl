@@ -66,7 +66,6 @@ const PartyMasterSchema = new Schema<IPartyMaster>(
 );
 
 // Create indexes
-PartyMasterSchema.index({ partyName: 1 });
 PartyMasterSchema.index({ gstNumber: 1 });
 
 export const PartyMaster = mongoose.models.PartyMaster || mongoose.model<IPartyMaster>('PartyMaster', PartyMasterSchema);

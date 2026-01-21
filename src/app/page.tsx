@@ -168,15 +168,6 @@ export default function Dashboard() {
       hoverColor: 'hover:from-purple-600 hover:to-purple-700',
       iconColor: 'text-purple-600',
     },
-    {
-      title: 'View Stock',
-      description: 'Check current inventory',
-      icon: Warehouse,
-      link: '/stock',
-      color: 'from-green-500 to-green-600',
-      hoverColor: 'hover:from-green-600 hover:to-green-700',
-      iconColor: 'text-green-600',
-    },
   ];
 
   const masterLinks = [

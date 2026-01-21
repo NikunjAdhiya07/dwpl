@@ -8,6 +8,7 @@ import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
 import { Plus, X, FileText, Download, Trash2 } from 'lucide-react';
 import { exportToPDF, generatePDFFilename } from '@/lib/pdfExport';
+import CoilNumberInput from '@/components/CoilNumberInput';
 
 interface Party {
   _id: string;
@@ -31,6 +32,8 @@ interface GRNItem {
   };
   quantity: number;
   rate: number;
+  coilNumber?: string;
+  coilReference?: string;
 }
 
 interface GRN {
@@ -51,6 +54,8 @@ interface GRNFormItem {
   rmSize: string;
   quantity: string;
   rate: string;
+  coilNumber: string;
+  coilReference: string;
 }
 
 interface GRNForm {
@@ -72,7 +77,7 @@ export default function GRNPage() {
     grnDate: new Date().toISOString().split('T')[0],
   });
   const [formItems, setFormItems] = useState<GRNFormItem[]>([
-    { rmSize: '', quantity: '', rate: '' }
+    { rmSize: '', quantity: '', rate: '', coilNumber: '', coilReference: '' }
   ]);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -105,7 +110,7 @@ export default function GRNPage() {
   };
 
   const addItem = () => {
-    setFormItems([...formItems, { rmSize: '', quantity: '', rate: '' }]);
+    setFormItems([...formItems, { rmSize: '', quantity: '', rate: '', coilNumber: '', coilReference: '' }]);
   };
 
   const removeItem = (index: number) => {
@@ -146,6 +151,10 @@ export default function GRNPage() {
       }
       if (!item.rate || parseFloat(item.rate) < 0) {
         setError(`Rate cannot be negative for item ${i + 1}`);
+        return false;
+      }
+      if (!item.coilNumber || item.coilNumber.trim().length < 8) {
+        setError(`Coil number must be exactly 8 characters for item ${i + 1}`);
         return false;
       }
     }
@@ -207,7 +216,7 @@ export default function GRNPage() {
       partyChallanNumber: '',
       grnDate: new Date().toISOString().split('T')[0],
     });
-    setFormItems([{ rmSize: '', quantity: '', rate: '' }]);
+    setFormItems([{ rmSize: '', quantity: '', rate: '', coilNumber: '', coilReference: '' }]);
     setShowForm(false);
     setShowConfirmation(false);
   };
@@ -506,6 +515,25 @@ export default function GRNPage() {
                           required
                         />
                       </div>
+
+                      <div className="md:col-span-2 mt-2">
+                        <label className="label">Coil Number (8 digits) *</label>
+                        <CoilNumberInput
+                          value={item.coilNumber}
+                          onChange={(value) => updateItem(index, 'coilNumber', value)}
+                        />
+                      </div>
+
+                      <div className="md:col-span-2 mt-2">
+                        <label className="label">Coil Reference</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={item.coilReference}
+                          onChange={(e) => updateItem(index, 'coilReference', e.target.value)}
+                          placeholder="Internal Ref"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -646,6 +674,11 @@ export default function GRNPage() {
                         {grn.items.map((item, idx) => (
                           <div key={idx} className="text-sm">
                             {item.rmSize.size} - {item.rmSize.grade}
+                            {item.coilNumber && (
+                              <span className="font-mono text-xs bg-slate-100 px-1 rounded ml-2">
+                                {item.coilNumber}
+                              </span>
+                            )}
                             <span className="text-xs text-slate-500 ml-2">
                               ({item.quantity.toFixed(2)} @ ₹{item.rate.toFixed(2)})
                             </span>

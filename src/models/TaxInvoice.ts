@@ -39,6 +39,18 @@ const TaxInvoiceItemSchema = new Schema({
   itemTotal: {
     type: Number,
     required: true,
+  },
+  issuedChallanNo: {
+    type: String,
+    trim: true,
+  },
+  coilNumber: {
+    type: String,
+    trim: true,
+  },
+  coilReference: {
+    type: String,
+    trim: true,
   }
 }, { _id: false });
 

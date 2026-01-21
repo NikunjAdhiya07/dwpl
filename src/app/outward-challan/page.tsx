@@ -6,8 +6,9 @@ import Card from '@/components/Card';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
-import { Plus, X, Send, AlertCircle, Edit, Trash2, Minus, Download } from 'lucide-react';
-import { exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
+import CoilNumberInput from '@/components/CoilNumberInput';
+import { Plus, X, Minus, Send, Trash2, Edit, Download, AlertCircle, MapPin, Truck, History } from 'lucide-react';
+import { exportToPDF, exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 import ChallanPrintView from '@/components/ChallanPrintView';
 
@@ -158,6 +159,7 @@ export default function OutwardChallanPage() {
   const [transports, setTransports] = useState<Transport[]>([]);
   const [boms, setBoms] = useState<BOM[]>([]);
   const [stocks, setStocks] = useState<Stock[]>([]);
+  const [grns, setGrns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -194,7 +196,7 @@ export default function OutwardChallanPage() {
 
   const fetchData = async () => {
     try {
-      const [challansRes, partiesRes, fgRes, rmRes, bomsRes, transportsRes, stocksRes, companyRes] = await Promise.all([
+      const [challansRes, partiesRes, fgRes, rmRes, bomsRes, transportsRes, stocksRes, grnsRes, companyRes] = await Promise.all([
         fetch('/api/outward-challan'),
         fetch('/api/party-master'),
         fetch('/api/item-master?category=FG'),
@@ -202,10 +204,11 @@ export default function OutwardChallanPage() {
         fetch('/api/bom'),
         fetch('/api/transport-master'),
         fetch('/api/stock?category=RM'),
+        fetch('/api/grn'),
         fetch('/api/company'),
       ]);
 
-      const [challansData, partiesData, fgData, rmData, bomsData, transportsData, stocksData, companyDataResponse] = await Promise.all([
+      const [challansData, partiesData, fgData, rmData, bomsData, transportsData, stocksData, grnsData, companyDataResponse] = await Promise.all([
         challansRes.json(),
         partiesRes.json(),
         fgRes.json(),
@@ -213,6 +216,7 @@ export default function OutwardChallanPage() {
         bomsRes.json(),
         transportsRes.json(),
         stocksRes.json(),
+        grnsRes.json(),
         companyRes.json(),
       ]);
 
@@ -242,6 +246,10 @@ export default function OutwardChallanPage() {
             typeof s.size === 'object' ? s.size._id : s.size
           ));
         }
+      }
+      
+      if (grnsData.success) {
+        setGrns(grnsData.data);
       }
       
       if (companyDataResponse.success) {
@@ -998,35 +1006,69 @@ export default function OutwardChallanPage() {
                           </select>
                         </div>
 
-                        {/* Issued Challan No */}
+                        {/* Issued Challan No (Dropdown from GRN) */}
                         <div>
-                          <label className="label">Issued Challan No.</label>
-                          <input
-                            type="text"
+                          <label className="label">Issued Challan No. *</label>
+                          <select
                             className="input"
                             value={item.issuedChallanNo || ''}
-                            onChange={(e) =>
-                              updateItem(index, 'issuedChallanNo', e.target.value)
+                            onChange={(e) => {
+                              const challanNo = e.target.value;
+                              updateItem(index, 'issuedChallanNo', challanNo);
+                              
+                              // Clear coil number when challan changes
+                              updateItem(index, 'coilNumber', '');
+                            }}
+                            required
+                          >
+                            <option value="">Select Challan</option>
+                            {grns
+                              .filter(grn => 
+                                grn.items.some((gi: any) => 
+                                  gi.rmSize._id === item.originalSize || 
+                                  gi.rmSize === item.originalSize
+                                )
+                              )
+                              .map(grn => (
+                                <option key={grn._id} value={grn.partyChallanNumber}>
+                                  {grn.partyChallanNumber} ({grn.sendingParty.partyName})
+                                </option>
+                              ))
                             }
-                            placeholder="Incoming Challan Ref"
-                          />
+                          </select>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            Filtered by selected Original Size
+                          </p>
                         </div>
 
-                        {/* Coil Number */}
+                        {/* Coil Number (8 digits) */}
                         <div>
-                          <label className="label">Coil Number</label>
-                          <input
-                            type="text"
-                            className="input"
+                          <label className="label">Coil Number (8 digits) *</label>
+                          <CoilNumberInput
                             value={item.coilNumber || ''}
-                            onChange={(e) =>
-                              updateItem(index, 'coilNumber', e.target.value)
-                            }
-                            placeholder="Coil No."
+                            onChange={(value) => {
+                              updateItem(index, 'coilNumber', value);
+                              
+                              // If 8 digits filled, try to auto-fetch quantity/rate from GRN
+                              if (value.length === 8) {
+                                const selectedGRN = grns.find(g => g.partyChallanNumber === item.issuedChallanNo);
+                                if (selectedGRN) {
+                                  const matchingItem = selectedGRN.items.find((gi: any) => 
+                                    gi.coilNumber === value && 
+                                    (gi.rmSize._id === item.originalSize || gi.rmSize === item.originalSize)
+                                  );
+                                  if (matchingItem) {
+                                    updateItem(index, 'quantity', matchingItem.quantity);
+                                    updateItem(index, 'rate', matchingItem.rate);
+                                    updateItem(index, 'coilReference', matchingItem.coilReference || '');
+                                  }
+                                }
+                              }
+                            }}
                           />
                         </div>
 
-                        {/* Coil Reference */}
+                        {/* Coil Reference (Remains as text or auto-filled) */}
                         <div>
                           <label className="label">Coil Reference</label>
                           <input

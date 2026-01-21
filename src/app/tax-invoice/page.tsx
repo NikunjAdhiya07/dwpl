@@ -142,6 +142,8 @@ export default function TaxInvoicePage() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printInvoice, setPrintInvoice] = useState<TaxInvoice | null>(null);
   const [companyData, setCompanyData] = useState<any>(null);
+  const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
+  const [parties, setParties] = useState<any[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -150,10 +152,11 @@ export default function TaxInvoicePage() {
   const fetchData = async () => {
     try {
       console.log('Fetching tax invoices and outward challans...');
-      const [invoicesRes, challansRes, companyRes] = await Promise.all([
+      const [invoicesRes, challansRes, companyRes, partiesRes] = await Promise.all([
         fetch('/api/tax-invoice'),
         fetch('/api/outward-challan'),
         fetch('/api/company'),
+        fetch('/api/party-master'),
       ]);
 
       // Check if responses are OK
@@ -170,10 +173,11 @@ export default function TaxInvoicePage() {
       }
 
       // Parse JSON with error handling
-      const [invoicesData, challansData, companyDataResponse] = await Promise.all([
+      const [invoicesData, challansData, companyDataResponse, partiesData] = await Promise.all([
         invoicesRes.json(),
         challansRes.json(),
         companyRes.json(),
+        partiesRes.json(),
       ]);
 
       console.log('Tax Invoices API Response:', invoicesData);
@@ -222,6 +226,10 @@ export default function TaxInvoicePage() {
       if (companyDataResponse.success) {
         setCompanyData(companyDataResponse.data);
       }
+
+      if (partiesData.success) {
+        setParties(partiesData.data);
+      }
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError(err.message);
@@ -241,6 +249,11 @@ export default function TaxInvoicePage() {
         body: JSON.stringify({
           outwardChallan: selectedChallan,
           invoiceDate,
+          items: invoiceItems.map(item => ({
+            ...item,
+            finishSize: item.finishSize._id || item.finishSize,
+            originalSize: item.originalSize._id || item.originalSize,
+          }))
         }),
       });
 
@@ -258,8 +271,31 @@ export default function TaxInvoicePage() {
     }
   };
 
+  const handleChallanChange = (challanId: string) => {
+    setSelectedChallan(challanId);
+    if (!challanId) {
+      setInvoiceItems([]);
+      return;
+    }
+
+    const challan = challans.find(c => c._id === challanId) as any;
+    if (challan) {
+      // Find the party details from parties state to get current charges
+      const partyRef = parties.find(p => p._id === (challan.party._id || challan.party));
+      
+      const items = challan.items.map((item: any) => ({
+        ...item,
+        // Default to party master charges if available, otherwise keep challan charges
+        annealingCharge: partyRef?.annealingCharge ?? item.annealingCharge,
+        drawCharge: partyRef?.drawCharge ?? item.drawCharge,
+      }));
+      setInvoiceItems(items);
+    }
+  };
+
   const resetForm = () => {
     setSelectedChallan('');
+    setInvoiceItems([]);
     setInvoiceDate(new Date().toISOString().split('T')[0]);
     setShowForm(false);
   };
@@ -417,7 +453,7 @@ export default function TaxInvoicePage() {
               <ItemSelector
                 label="Select Outward Challan"
                 value={selectedChallan}
-                onChange={(value) => setSelectedChallan(value)}
+                onChange={(value) => handleChallanChange(value)}
                 items={challans}
                 placeholder="Select Challan"
                 required
@@ -478,19 +514,76 @@ export default function TaxInvoicePage() {
               </div>
             </div>
 
-            {selectedChallan && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h3 className="font-semibold text-green-900 mb-2">Invoice Preview</h3>
-                <p className="text-sm text-green-800">
-                  Invoice will be generated with all details from the selected challan including:
+            {invoiceItems.length > 0 && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+                <h3 className="font-semibold text-slate-700">Item Details & Charges</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    <thead>
+                      <tr className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        <th className="px-3 py-2">Size</th>
+                        <th className="px-3 py-2">Qty</th>
+                        <th className="px-3 py-2">Annealing Charge</th>
+                        <th className="px-3 py-2">Draw Charge</th>
+                        <th className="px-3 py-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {invoiceItems.map((item, idx) => (
+                        <tr key={idx} className="text-sm">
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-slate-900">{item.finishSize?.size || 'N/A'}</div>
+                            <div className="text-[10px] text-slate-500">{item.finishSize?.grade}</div>
+                          </td>
+                          <td className="px-3 py-2 text-slate-600 font-medium">
+                            {item.quantity.toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-slate-400">₹</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="w-20 p-1 text-sm border rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                                value={item.annealingCharge}
+                                onChange={(e) => {
+                                  const newVal = parseFloat(e.target.value) || 0;
+                                  const newItems = [...invoiceItems];
+                                  newItems[idx].annealingCharge = newVal;
+                                  // Recalculate itemTotal if needed, but the API handles it
+                                  setInvoiceItems(newItems);
+                                }}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-slate-400">₹</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="w-20 p-1 text-sm border rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                                value={item.drawCharge}
+                                onChange={(e) => {
+                                  const newVal = parseFloat(e.target.value) || 0;
+                                  const newItems = [...invoiceItems];
+                                  newItems[idx].drawCharge = newVal;
+                                  setInvoiceItems(newItems);
+                                }}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-right font-bold text-blue-600">
+                            ₹{(item.itemTotal || 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-[10px] text-slate-500 italic">
+                  * Charges are auto-fetched from Party Master and are editable.
                 </p>
-                <ul className="text-sm text-green-800 list-disc list-inside mt-2 space-y-1">
-                  <li>Party information</li>
-                  <li>Item details (FG and RM sizes)</li>
-                  <li>Quantity, rate, and charges</li>
-                  <li>GST calculation based on HSN code</li>
-                  <li>Final invoice total</li>
-                </ul>
               </div>
             )}
 

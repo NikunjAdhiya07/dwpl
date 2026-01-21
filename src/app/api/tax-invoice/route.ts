@@ -211,7 +211,22 @@ export async function POST(request: NextRequest) {
       itemTotal: number;
     }> = [];
     
-    if (challan.items && challan.items.length > 0) {
+    if (body.items && Array.isArray(body.items) && body.items.length > 0) {
+      items = body.items.map((item: any) => ({
+        finishSize: item.finishSize._id || item.finishSize,
+        originalSize: item.originalSize._id || item.originalSize,
+        annealingCount: item.annealingCount,
+        drawPassCount: item.drawPassCount,
+        quantity: item.quantity,
+        rate: item.rate,
+        annealingCharge: item.annealingCharge,
+        drawCharge: item.drawCharge,
+        itemTotal: item.itemTotal,
+        issuedChallanNo: item.issuedChallanNo,
+        coilNumber: item.coilNumber,
+        coilReference: item.coilReference,
+      }));
+    } else if (challan.items && challan.items.length > 0) {
       items = challan.items.map((item: any) => ({
         finishSize: item.finishSize._id || item.finishSize,
         originalSize: item.originalSize._id || item.originalSize,
@@ -221,7 +236,10 @@ export async function POST(request: NextRequest) {
         rate: item.rate,
         annealingCharge: item.annealingCharge,
         drawCharge: item.drawCharge,
-        itemTotal: item.itemTotal
+        itemTotal: item.itemTotal,
+        issuedChallanNo: item.issuedChallanNo,
+        coilNumber: item.coilNumber,
+        coilReference: item.coilReference,
       }));
     } else if ((challan as any).finishSize) {
       // Legacy support for single item challans

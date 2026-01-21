@@ -5,10 +5,18 @@ import { PartyMaster } from '@/models/PartyMaster';
 import { ItemMaster } from '@/models/ItemMaster';
 import { updateStockAfterGRN } from '@/lib/stockManager';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectDB();
-    const grns = await GRN.find()
+    const { searchParams } = new URL(request.url);
+    const rmSize = searchParams.get('rmSize');
+    
+    let query = {};
+    if (rmSize) {
+      query = { 'items.rmSize': rmSize };
+    }
+
+    const grns = await GRN.find(query)
       .populate('sendingParty')
       .populate('items.rmSize')
       .sort({ grnDate: -1 });

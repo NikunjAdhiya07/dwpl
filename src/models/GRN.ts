@@ -17,6 +17,15 @@ const GRNItemSchema = new Schema({
     required: [true, 'Rate is required'],
     min: [0, 'Rate cannot be negative'],
   },
+  coilNumber: {
+    type: String,
+    trim: true,
+    uppercase: true,
+  },
+  coilReference: {
+    type: String,
+    trim: true,
+  },
 }, { _id: false });
 
 const GRNSchema = new Schema<IGRN>(

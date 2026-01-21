@@ -88,7 +88,7 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
 }) => {
   // Default company data if not provided
   const companyData: Company = company || {
-    companyName: 'Drawwell Wires Pvt. Ltd.',
+    companyName: 'Drawell Wires Pvt. Ltd.',
     address: "S'nagar–Lakhtar Highway, At. Zamar\nDist. Surendranagar",
     registeredOffice: 'Plot No. 1005/B1, Phase-III, GIDC, Wadhwan',
     cin: 'U27100GJ2020PTC118828',

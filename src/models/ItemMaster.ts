@@ -50,9 +50,9 @@ ItemMasterSchema.pre('save', async function () {
     
     // Find the last item with the same category prefix
     const lastItem = await ItemMasterModel.findOne(
-      { category: this.category },
+      { category: this.category, itemCode: new RegExp(`^${prefix}-`) },
       {},
-      { sort: { createdAt: -1 } }
+      { sort: { itemCode: -1 } }
     );
     
     let nextNumber = 1;

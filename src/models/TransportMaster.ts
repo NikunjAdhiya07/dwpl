@@ -31,6 +31,6 @@ const TransportMasterSchema = new Schema<ITransportMaster>(
 );
 
 // Create index
-TransportMasterSchema.index({ vehicleNumber: 1 });
+
 
 export const TransportMaster = mongoose.models.TransportMaster || mongoose.model<ITransportMaster>('TransportMaster', TransportMasterSchema);

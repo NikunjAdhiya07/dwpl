@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { formatIndianCurrency } from '@/lib/numberToWords';
+import { formatIndianCurrency, numberToIndianWords } from '@/lib/numberToWords';
 
 interface ChallanItem {
   finishSize: {
@@ -91,20 +91,23 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
   return (
     <div className="print-page bg-white text-black font-sans p-[10mm] w-[210mm] min-h-[297mm] box-border mx-auto border border-gray-200">
       {/* Header Section */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="w-2/5 text-[11px] leading-snug">
-          <p className="font-bold text-[15px] mb-1">{companyData.companyName}</p>
-          <p className="mt-1 whitespace-pre-line">{companyData.address}</p>
-          <p className="mt-2"><span className="font-semibold">Reg. Off.:</span> {companyData.registeredOffice}</p>
-          <p className="mt-2 text-[10px]"><span className="font-semibold">CIN:</span> {companyData.cin}</p>
-          <p className="text-[10px]"><span className="font-semibold">GSTIN/UIN:</span> {companyData.gstin}</p>
-          <p className="text-[10px]"><span className="font-semibold">State Name:</span> {companyData.state}, Code: {companyData.stateCode}</p>
+      <div className="flex justify-between items-start mb-6">
+        <div className="w-[45%] text-[11px] leading-snug">
+          <p className="font-bold text-[16px] mb-1">{companyData.companyName}</p>
+          <p className="whitespace-pre-line text-gray-700">{companyData.address}</p>
+          <div className="mt-2 space-y-0.5">
+            <p><span className="font-semibold text-gray-600">Reg. Off.:</span> {companyData.registeredOffice}</p>
+            <p className="text-[10px]"><span className="font-semibold text-gray-600">CIN:</span> {companyData.cin}</p>
+            <p className="text-[10px]"><span className="font-semibold text-gray-600">GSTIN/UIN:</span> {companyData.gstin}</p>
+            <p className="text-[10px]"><span className="font-semibold text-gray-600">State Name:</span> {companyData.state}, Code: {companyData.stateCode}</p>
+          </div>
         </div>
-        <div className="w-1/5 text-center">
-          <h1 className="text-[18px] font-bold underline uppercase tracking-wider">Delivery Challan</h1>
+        <div className="w-[30%] text-center pt-2">
+          <p className="text-[14px] font-bold uppercase tracking-[0.2em] mb-1">Delivery</p>
+          <h1 className="text-[24px] font-bold underline uppercase tracking-wider leading-none">Challan</h1>
         </div>
-        <div className="w-2/5 text-right text-[12px]">
-          <p className="font-semibold">({copyType})</p>
+        <div className="w-[25%] text-right text-[12px] pt-1">
+          <p className="font-bold text-gray-600">({copyType})</p>
         </div>
       </div>
 
@@ -148,62 +151,65 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
         </div>
 
         {/* Item Details Table */}
-        <table className="w-full border-collapse text-[11px]">
+        <table className="w-full border-collapse text-[10px]">
           <thead>
             <tr className="border-b border-black font-bold bg-gray-50">
-              <th className="border-r border-black px-1 py-1 w-[35px] text-center">Sr. No.</th>
-              <th className="border-r border-black px-2 py-1 text-left">Description (Finish Size)</th>
-              <th className="border-r border-black px-2 py-1 text-left w-[90px]">RM</th>
-              <th className="border-r border-black px-2 py-1 text-left w-[70px]">Wire Grade</th>
-              <th className="border-r border-black px-2 py-1 text-center w-[70px]">COIL</th>
-              <th className="border-r border-black px-2 py-1 text-center w-[70px]">Process</th>
-              <th className="border-r border-black px-2 py-1 text-center w-[90px]">Issued Challan No.</th>
-              <th className="border-r border-black px-2 py-1 text-center w-[60px]">Qty</th>
-              <th className="border-r border-black px-2 py-1 text-center w-[60px]">Rate</th>
-              <th className="px-2 py-1 text-right w-[80px]">Total Amount</th>
+              <th className="border-r border-black px-1 py-2 w-[40px] text-center">Sr. No.</th>
+              <th className="border-r border-black px-2 py-2 text-left">Description (Finish Size)</th>
+              <th className="border-r border-black px-2 py-2 text-left w-[100px]">RM</th>
+              <th className="border-r border-black px-2 py-2 text-center w-[70px]">Wire Grade</th>
+              <th className="border-r border-black px-2 py-2 text-center w-[70px]">COIL</th>
+              <th className="border-r border-black px-2 py-2 text-center w-[80px]">Process</th>
+              <th className="border-r border-black px-2 py-2 text-center w-[90px]">Issued Challan No.</th>
+              <th className="border-r border-black px-2 py-2 text-center w-[60px]">Qty</th>
+              <th className="border-r border-black px-2 py-2 text-center w-[60px]">Rate</th>
+              <th className="px-2 py-2 text-right w-[90px]">Amount</th>
             </tr>
           </thead>
           <tbody>
             {challan.items.map((item, index) => (
-              <tr key={index} className="border-b border-black last:border-b-0 min-h-[30px]">
-                <td className="border-r border-black px-1 py-2 text-center">{index + 1}</td>
-                <td className="border-r border-black px-2 py-2">
+              <tr key={index} className="border-b border-black last:border-b-0">
+                <td className="border-r border-black px-1 py-3 text-center align-top">{index + 1}</td>
+                <td className="border-r border-black px-2 py-3 align-top">
                   <p className="font-bold">{item.finishSize.itemCode} - {item.finishSize.size}</p>
                 </td>
-                <td className="border-r border-black px-2 py-2">
-                  <p>{item.originalSize.itemCode} - {item.originalSize.size}</p>
+                <td className="border-r border-black px-2 py-3 align-top">
+                  <p className="text-[9px]">{item.originalSize.itemCode} - {item.originalSize.size}</p>
                 </td>
-                <td className="border-r border-black px-2 py-2 text-center">
+                <td className="border-r border-black px-2 py-3 text-center align-top">
                   <p className="font-semibold">{item.finishSize.grade}</p>
                 </td>
-                <td className="border-r border-black px-2 py-2 text-center">
+                <td className="border-r border-black px-2 py-3 text-center align-top">
                   {item.coilNumber || item.coilReference ? (
                     <>
                       {item.coilNumber && <p className="font-medium">{item.coilNumber}</p>}
-                      {item.coilReference && <p className="text-[9px] text-gray-600">{item.coilReference}</p>}
+                      {item.coilReference && <p className="text-[8px] text-gray-500">{item.coilReference}</p>}
                     </>
                   ) : '-'}
                 </td>
-                <td className="border-r border-black px-2 py-2 text-center capitalize">
-                  {item.processDetails || (
-                    <>
-                      {item.annealingCount && item.annealingCount > 0 ? `Anneal (${item.annealingCount})` : ''}
-                      {item.annealingCount && item.annealingCount > 0 && item.drawPassCount && item.drawPassCount > 0 ? ', ' : ''}
-                      {item.drawPassCount && item.drawPassCount > 0 ? `Drawing (${item.drawPassCount})` : ''}
-                      {(!item.annealingCount && !item.drawPassCount) ? '-' : ''}
-                    </>
-                  )}
+                <td className="border-r border-black px-2 py-3 text-center align-top capitalize">
+                  <div className="text-[9px] leading-tight">
+                    {item.processDetails || (
+                      <>
+                        {item.annealingCount && item.annealingCount > 0 ? `Anneal (${item.annealingCount})` : ''}
+                        {item.annealingCount && item.annealingCount > 0 && item.drawPassCount && item.drawPassCount > 0 ? ', ' : ''}
+                        <br />
+                        {item.drawPassCount && item.drawPassCount > 0 ? `Drawing (${item.drawPassCount})` : ''}
+                        {(!item.annealingCount && !item.drawPassCount) ? '-' : ''}
+                      </>
+                    )}
+                  </div>
                 </td>
-                <td className="border-r border-black px-2 py-2 text-center">{item.issuedChallanNo || '-'}</td>
-                <td className="border-r border-black px-2 py-2 text-center font-bold">{item.quantity.toFixed(2)}</td>
-                <td className="border-r border-black px-2 py-2 text-center">{item.rate.toFixed(2)}</td>
-                <td className="px-2 py-2 text-right font-bold">{formatIndianCurrency(item.itemTotal)}</td>
+                <td className="border-r border-black px-2 py-3 text-center align-top">{item.issuedChallanNo || '-'}</td>
+                <td className="border-r border-black px-2 py-3 text-center align-top font-bold">{item.quantity.toFixed(2)}</td>
+                <td className="border-r border-black px-2 py-3 text-center align-top">{item.rate.toFixed(2)}</td>
+                <td className="px-2 py-3 text-right align-top font-bold">{formatIndianCurrency(item.itemTotal)}</td>
               </tr>
             ))}
             
             {/* Empty Rows */}
             {Array.from({ length: emptyRowsCount }).map((_, i) => (
-              <tr key={`empty-${i}`} className="border-b border-black last:border-b-0 h-[35px]">
+              <tr key={`empty-${i}`} className="border-b border-black last:border-b-0 h-[40px]">
                 <td className="border-r border-black px-1 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
@@ -217,15 +223,32 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
               </tr>
             ))}
           </tbody>
-          <tfoot>
-            <tr className="border-t border-black font-bold">
-              <td colSpan={7} className="border-r border-black px-2 py-2 text-right uppercase">Total :</td>
-              <td className="border-r border-black px-2 py-2 text-center">{challan.items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)}</td>
-              <td className="border-r border-black px-2 py-2"></td>
-              <td className="px-2 py-2 text-right font-bold text-[12px]">{formatIndianCurrency(challan.totalAmount)}</td>
-            </tr>
-          </tfoot>
         </table>
+
+        {/* Summary Section */}
+        <div className="flex border-t border-black">
+          <div className="w-[60%] border-r border-black flex flex-col">
+            <div className="p-3 border-b border-black flex-1 flex flex-col justify-center">
+              <p className="italic text-[9px] leading-tight text-gray-600 mb-1">Rupees in words:</p>
+              <p className="italic font-semibold text-[10px] leading-tight uppercase">Rs. {numberToIndianWords(challan.totalAmount)} ONLY</p>
+            </div>
+            <div className="p-3 font-bold text-[12px] flex items-center bg-gray-50">
+              Total Quantity : {challan.items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)}
+            </div>
+          </div>
+          <div className="w-[40%] text-[9px]">
+            <div className="grid grid-cols-[1fr_90px] divide-x divide-black border-collapse h-full">
+              <div className="p-2 border-b border-black flex items-center font-bold">Total Items :</div>
+              <div className="p-2 border-b border-black text-right flex items-center justify-end font-bold">{challan.items.length}</div>
+              
+              <div className="p-2 border-b border-black flex items-center">Taxable Value :</div>
+              <div className="p-2 border-b border-black text-right flex items-center justify-end">{formatIndianCurrency(challan.totalAmount)}</div>
+              
+              <div className="p-2 font-bold bg-slate-50 flex items-center text-[11px]">Total Amount :</div>
+              <div className="p-2 text-right font-bold bg-slate-50 flex items-center justify-end text-[11px]">{formatIndianCurrency(challan.totalAmount)}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Footer Section */}
@@ -255,7 +278,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
       {/* Terms and Conditions or Note if needed */}
       <div className="mt-8 text-[9px] italic text-gray-500 text-center">
         <p>This is a computer generated delivery challan and does not require a physical signature.</p>
-        <p>Subject to Rajkot Jurisdiction.</p>
+        <p>Subject to Surendranagar Jurisdiction.</p>
       </div>
     </div>
   );

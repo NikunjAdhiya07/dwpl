@@ -187,18 +187,26 @@ function injectPDFSafeStyles(): HTMLStyleElement {
   const safeStyles = document.createElement('style');
   safeStyles.id = 'pdf-safe-styles';
   safeStyles.textContent = `
-    /* Override all potential lab/oklch colors with safe values */
+    /* Override all potential lab/oklch colors with safe values for the whole document to prevent crashes */
     * {
       --tw-ring-color: #3b82f6 !important;
       --tw-shadow-color: #000000 !important;
     }
-    .print-page, .print-page * {
-      color: #000000 !important;
+    /* Specific overrides for print pages */
+    .print-page {
       background-color: #ffffff !important;
+      color: #000000 !important;
+    }
+    .print-page * {
+      color: #000000 !important;
       border-color: #000000 !important;
     }
-    .print-page table, .print-page th, .print-page td {
-      border-color: #000000 !important;
+    /* Allow specific background shades for professional look */
+    .print-page .bg-gray-50 {
+      background-color: #f9fafb !important;
+    }
+    .print-page .bg-slate-50 {
+      background-color: #f8fafc !important;
     }
   `;
   document.head.appendChild(safeStyles);

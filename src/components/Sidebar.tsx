@@ -40,11 +40,22 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-slate-900 text-white min-h-screen fixed left-0 top-0 overflow-y-auto">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-          DWPL
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">Manufacturing System</p>
+      <div className="p-6 border-b border-slate-800/50 mb-4">
+        <Link href="/" className="flex items-center gap-4 group">
+          <div className="relative w-12 h-12 overflow-hidden rounded-xl bg-white flex items-center justify-center p-2 transition-transform group-hover:scale-105 shadow-lg shadow-blue-500/20">
+            <img 
+              src="/icon.png" 
+              alt="DWPL Logo" 
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent leading-none">
+              DWPL
+            </h1>
+            <p className="text-[10px] text-slate-400 mt-1 font-medium tracking-wider uppercase">Manufacturing</p>
+          </div>
+        </Link>
       </div>
 
       <nav className="px-4 space-y-1">

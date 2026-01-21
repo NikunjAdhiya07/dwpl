@@ -11,6 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "DWPL - Manufacturing Management System",
   description: "Wire Drawing & Annealing Operations Management",
+  metadataBase: new URL('https://dwpl.vercel.app'),
   icons: {
     icon: [
       { url: '/icon.png', sizes: '32x32', type: 'image/png' },
@@ -18,6 +19,17 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
+  openGraph: {
+    title: 'DWPL - Manufacturing Management System',
+    description: 'Wire Drawing & Annealing Operations Management',
+    images: ['/icon.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'DWPL - Manufacturing Management System',
+    description: 'Wire Drawing & Annealing Operations Management',
+    images: ['/icon.png'],
+  }
 };
 
 export default function RootLayout({

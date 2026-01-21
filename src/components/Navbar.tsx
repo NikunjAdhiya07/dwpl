@@ -47,11 +47,20 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                DWPL
-              </h1>
-              <span className="text-xs text-slate-500 hidden md:block">Manufacturing System</span>
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="relative w-10 h-10 overflow-hidden rounded-xl bg-slate-100 flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
+                <img 
+                  src="/icon.png" 
+                  alt="DWPL Logo" 
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent leading-none">
+                  DWPL
+                </h1>
+                <span className="text-[10px] text-slate-500 hidden md:block mt-1 font-medium tracking-wide">Manufacturing System</span>
+              </div>
             </Link>
 
             {/* Navigation Links */}

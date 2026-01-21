@@ -22,13 +22,20 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'DWPL - Manufacturing Management System',
     description: 'Wire Drawing & Annealing Operations Management',
-    images: ['/icon.png'],
+    images: [
+      {
+        url: '/opengraph-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'DWPL Logo',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'DWPL - Manufacturing Management System',
     description: 'Wire Drawing & Annealing Operations Management',
-    images: ['/icon.png'],
+    images: ['/twitter-image.png'],
   }
 };
 

@@ -96,7 +96,9 @@ export interface IOutwardChallanItem {
 
 export interface IOutwardChallan extends Document {
   challanNumber: string;
-  party: string; // Party ID
+  party: string; // Party ID (default for both bill and ship)
+  billTo?: string; // Optional separate Bill To party ID
+  shipTo?: string; // Optional separate Ship To party ID
   items: IOutwardChallanItem[]; // Array of items
   totalAmount: number; // sum of all item totals
   challanDate: Date;
@@ -129,6 +131,8 @@ export interface ITaxInvoice extends Document {
   irnNumber?: string; // IRN number (optional)
   outwardChallan: string; // Outward Challan ID
   party: string; // Party ID
+  billTo?: string; // Optional separate Bill To party ID
+  shipTo?: string; // Optional separate Ship To party ID
   items: ITaxInvoiceItem[];
   
   // Additional Invoice Details

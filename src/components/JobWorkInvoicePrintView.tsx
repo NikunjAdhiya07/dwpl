@@ -33,6 +33,16 @@ interface TaxInvoice {
     address: string;
     gstNumber: string;
   };
+  billTo?: {
+    partyName: string;
+    address: string;
+    gstNumber: string;
+  };
+  shipTo?: {
+    partyName: string;
+    address: string;
+    gstNumber: string;
+  };
   items: InvoiceItem[];
   baseAmount: number;
   transportCharges?: number;
@@ -54,31 +64,54 @@ interface TaxInvoice {
   dispatchedThrough?: string;
 }
 
+interface Company {
+  companyName: string;
+  address: string;
+  registeredOffice: string;
+  cin: string;
+  gstin: string;
+  pan?: string;
+  state: string;
+  stateCode: string;
+}
+
 interface JobWorkInvoicePrintViewProps {
   invoice: TaxInvoice;
+  company?: Company;
   copyType?: string;
 }
 
 const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({ 
-  invoice, 
+  invoice,
+  company,
   copyType = 'Original For Recipient' 
 }) => {
+  // Default company data if not provided
+  const companyData: Company = company || {
+    companyName: 'Drawwell Wires Pvt. Ltd.',
+    address: "S'nagar–Lakhtar Highway, At. Zamar\nDist. Surendranagar",
+    registeredOffice: 'Plot No. 1005/B1, Phase-III, GIDC, Wadhwan',
+    cin: 'U27100GJ2020PTC118828',
+    gstin: '24AAECL4523G1ZT',
+    pan: '',
+    state: 'Gujarat',
+    stateCode: '24',
+  };
   // Ensure we have at least 12 rows for a professional look
   const minRows = 12;
-  const emptyRowsCount = Math.max(0, minRows - invoice.items.length);
+  const emptyRowsCount = Math.max(0, minRows - (invoice.items?.length ?? 0));
 
   return (
     <div className="print-page bg-white text-black font-sans p-[10mm] w-[210mm] min-h-[297mm] box-border mx-auto border border-gray-200">
       {/* Header Section */}
       <div className="flex justify-between items-start mb-4">
         <div className="w-2/5 text-[11px] leading-snug">
-          <p className="font-bold text-[15px] mb-1">Drawwell Wires Pvt. Ltd.</p>
-          <p className="mt-1">S'nagar–Lakhtar Highway, At. Zamar</p>
-          <p>Dist. Surendranagar</p>
-          <p className="mt-2"><span className="font-semibold">Reg. Off.:</span> Plot No. 1005/B1, Phase-III, GIDC, Wadhwan</p>
-          <p className="mt-2 text-[10px]"><span className="font-semibold">CIN:</span> U27100GJ2020PTC118828</p>
-          <p className="text-[10px]"><span className="font-semibold">GSTIN/UIN:</span> 24AAECL4523G1ZT</p>
-          <p className="text-[10px]"><span className="font-semibold">State Name:</span> Gujarat, Code: 24</p>
+          <p className="font-bold text-[15px] mb-1">{companyData.companyName}</p>
+          <p className="mt-1 whitespace-pre-line">{companyData.address}</p>
+          <p className="mt-2"><span className="font-semibold">Reg. Off.:</span> {companyData.registeredOffice}</p>
+          <p className="mt-2 text-[10px]"><span className="font-semibold">CIN:</span> {companyData.cin}</p>
+          <p className="text-[10px]"><span className="font-semibold">GSTIN/UIN:</span> {companyData.gstin}</p>
+          <p className="text-[10px]"><span className="font-semibold">State Name:</span> {companyData.state}, Code: {companyData.stateCode}</p>
         </div>
         <div className="w-1/5 text-center">
           <h1 className="text-[18px] font-bold underline uppercase tracking-wider">Job Work Invoice</h1>
@@ -95,14 +128,14 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
           <div className="flex-1 border-r border-black p-2 min-h-[120px]">
             <div className="mb-3">
               <p className="font-bold underline text-[10px] mb-1 uppercase">Bill To:</p>
-              <p className="font-bold text-[12px]">{invoice.party.partyName}</p>
-              <p className="text-[11px] whitespace-pre-line">{invoice.party.address}</p>
-              <p className="text-[11px] font-bold mt-1">GSTIN: {invoice.party.gstNumber}</p>
+              <p className="font-bold text-[12px]">{invoice.billTo?.partyName || invoice.party.partyName}</p>
+              <p className="text-[11px] whitespace-pre-line">{invoice.billTo?.address || invoice.party.address}</p>
+              <p className="text-[11px] font-bold mt-1">GSTIN: {invoice.billTo?.gstNumber || invoice.party.gstNumber}</p>
             </div>
             <div>
               <p className="font-bold underline text-[10px] mb-1 uppercase">Ship To:</p>
-              <p className="font-bold text-[12px]">{invoice.party.partyName}</p>
-              <p className="text-[11px] whitespace-pre-line">{invoice.party.address}</p>
+              <p className="font-bold text-[12px]">{invoice.shipTo?.partyName || invoice.party.partyName}</p>
+              <p className="text-[11px] whitespace-pre-line">{invoice.shipTo?.address || invoice.party.address}</p>
             </div>
           </div>
 
@@ -145,7 +178,7 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
             </tr>
           </thead>
           <tbody>
-            {invoice.items.map((item, index) => (
+            {invoice.items?.map((item, index) => (
               <tr key={index} className="border-b border-black last:border-b-0 min-h-[30px]">
                 <td className="border-r border-black px-1 py-2 text-center">{index + 1}</td>
                 <td className="border-r border-black px-2 py-2">
@@ -255,7 +288,7 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
             <div className="inline-block text-center text-[11px]">
               <p className="mb-12 font-bold">Authorized Signature</p>
               <div className="border-t border-black pt-1">
-                <p className="font-bold">(For Drawwell Wires Pvt. Ltd.)</p>
+                <p className="font-bold">(For {companyData.companyName})</p>
               </div>
             </div>
           </div>

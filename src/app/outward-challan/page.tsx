@@ -14,6 +14,8 @@ import ChallanPrintView from '@/components/ChallanPrintView';
 interface Party {
   _id: string;
   partyName: string;
+  address: string;
+  gstNumber: string;
   rate: number;
   annealingCharge: number;
   drawCharge: number;
@@ -85,6 +87,18 @@ interface OutwardChallan {
     annealingMax: number;
     drawMax: number;
   };
+  billTo?: {
+    _id: string;
+    partyName: string;
+    address: string;
+    gstNumber: string;
+  };
+  shipTo?: {
+    _id: string;
+    partyName: string;
+    address: string;
+    gstNumber: string;
+  };
   items: {
     finishSize: {
       _id: string;
@@ -125,6 +139,8 @@ interface OutwardChallan {
 
 interface ChallanForm {
   party: string;
+  billTo?: string;
+  shipTo?: string;
   items: ChallanItem[];
   challanDate: string;
   vehicleNumber?: string;
@@ -145,6 +161,7 @@ export default function OutwardChallanPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [companyData, setCompanyData] = useState<any>(null);
   const [selectedParty, setSelectedParty] = useState<Party | null>(null);
   const [editingChallan, setEditingChallan] = useState<OutwardChallan | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -153,6 +170,8 @@ export default function OutwardChallanPage() {
   
   const [formData, setFormData] = useState<ChallanForm>({
     party: '',
+    billTo: '',
+    shipTo: '',
     items: [],
     challanDate: new Date().toISOString().split('T')[0],
     vehicleNumber: '',
@@ -175,7 +194,7 @@ export default function OutwardChallanPage() {
 
   const fetchData = async () => {
     try {
-      const [challansRes, partiesRes, fgRes, rmRes, bomsRes, transportsRes, stocksRes] = await Promise.all([
+      const [challansRes, partiesRes, fgRes, rmRes, bomsRes, transportsRes, stocksRes, companyRes] = await Promise.all([
         fetch('/api/outward-challan'),
         fetch('/api/party-master'),
         fetch('/api/item-master?category=FG'),
@@ -183,9 +202,10 @@ export default function OutwardChallanPage() {
         fetch('/api/bom'),
         fetch('/api/transport-master'),
         fetch('/api/stock?category=RM'),
+        fetch('/api/company'),
       ]);
 
-      const [challansData, partiesData, fgData, rmData, bomsData, transportsData, stocksData] = await Promise.all([
+      const [challansData, partiesData, fgData, rmData, bomsData, transportsData, stocksData, companyDataResponse] = await Promise.all([
         challansRes.json(),
         partiesRes.json(),
         fgRes.json(),
@@ -193,6 +213,7 @@ export default function OutwardChallanPage() {
         bomsRes.json(),
         transportsRes.json(),
         stocksRes.json(),
+        companyRes.json(),
       ]);
 
       if (challansData.success) setChallans(challansData.data);
@@ -223,6 +244,10 @@ export default function OutwardChallanPage() {
         }
       }
       
+      if (companyDataResponse.success) {
+        setCompanyData(companyDataResponse.data);
+      }
+
       if (!partiesData.success || partiesData.data.length === 0) {
         console.warn('No parties found. Please add parties first.');
       }
@@ -445,6 +470,8 @@ export default function OutwardChallanPage() {
   const resetForm = () => {
     setFormData({
       party: '',
+      billTo: '',
+      shipTo: '',
       items: [],
       challanDate: new Date().toISOString().split('T')[0],
       vehicleNumber: '',
@@ -462,6 +489,8 @@ export default function OutwardChallanPage() {
     setEditingChallan(challan);
     setFormData({
       party: challan.party._id,
+      billTo: challan.billTo?._id || '',
+      shipTo: challan.shipTo?._id || '',
       items: challan.items.map(item => ({
         finishSize: item.finishSize._id,
         originalSize: item.originalSize._id,
@@ -546,7 +575,7 @@ export default function OutwardChallanPage() {
                   pageBreakAfter: copyIndex < 2 ? 'always' : 'auto',
                 }}
               >
-                <ChallanPrintView challan={challan as any} copyType={copyType} />
+                <ChallanPrintView challan={challan as any} company={companyData} copyType={copyType} />
               </div>
             ))}
           </div>
@@ -652,6 +681,64 @@ export default function OutwardChallanPage() {
                   value={formData.challanDate}
                   onChange={(e) => setFormData({ ...formData, challanDate: e.target.value })}
                   required
+                />
+              </div>
+            </div>
+
+            {/* Bill To and Ship To (Optional) */}
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
+              <h3 className="font-semibold text-indigo-900">Billing & Shipping Details (Optional)</h3>
+              <p className="text-xs text-indigo-700">If not specified, both will default to the main party selected above.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ItemSelector
+                  label="Bill To"
+                  value={formData.billTo || ''}
+                  onChange={(value) => setFormData({ ...formData, billTo: value })}
+                  items={parties}
+                  placeholder="Same as Party (Default)"
+                  helperText="Select a different party for billing address"
+                  renderSelected={(party) => (
+                    <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+                      {party.partyName}
+                    </span>
+                  )}
+                  renderOption={(party) => (
+                    <div>
+                      <div className="font-medium" style={{ color: 'var(--foreground)' }}>
+                        {party.partyName}
+                      </div>
+                      <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                        {party.address}
+                      </div>
+                    </div>
+                  )}
+                  getSearchableText={(party) => `${party.partyName} ${party.address}`}
+                />
+
+                <ItemSelector
+                  label="Ship To"
+                  value={formData.shipTo || ''}
+                  onChange={(value) => setFormData({ ...formData, shipTo: value })}
+                  items={parties}
+                  placeholder="Same as Party (Default)"
+                  helperText="Select a different party for shipping address"
+                  renderSelected={(party) => (
+                    <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+                      {party.partyName}
+                    </span>
+                  )}
+                  renderOption={(party) => (
+                    <div>
+                      <div className="font-medium" style={{ color: 'var(--foreground)' }}>
+                        {party.partyName}
+                      </div>
+                      <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                        {party.address}
+                      </div>
+                    </div>
+                  )}
+                  getSearchableText={(party) => `${party.partyName} ${party.address}`}
                 />
               </div>
             </div>
@@ -976,7 +1063,7 @@ export default function OutwardChallanPage() {
                             type="number"
                             step="0.01"
                             className="input"
-                            value={item.rate}
+                            value={item.rate || 0}
                             onChange={(e) =>
                               updateItem(index, 'rate', parseFloat(e.target.value) || 0)
                             }

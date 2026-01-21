@@ -14,6 +14,8 @@ export async function GET(
     const { id } = await params;
     const challan = await OutwardChallan.findById(id)
       .populate('party')
+      .populate('billTo')
+      .populate('shipTo')
       .populate('items.finishSize')
       .populate('items.originalSize');
     
@@ -163,16 +165,21 @@ export async function PUT(
       id,
       {
         party: body.party,
+        billTo: body.billTo || body.party,
+        shipTo: body.shipTo || body.party,
         items: body.items,
         challanDate: body.challanDate,
         vehicleNumber: body.vehicleNumber,
         transportName: body.transportName,
         ownerName: body.ownerName,
         dispatchedThrough: body.dispatchedThrough,
+        eWayBillNo: body.eWayBillNo,
       },
       { new: true }
     )
       .populate('party')
+      .populate('billTo')
+      .populate('shipTo')
       .populate('items.finishSize')
       .populate('items.originalSize');
     

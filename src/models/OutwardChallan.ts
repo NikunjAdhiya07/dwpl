@@ -79,6 +79,14 @@ const OutwardChallanSchema = new Schema<IOutwardChallan>(
       ref: 'PartyMaster',
       required: [true, 'Party is required'],
     },
+    billTo: {
+      type: String,
+      ref: 'PartyMaster',
+    },
+    shipTo: {
+      type: String,
+      ref: 'PartyMaster',
+    },
     items: {
       type: [OutwardChallanItemSchema],
       required: [true, 'At least one item is required'],

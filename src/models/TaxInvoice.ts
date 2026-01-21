@@ -60,6 +60,14 @@ const TaxInvoiceSchema = new Schema<ITaxInvoice>(
       ref: 'PartyMaster',
       required: [true, 'Party is required'],
     },
+    billTo: {
+      type: String,
+      ref: 'PartyMaster',
+    },
+    shipTo: {
+      type: String,
+      ref: 'PartyMaster',
+    },
     items: {
       type: [TaxInvoiceItemSchema],
       required: [true, 'At least one item is required'],

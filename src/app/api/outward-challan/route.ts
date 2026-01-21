@@ -11,6 +11,8 @@ export async function GET() {
     
     const challans = await OutwardChallan.find()
       .populate('party')
+      .populate('billTo')
+      .populate('shipTo')
       .populate('items.finishSize')
       .populate('items.originalSize')
       .sort({ challanDate: -1 });
@@ -104,12 +106,15 @@ export async function POST(request: NextRequest) {
     const challan = await OutwardChallan.create({
       challanNumber,
       party: body.party,
+      billTo: body.billTo || body.party, // Default to party if not specified
+      shipTo: body.shipTo || body.party, // Default to party if not specified
       items: body.items,
       challanDate: body.challanDate,
       vehicleNumber: body.vehicleNumber,
       transportName: body.transportName,
       ownerName: body.ownerName,
       dispatchedThrough: body.dispatchedThrough || 'By Road',
+      eWayBillNo: body.eWayBillNo,
     });
     
     console.log('Challan created:', challan.challanNumber);
@@ -143,6 +148,8 @@ export async function POST(request: NextRequest) {
     // Populate and return
     const populatedChallan = await OutwardChallan.findById(challan._id)
       .populate('party')
+      .populate('billTo')
+      .populate('shipTo')
       .populate('items.finishSize')
       .populate('items.originalSize');
     

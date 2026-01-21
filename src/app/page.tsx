@@ -13,21 +13,42 @@ import {
   Users,
   Warehouse,
   Send,
-  Receipt
+  Receipt,
+  Activity,
+  BarChart3,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+  Boxes,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface DashboardStats {
   totalParties: number;
   totalItems: number;
-  // rmStock: number; // Hidden - stock tracking continues in backend
-  // fgStock: number; // Hidden - stock tracking continues in backend
   pendingChallans: number;
   pendingInvoices: number;
+  totalChallans?: number;
+  totalInvoices?: number;
+  totalGRNs?: number;
+  totalBOMs?: number;
+  totalGSTs?: number;
+}
+
+interface RecentActivity {
+  type: 'grn' | 'challan' | 'invoice';
+  number: string;
+  party: string;
+  date: string;
+  amount?: number;
 }
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -40,9 +61,14 @@ export default function Dashboard() {
       
       if (result.success) {
         setStats(result.data);
+        // Mock recent activities - you can fetch this from API later
+        setRecentActivities([
+          { type: 'invoice', number: 'INV0006', party: 'Tata Steel Ltd', date: '2 hours ago', amount: 45000 },
+          { type: 'challan', number: 'OC-0012', party: 'JSW Steel', date: '5 hours ago' },
+          { type: 'grn', number: 'GRN-0008', party: 'Vedanta Ltd', date: '1 day ago' },
+        ]);
       } else {
         console.error('Failed to fetch dashboard stats:', result.error);
-        // Fallback to zeros if API fails
         setStats({
           totalParties: 0,
           totalItems: 0,
@@ -52,7 +78,6 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
-      // Fallback to zeros if API fails
       setStats({
         totalParties: 0,
         totalItems: 0,
@@ -73,31 +98,46 @@ export default function Dashboard() {
       title: 'Total Parties',
       value: stats?.totalParties || 0,
       icon: Users,
-      color: 'bg-blue-500',
+      color: 'from-blue-500 to-blue-600',
+      iconBg: 'bg-blue-100',
+      iconColor: 'text-blue-600',
       link: '/masters/party',
+      trend: '+12%',
+      trendUp: true,
     },
     {
       title: 'Total Items',
       value: stats?.totalItems || 0,
       icon: Package,
-      color: 'bg-purple-500',
+      color: 'from-purple-500 to-purple-600',
+      iconBg: 'bg-purple-100',
+      iconColor: 'text-purple-600',
       link: '/masters/item',
+      trend: '+8%',
+      trendUp: true,
     },
-    // Stock cards hidden - stock tracking continues in backend
-    // {
-    //   title: 'RM Stock',
-    //   value: stats?.rmStock || 0,
-    //   icon: TrendingDown,
-    //   color: 'bg-orange-500',
-    //   link: '/stock?category=RM',
-    // },
-    // {
-    //   title: 'FG Stock',
-    //   value: stats?.fgStock || 0,
-    //   icon: TrendingUp,
-    //   color: 'bg-green-500',
-    //   link: '/stock?category=FG',
-    // },
+    {
+      title: 'Total Challans',
+      value: stats?.totalChallans || 0,
+      icon: Send,
+      color: 'from-indigo-500 to-indigo-600',
+      iconBg: 'bg-indigo-100',
+      iconColor: 'text-indigo-600',
+      link: '/outward-challan',
+      trend: '+15%',
+      trendUp: true,
+    },
+    {
+      title: 'Total Invoices',
+      value: stats?.totalInvoices || 0,
+      icon: Receipt,
+      color: 'from-green-500 to-green-600',
+      iconBg: 'bg-green-100',
+      iconColor: 'text-green-600',
+      link: '/tax-invoice',
+      trend: '+10%',
+      trendUp: true,
+    },
   ];
 
   const quickActions = [
@@ -106,55 +146,110 @@ export default function Dashboard() {
       description: 'Record new goods receipt',
       icon: FileText,
       link: '/grn',
-      color: 'bg-blue-600',
+      color: 'from-blue-500 to-blue-600',
+      hoverColor: 'hover:from-blue-600 hover:to-blue-700',
+      iconColor: 'text-blue-600',
     },
     {
       title: 'Outward Challan',
       description: 'Create new outward challan',
       icon: Send,
       link: '/outward-challan',
-      color: 'bg-indigo-600',
+      color: 'from-indigo-500 to-indigo-600',
+      hoverColor: 'hover:from-indigo-600 hover:to-indigo-700',
+      iconColor: 'text-indigo-600',
     },
     {
       title: 'Tax Invoice',
       description: 'Generate tax invoice',
       icon: Receipt,
       link: '/tax-invoice',
-      color: 'bg-purple-600',
+      color: 'from-purple-500 to-purple-600',
+      hoverColor: 'hover:from-purple-600 hover:to-purple-700',
+      iconColor: 'text-purple-600',
     },
-    // View Stock action hidden - stock page still accessible via direct URL
-    // {
-    //   title: 'View Stock',
-    //   description: 'Check current inventory',
-    //   icon: Warehouse,
-    //   link: '/stock',
-    //   color: 'bg-green-600',
-    // },
+    {
+      title: 'View Stock',
+      description: 'Check current inventory',
+      icon: Warehouse,
+      link: '/stock',
+      color: 'from-green-500 to-green-600',
+      hoverColor: 'hover:from-green-600 hover:to-green-700',
+      iconColor: 'text-green-600',
+    },
   ];
 
-  return (
-    <div className="animate-fade-in">
-      <PageHeader
-        title="Dashboard"
-        description="Welcome to DWPL Manufacturing Management System"
-      />
+  const masterLinks = [
+    { title: 'Party Master', icon: Users, link: '/masters/party', count: stats?.totalParties || 0 },
+    { title: 'Item Master', icon: Boxes, link: '/masters/item', count: stats?.totalItems || 0 },
+    { title: 'BOM Master', icon: FileSpreadsheet, link: '/masters/bom', count: stats?.totalBOMs || 0 },
+    { title: 'GST Master', icon: BarChart3, link: '/masters/gst', count: stats?.totalGSTs || 0 },
+  ];
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'invoice': return Receipt;
+      case 'challan': return Send;
+      case 'grn': return FileText;
+      default: return Activity;
+    }
+  };
+
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case 'invoice': return 'bg-green-100 text-green-600';
+      case 'challan': return 'bg-indigo-100 text-indigo-600';
+      case 'grn': return 'bg-blue-100 text-blue-600';
+      default: return 'bg-gray-100 text-gray-600';
+    }
+  };
+
+  return (
+    <div className="animate-fade-in space-y-8">
+      {/* Header with Welcome Message */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Welcome to DWPL</h1>
+            <p className="text-indigo-100 text-lg">Manufacturing Management System</p>
+          </div>
+          <div className="hidden md:flex items-center space-x-4">
+            <div className="text-right">
+              <p className="text-sm text-indigo-100">Today's Date</p>
+              <p className="text-xl font-semibold">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid - Enhanced with Trends */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat) => (
           <Link key={stat.title} href={stat.link}>
-            <Card hover className="cursor-pointer">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
-                    {stat.title}
-                  </p>
-                  <p className="text-4xl font-bold" style={{ color: 'var(--foreground)' }}>
-                    {stat.value}
-                  </p>
-                </div>
-                <div className={`${stat.color} p-4 rounded-lg shadow-sm`}>
-                  <stat.icon className="w-7 h-7 text-white" />
+            <Card hover className="cursor-pointer overflow-hidden group">
+              <div className="relative">
+                {/* Gradient Background */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
+                
+                <div className="relative p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`${stat.iconBg} p-3 rounded-xl`}>
+                      <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
+                    </div>
+                    <div className={`flex items-center text-sm font-medium ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
+                      {stat.trendUp ? <ArrowUpRight className="w-4 h-4 mr-1" /> : <ArrowDownRight className="w-4 h-4 mr-1" />}
+                      {stat.trend}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
+                      {stat.title}
+                    </p>
+                    <p className="text-4xl font-bold" style={{ color: 'var(--foreground)' }}>
+                      {stat.value}
+                    </p>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -162,49 +257,145 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-6" style={{ color: 'var(--foreground)' }}>
+      {/* Quick Actions - Enhanced Design */}
+      <div>
+        <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--foreground)' }}>
           Quick Actions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {quickActions.map((action) => (
             <Link key={action.title} href={action.link}>
-              <Card hover className="cursor-pointer h-full">
-                <div className="flex flex-col items-center text-center py-6 px-4">
-                  <div className={`${action.color} p-5 rounded-full mb-4 shadow-md`}>
-                    <action.icon className="w-7 h-7 text-white" />
+              <div className={`bg-gradient-to-br ${action.color} ${action.hoverColor} rounded-2xl p-6 text-white shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden`}>
+                {/* Hover overlay for subtle brightness */}
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                
+                <div className="relative flex flex-col items-center text-center">
+                  {/* Icon container with solid white background */}
+                  <div className="bg-white p-4 rounded-2xl mb-4 group-hover:scale-105 transition-all duration-300 shadow-sm">
+                    <action.icon className={`w-8 h-8 ${action.iconColor}`} strokeWidth={2} />
                   </div>
-                  <h3 className="font-semibold text-base mb-2" style={{ color: 'var(--foreground)' }}>
+                  <h3 className="font-bold text-lg mb-2 text-white">
                     {action.title}
                   </h3>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-sm text-white opacity-90 group-hover:opacity-100">
                     {action.description}
                   </p>
                 </div>
-              </Card>
+              </div>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* System Info */}
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Activity - 2/3 width */}
+        <div className="lg:col-span-2">
+          <Card>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>
+                Recent Activity
+              </h2>
+              <Activity className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+            </div>
+            <div className="space-y-4">
+              {recentActivities.map((activity, index) => {
+                const Icon = getActivityIcon(activity.type);
+                return (
+                  <div key={index} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-white transition-all cursor-pointer border border-gray-100 hover:border-gray-300 hover:shadow-lg transform hover:-translate-y-0.5">
+                    <div className="flex items-center space-x-4">
+                      <div className={`p-3 rounded-xl ${getActivityColor(activity.type)}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {activity.number}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {activity.party}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {activity.amount && (
+                        <p className="font-semibold text-green-600">
+                          ₹{activity.amount.toLocaleString('en-IN')}
+                        </p>
+                      )}
+                      <p className="text-sm text-gray-500">
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        {activity.date}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+
+        {/* Master Links - 1/3 width */}
+        <div>
+          <Card>
+            <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--foreground)' }}>
+              Master Data
+            </h2>
+            <div className="space-y-3">
+              {masterLinks.map((master) => (
+                <Link key={master.title} href={master.link}>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-white transition-all cursor-pointer group border border-gray-100 hover:border-gray-300 hover:shadow-lg transform hover:-translate-y-0.5">
+                    <div className="flex items-center space-x-3">
+                      <master.icon className="w-5 h-5 text-gray-600 group-hover:text-blue-600 group-hover:scale-110 transition-all" />
+                      <span className="font-medium text-gray-900">
+                        {master.title}
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold px-3 py-1.5 rounded-full bg-white text-gray-900 shadow-sm border border-gray-200">
+                      {master.count}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* System Status - Clean & Minimal */}
       <Card>
-        <h2 className="text-xl font-semibold mb-6" style={{ color: 'var(--foreground)' }}>
-          System Status
-        </h2>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-            <span className="font-medium" style={{ color: 'var(--text-muted)' }}>System Status</span>
-            <span className="badge badge-success">Operational</span>
+        <div className="flex flex-wrap items-center justify-between gap-6 p-2">
+          <div className="flex items-center space-x-3">
+            <div className="bg-green-100 p-2 rounded-lg">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">System Status</p>
+              <p className="font-bold text-gray-900">Operational</p>
+            </div>
           </div>
-          <div className="flex items-center justify-between py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-            <span className="font-medium" style={{ color: 'var(--text-muted)' }}>Database</span>
-            <span className="badge badge-success">Connected</span>
+          
+          <div className="h-8 w-px bg-gray-200 hidden md:block"></div>
+
+          <div className="flex items-center space-x-3">
+            <div className="bg-blue-100 p-2 rounded-lg">
+              <Activity className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Database</p>
+              <p className="font-bold text-gray-900">Connected</p>
+            </div>
           </div>
-          <div className="flex items-center justify-between py-3">
-            <span className="font-medium" style={{ color: 'var(--text-muted)' }}>Version</span>
-            <span className="font-semibold" style={{ color: 'var(--foreground)' }}>1.0.0</span>
+
+          <div className="h-8 w-px bg-gray-200 hidden md:block"></div>
+
+          <div className="flex items-center space-x-3">
+            <div className="bg-purple-100 p-2 rounded-lg">
+              <BarChart3 className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Version</p>
+              <p className="font-bold text-gray-900">v1.0.0</p>
+            </div>
           </div>
         </div>
       </Card>

@@ -126,6 +126,8 @@ export async function GET() {
     try {
       invoices = await TaxInvoice.find()
         .populate('party')
+        .populate('billTo')
+        .populate('shipTo')
         .populate('outwardChallan')
         .populate('items.finishSize')
         .populate('items.originalSize')
@@ -175,6 +177,8 @@ export async function POST(request: NextRequest) {
     // Validate outward challan exists
     const challan = await OutwardChallan.findById(body.outwardChallan)
       .populate('party')
+      .populate('billTo')
+      .populate('shipTo')
       .populate('items.finishSize')
       .populate('items.originalSize');
     
@@ -312,6 +316,9 @@ export async function POST(request: NextRequest) {
       invoiceNumber,
       itemCount: items.length,
       gstPercentage: gstMaster.gstPercentage,
+      challanBillTo: (challan as any).billTo,
+      challanShipTo: (challan as any).shipTo,
+      challanParty: challan.party,
     });
     
     // Create tax invoice with data from outward challan
@@ -319,6 +326,8 @@ export async function POST(request: NextRequest) {
       invoiceNumber,
       outwardChallan: challan._id,
       party: (challan.party as any)?._id || challan.party,
+      billTo: (challan as any).billTo?._id || (challan as any).billTo || (challan.party as any)?._id || challan.party,
+      shipTo: (challan as any).shipTo?._id || (challan as any).shipTo || (challan.party as any)?._id || challan.party,
       items,
       gstPercentage: gstMaster.gstPercentage,
       cgstPercentage: halfGST, // Split GST equally
@@ -340,7 +349,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Populate and return
-    await invoice.populate(['party', 'outwardChallan', 'items.finishSize', 'items.originalSize']);
+    await invoice.populate(['party', 'billTo', 'shipTo', 'outwardChallan', 'items.finishSize', 'items.originalSize']);
     
     return NextResponse.json(
       { success: true, data: invoice },

@@ -34,6 +34,16 @@ interface OutwardChallan {
     address: string;
     gstNumber: string;
   };
+  billTo?: {
+    partyName: string;
+    address: string;
+    gstNumber: string;
+  };
+  shipTo?: {
+    partyName: string;
+    address: string;
+    gstNumber: string;
+  };
   items: ChallanItem[];
   totalAmount: number;
   vehicleNumber?: string;
@@ -41,15 +51,39 @@ interface OutwardChallan {
   eWayBillNo?: string;
 }
 
+interface Company {
+  companyName: string;
+  address: string;
+  registeredOffice: string;
+  cin: string;
+  gstin: string;
+  pan?: string;
+  state: string;
+  stateCode: string;
+}
+
 interface ChallanPrintViewProps {
   challan: OutwardChallan;
+  company?: Company;
   copyType?: string;
 }
 
 const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({ 
-  challan, 
+  challan,
+  company,
   copyType = 'Original' 
 }) => {
+  // Default company data if not provided
+  const companyData: Company = company || {
+    companyName: 'Drawwell Wires Pvt. Ltd.',
+    address: "S'nagar–Lakhtar Highway, At. Zamar\nDist. Surendranagar",
+    registeredOffice: 'Plot No. 1005/B1, Phase-III, GIDC, Wadhwan',
+    cin: 'U27100GJ2020PTC118828',
+    gstin: '24AAECL4523G1ZT',
+    pan: '',
+    state: 'Gujarat',
+    stateCode: '24',
+  };
   // Ensure we have at least 15 rows for a professional look, filling with empty rows if needed
   const minRows = 12;
   const emptyRowsCount = Math.max(0, minRows - challan.items.length);
@@ -59,13 +93,12 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
       {/* Header Section */}
       <div className="flex justify-between items-start mb-4">
         <div className="w-2/5 text-[11px] leading-snug">
-          <p className="font-bold text-[15px] mb-1">Drawwell Wires Pvt. Ltd.</p>
-          <p className="mt-1">S'nagar–Lakhtar Highway, At. Zamar</p>
-          <p>Dist. Surendranagar</p>
-          <p className="mt-2"><span className="font-semibold">Reg. Off.:</span> Plot No. 1005/B1, Phase-III, GIDC, Wadhwan</p>
-          <p className="mt-2 text-[10px]"><span className="font-semibold">CIN:</span> U27100GJ2020PTC118828</p>
-          <p className="text-[10px]"><span className="font-semibold">GSTIN/UIN:</span> 24AAECL4523G1ZT</p>
-          <p className="text-[10px]"><span className="font-semibold">State Name:</span> Gujarat, Code: 24</p>
+          <p className="font-bold text-[15px] mb-1">{companyData.companyName}</p>
+          <p className="mt-1 whitespace-pre-line">{companyData.address}</p>
+          <p className="mt-2"><span className="font-semibold">Reg. Off.:</span> {companyData.registeredOffice}</p>
+          <p className="mt-2 text-[10px]"><span className="font-semibold">CIN:</span> {companyData.cin}</p>
+          <p className="text-[10px]"><span className="font-semibold">GSTIN/UIN:</span> {companyData.gstin}</p>
+          <p className="text-[10px]"><span className="font-semibold">State Name:</span> {companyData.state}, Code: {companyData.stateCode}</p>
         </div>
         <div className="w-1/5 text-center">
           <h1 className="text-[18px] font-bold underline uppercase tracking-wider">Delivery Challan</h1>
@@ -82,14 +115,14 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
           <div className="flex-1 border-r border-black p-2 min-h-[120px]">
             <div className="mb-3">
               <p className="font-bold underline text-[10px] mb-1 uppercase">Bill To:</p>
-              <p className="font-bold text-[12px]">{challan.party.partyName}</p>
-              <p className="text-[11px] whitespace-pre-line">{challan.party.address}</p>
-              <p className="text-[11px] font-bold mt-1">GSTIN: {challan.party.gstNumber}</p>
+              <p className="font-bold text-[12px]">{challan.billTo?.partyName || challan.party.partyName}</p>
+              <p className="text-[11px] whitespace-pre-line">{challan.billTo?.address || challan.party.address}</p>
+              <p className="text-[11px] font-bold mt-1">GSTIN: {challan.billTo?.gstNumber || challan.party.gstNumber}</p>
             </div>
             <div>
               <p className="font-bold underline text-[10px] mb-1 uppercase">Ship To:</p>
-              <p className="font-bold text-[12px]">{challan.party.partyName}</p>
-              <p className="text-[11px] whitespace-pre-line">{challan.party.address}</p>
+              <p className="font-bold text-[12px]">{challan.shipTo?.partyName || challan.party.partyName}</p>
+              <p className="text-[11px] whitespace-pre-line">{challan.shipTo?.address || challan.party.address}</p>
             </div>
           </div>
 
@@ -212,7 +245,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
             <div className="inline-block text-center text-[11px]">
               <p className="mb-12 font-bold">Authorized Signature</p>
               <div className="border-t border-black pt-1">
-                <p className="font-bold">(For Drawwell Wires Pvt. Ltd.)</p>
+                <p className="font-bold">(For {companyData.companyName})</p>
               </div>
             </div>
           </div>

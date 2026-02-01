@@ -283,12 +283,21 @@ export default function TaxInvoicePage() {
       // Find the party details from parties state to get current charges
       const partyRef = parties.find(p => p._id === (challan.party._id || challan.party));
       
-      const items = challan.items.map((item: any) => ({
-        ...item,
-        // Default to party master charges if available, otherwise keep challan charges
-        annealingCharge: partyRef?.annealingCharge ?? item.annealingCharge,
-        drawCharge: partyRef?.drawCharge ?? item.drawCharge,
-      }));
+      const items = challan.items.map((item: any) => {
+        const annealingCharge = partyRef?.annealingCharge ?? item.annealingCharge;
+        const drawCharge = partyRef?.drawCharge ?? item.drawCharge;
+        
+        const material = item.quantity * item.rate;
+        const annealing = annealingCharge * item.quantity * item.annealingCount;
+        const drawing = drawCharge * item.quantity * item.drawPassCount;
+        
+        return {
+          ...item,
+          annealingCharge,
+          drawCharge,
+          itemTotal: material + annealing + drawing,
+        };
+      });
       setInvoiceItems(items);
     }
   };
@@ -442,14 +451,14 @@ export default function TaxInvoicePage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
               <p className="text-sm text-blue-800 mb-3">
                 <strong>Note:</strong> Select an outward challan to generate invoice. GST will be
                 auto-calculated based on HSN code.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <ItemSelector
                 label="Select Outward Challan"
                 value={selectedChallan}
@@ -515,7 +524,7 @@ export default function TaxInvoicePage() {
             </div>
 
             {invoiceItems.length > 0 && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-2">
                 <h3 className="font-semibold text-slate-700">Item Details & Charges</h3>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200">
@@ -531,11 +540,11 @@ export default function TaxInvoicePage() {
                     <tbody className="divide-y divide-slate-200">
                       {invoiceItems.map((item, idx) => (
                         <tr key={idx} className="text-sm">
-                          <td className="px-3 py-2">
-                            <div className="font-medium text-slate-900">{item.finishSize?.size || 'N/A'}</div>
-                            <div className="text-[10px] text-slate-500">{item.finishSize?.grade}</div>
+                          <td className="px-2 py-1.5">
+                            <div className="font-medium text-slate-900 text-xs">{item.finishSize?.size || 'N/A'}</div>
+                            <div className="text-[9px] text-slate-500">{item.finishSize?.grade}</div>
                           </td>
-                          <td className="px-3 py-2 text-slate-600 font-medium">
+                          <td className="px-2 py-1.5 text-slate-600 font-medium text-xs">
                             {item.quantity.toFixed(2)}
                           </td>
                           <td className="px-3 py-2">
@@ -550,7 +559,13 @@ export default function TaxInvoicePage() {
                                   const newVal = parseFloat(e.target.value) || 0;
                                   const newItems = [...invoiceItems];
                                   newItems[idx].annealingCharge = newVal;
-                                  // Recalculate itemTotal if needed, but the API handles it
+                                  
+                                  // Recalculate itemTotal
+                                  const material = newItems[idx].quantity * newItems[idx].rate;
+                                  const annealing = newVal * newItems[idx].quantity * newItems[idx].annealingCount;
+                                  const drawing = newItems[idx].drawCharge * newItems[idx].quantity * newItems[idx].drawPassCount;
+                                  newItems[idx].itemTotal = material + annealing + drawing;
+                                  
                                   setInvoiceItems(newItems);
                                 }}
                               />
@@ -568,12 +583,19 @@ export default function TaxInvoicePage() {
                                   const newVal = parseFloat(e.target.value) || 0;
                                   const newItems = [...invoiceItems];
                                   newItems[idx].drawCharge = newVal;
+                                  
+                                  // Recalculate itemTotal
+                                  const material = newItems[idx].quantity * newItems[idx].rate;
+                                  const annealing = newItems[idx].annealingCharge * newItems[idx].quantity * newItems[idx].annealingCount;
+                                  const drawing = newVal * newItems[idx].quantity * newItems[idx].drawPassCount;
+                                  newItems[idx].itemTotal = material + annealing + drawing;
+                                  
                                   setInvoiceItems(newItems);
                                 }}
                               />
                             </div>
                           </td>
-                          <td className="px-3 py-2 text-right font-bold text-blue-600">
+                          <td className="px-2 py-1.5 text-right font-bold text-blue-600 text-xs">
                             ₹{(item.itemTotal || 0).toFixed(2)}
                           </td>
                         </tr>

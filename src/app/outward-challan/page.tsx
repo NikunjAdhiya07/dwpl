@@ -289,19 +289,7 @@ export default function OutwardChallanPage() {
       return stockSizeId === String(itemId);
     });
     
-    const quantity = stock ? stock.quantity : 0;
-    
-    // Debug logging (can be removed after issue is resolved)
-    if (itemId) {
-      console.log('🔍 [Stock Lookup]', {
-        searchingFor: itemId,
-        foundStock: stock ? `Yes (${quantity} Kgs)` : 'No',
-        totalStocksAvailable: stocks.length,
-        stockSizeType: stock ? (typeof stock.size === 'object' ? 'populated object' : 'string ID') : 'N/A'
-      });
-    }
-    
-    return quantity;
+    return stock ? stock.quantity : 0;
   };
 
   const addItem = () => {
@@ -639,18 +627,18 @@ export default function OutwardChallanPage() {
 
       {showForm && (
         <Card className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
               {editingChallan ? `Edit Challan - ${editingChallan.challanNumber}` : 'Create Outward Challan'}
             </h2>
             <button onClick={resetForm} className="text-slate-400 hover:text-slate-600">
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Party and Date */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Top Row: Party | Challan Date | Add Item Button */}
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_200px_auto] gap-2 items-end">
               <ItemSelector
                 label="Party"
                 value={formData.party}
@@ -664,16 +652,16 @@ export default function OutwardChallanPage() {
                     : undefined
                 }
                 renderSelected={(party) => (
-                  <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+                  <span className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
                     {party.partyName}
                   </span>
                 )}
                 renderOption={(party) => (
                   <div>
-                    <div className="font-medium" style={{ color: 'var(--foreground)' }}>
+                    <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
                       {party.partyName}
                     </div>
-                    <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                       Annealing: ₹{party.annealingCharge}/unit | Draw: ₹{party.drawCharge}/pass
                     </div>
                   </div>
@@ -682,380 +670,338 @@ export default function OutwardChallanPage() {
               />
 
               <div>
-                <label className="label">Challan Date *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Challan Date *</label>
                 <input
                   type="date"
-                  className="input"
+                  className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   value={formData.challanDate}
                   onChange={(e) => setFormData({ ...formData, challanDate: e.target.value })}
                   required
                 />
               </div>
+
+              <button
+                type="button"
+                onClick={addItem}
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center gap-1.5 whitespace-nowrap"
+                disabled={!selectedParty}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Item
+              </button>
             </div>
 
-            {/* Bill To and Ship To (Optional) */}
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
-              <h3 className="font-semibold text-indigo-900">Billing & Shipping Details (Optional)</h3>
-              <p className="text-xs text-indigo-700">If not specified, both will default to the main party selected above.</p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <ItemSelector
-                  label="Bill To"
-                  value={formData.billTo || ''}
-                  onChange={(value) => setFormData({ ...formData, billTo: value })}
-                  items={parties}
-                  placeholder="Same as Party (Default)"
-                  helperText="Select a different party for billing address"
-                  renderSelected={(party) => (
-                    <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                      {party.partyName}
-                    </span>
-                  )}
-                  renderOption={(party) => (
-                    <div>
-                      <div className="font-medium" style={{ color: 'var(--foreground)' }}>
+            {/* Billing & Shipping (Collapsible) */}
+            <details className="border border-slate-200 rounded">
+              <summary className="px-3 py-2 bg-slate-50 cursor-pointer text-xs font-semibold text-slate-700 hover:bg-slate-100 flex items-center justify-between">
+                <span>Billing & Shipping Details (Optional)</span>
+                <span className="text-[10px] text-slate-500">Click to expand</span>
+              </summary>
+              <div className="p-3 bg-white border-t border-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <ItemSelector
+                    label="Bill To"
+                    value={formData.billTo || ''}
+                    onChange={(value) => setFormData({ ...formData, billTo: value })}
+                    items={parties}
+                    placeholder="Same as Party (Default)"
+                    helperText="Select different billing party"
+                    renderSelected={(party) => (
+                      <span className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
                         {party.partyName}
+                      </span>
+                    )}
+                    renderOption={(party) => (
+                      <div>
+                        <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
+                          {party.partyName}
+                        </div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {party.address}
+                        </div>
                       </div>
-                      <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                        {party.address}
-                      </div>
-                    </div>
-                  )}
-                  getSearchableText={(party) => `${party.partyName} ${party.address}`}
-                />
+                    )}
+                    getSearchableText={(party) => `${party.partyName} ${party.address}`}
+                  />
 
-                <ItemSelector
-                  label="Ship To"
-                  value={formData.shipTo || ''}
-                  onChange={(value) => setFormData({ ...formData, shipTo: value })}
-                  items={parties}
-                  placeholder="Same as Party (Default)"
-                  helperText="Select a different party for shipping address"
-                  renderSelected={(party) => (
-                    <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                      {party.partyName}
-                    </span>
-                  )}
-                  renderOption={(party) => (
-                    <div>
-                      <div className="font-medium" style={{ color: 'var(--foreground)' }}>
+                  <ItemSelector
+                    label="Ship To"
+                    value={formData.shipTo || ''}
+                    onChange={(value) => setFormData({ ...formData, shipTo: value })}
+                    items={parties}
+                    placeholder="Same as Party (Default)"
+                    helperText="Select different shipping party"
+                    renderSelected={(party) => (
+                      <span className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
                         {party.partyName}
+                      </span>
+                    )}
+                    renderOption={(party) => (
+                      <div>
+                        <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
+                          {party.partyName}
+                        </div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {party.address}
+                        </div>
                       </div>
-                      <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                        {party.address}
-                      </div>
-                    </div>
-                  )}
-                  getSearchableText={(party) => `${party.partyName} ${party.address}`}
-                />
-              </div>
-            </div>
-
-            {/* Transport Details */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-4">
-              <h3 className="font-semibold text-purple-900">Transport Details (Optional)</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Select Transport</label>
-                  <select
-                    className="input"
-                    onChange={(e) => handleTransportSelect(e.target.value)}
-                    value=""
-                  >
-                    <option value="">-- Select Transport --</option>
-                    {transports.map((transport) => (
-                      <option key={transport._id} value={transport._id}>
-                        {transport.vehicleNumber} - {transport.transporterName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="label">Vehicle Number</label>
-                  <input
-                    type="text"
-                    className="input"
-                    value={formData.vehicleNumber || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, vehicleNumber: e.target.value })
-                    }
-                    placeholder="e.g., GJ01AB1234"
-                  />
-                </div>
-
-                <div>
-                  <label className="label">Transporter Name</label>
-                  <input
-                    type="text"
-                    className="input"
-                    value={formData.transportName || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, transportName: e.target.value })
-                    }
-                    placeholder="e.g., ABC Transport"
-                  />
-                </div>
-
-                <div>
-                  <label className="label">Owner Name</label>
-                  <input
-                    type="text"
-                    className="input"
-                    value={formData.ownerName || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, ownerName: e.target.value })
-                    }
-                    placeholder="e.g., John Doe"
-                  />
-                </div>
-
-                <div>
-                  <label className="label">E-Way Bill No</label>
-                  <input
-                    type="text"
-                    className="input"
-                    value={formData.eWayBillNo || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, eWayBillNo: e.target.value })
-                    }
-                    placeholder="e.g., 123456789012"
+                    )}
+                    getSearchableText={(party) => `${party.partyName} ${party.address}`}
                   />
                 </div>
               </div>
-            </div>
+            </details>
 
-            {/* Items Section */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-blue-900">Items</h3>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="btn btn-sm btn-primary"
-                  disabled={!selectedParty}
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Item
-                </button>
+            {/* Transport Details (Collapsible) */}
+            <details className="border border-slate-200 rounded">
+              <summary className="px-3 py-2 bg-slate-50 cursor-pointer text-xs font-semibold text-slate-700 hover:bg-slate-100 flex items-center justify-between">
+                <span>Transport Details (Optional)</span>
+                <span className="text-[10px] text-slate-500">Click to expand</span>
+              </summary>
+              <div className="p-3 bg-white border-t border-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Select Transport</label>
+                    <select
+                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => handleTransportSelect(e.target.value)}
+                      value=""
+                    >
+                      <option value="">-- Select --</option>
+                      {transports.map((transport) => (
+                        <option key={transport._id} value={transport._id}>
+                          {transport.vehicleNumber} - {transport.transporterName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Vehicle No</label>
+                    <input
+                      type="text"
+                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                      value={formData.vehicleNumber || ''}
+                      onChange={(e) => setFormData({ ...formData, vehicleNumber: e.target.value })}
+                      placeholder="GJ01AB1234"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Transporter</label>
+                    <input
+                      type="text"
+                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                      value={formData.transportName || ''}
+                      onChange={(e) => setFormData({ ...formData, transportName: e.target.value })}
+                      placeholder="ABC Transport"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Owner Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                      value={formData.ownerName || ''}
+                      onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                      placeholder="John Doe"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">E-Way Bill No</label>
+                    <input
+                      type="text"
+                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                      value={formData.eWayBillNo || ''}
+                      onChange={(e) => setFormData({ ...formData, eWayBillNo: e.target.value })}
+                      placeholder="123456789012"
+                    />
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            {/* Items Section - Compact */}
+            <div className="border border-slate-200 rounded">
+              <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
+                <h3 className="text-xs font-semibold text-slate-700 uppercase">Items</h3>
               </div>
 
-              {formData.items.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
-                  <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No items added yet. Click "Add Item" to get started.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {formData.items.map((item, index) => (
-                    <div key={index} className="bg-white border border-slate-200 rounded-lg p-4 space-y-4">
+              <div className="divide-y divide-slate-200">
+                {formData.items.map((item, index) => (
+                    <div key={index} className="p-3 bg-white hover:bg-slate-50">
                       <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <h4 className="font-semibold text-slate-700">Item {index + 1}</h4>
-                          <p className="text-xs text-slate-500 mt-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-700">#{index + 1}</span>
+                          <span className="text-[10px] text-slate-500">
                             Annealing: ₹{item.annealingCharge}/unit | Draw: ₹{item.drawCharge}/pass
-                          </p>
+                          </span>
                         </div>
                         <button
                           type="button"
                           onClick={() => removeItem(index)}
                           className="text-red-500 hover:text-red-700"
                         >
-                          <Minus className="w-5 h-5" />
+                          <Minus className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
                         {/* FG Selection */}
-                        <div className="space-y-1">
+                        <div>
                           <ItemSelector
                             label="Finish Size (FG)"
                             value={item.finishSize}
                             onChange={(value) => updateItem(index, 'finishSize', value)}
                             items={fgItems}
-                            placeholder="Select FG Size"
+                            placeholder="Select FG"
                             required
-                          renderSelected={(fgItem) => (
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                                {fgItem.itemCode}
-                              </span>
-                              <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                                {fgItem.size}
-                              </span>
-                              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                                {fgItem.grade}
-                              </span>
-                            </div>
-                          )}
-                          renderOption={(fgItem) => (
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                            renderSelected={(fgItem) => (
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-[10px] bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
                                   {fgItem.itemCode}
                                 </span>
-                                <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                <span className="text-xs font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                                  {fgItem.size}
+                                </span>
+                              </div>
+                            )}
+                            renderOption={(fgItem) => (
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-[10px] bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
+                                  {fgItem.itemCode}
+                                </span>
+                                <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>
                                   {fgItem.size} - {fgItem.grade}
                                 </span>
                               </div>
-                            </div>
-                          )}
-                          getSearchableText={(fgItem) => 
-                            `${fgItem.itemCode} ${fgItem.size} ${fgItem.grade}`
-                          }
-                        />
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          Select finish size – Original size will be auto-filled from BOM
-                        </p>
-                      </div>
+                            )}
+                            getSearchableText={(fgItem) => `${fgItem.itemCode} ${fgItem.size} ${fgItem.grade}`}
+                          />
+                        </div>
 
                         {/* RM Selection */}
-                        <div className="space-y-1">
+                        <div>
                           <ItemSelector
                             label="Original Size (RM)"
                             value={item.originalSize}
                             onChange={(value) => updateItem(index, 'originalSize', value)}
                             items={rmItems}
-                            placeholder="Select RM Size"
+                            placeholder="Select RM"
                             required
-                          renderSelected={(rmItem) => (
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
-                                {rmItem.itemCode}
-                              </span>
-                              <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                                {rmItem.size}
-                              </span>
-                              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                                {rmItem.grade}
-                              </span>
-                            </div>
-                          )}
-                          renderOption={(rmItem) => (
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                            helperText={
+                              item.originalSize
+                                ? `Stock: ${getStockForItem(item.originalSize).toFixed(2)} Kgs`
+                                : undefined
+                            }
+                            renderSelected={(rmItem) => (
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-[10px] bg-green-100 text-green-800 px-1 py-0.5 rounded">
                                   {rmItem.itemCode}
                                 </span>
-                                <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                <span className="text-xs font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                                  {rmItem.size}
+                                </span>
+                              </div>
+                            )}
+                            renderOption={(rmItem) => (
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-[10px] bg-green-100 text-green-800 px-1 py-0.5 rounded">
+                                  {rmItem.itemCode}
+                                </span>
+                                <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>
                                   {rmItem.size} - {rmItem.grade}
                                 </span>
                               </div>
-                            </div>
-                          )}
-                          getSearchableText={(rmItem) => 
-                            `${rmItem.itemCode} ${rmItem.size} ${rmItem.grade}`
-                          }
-                        />
-                        <p className="text-[10px] text-slate-400 mt-1 flex justify-between">
-                          <span>Select original size – Finish size will be auto-filled from BOM</span>
-                          {item.originalSize && (
-                            <span className={getStockForItem(item.originalSize) > 0 ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
-                              Stock: {getStockForItem(item.originalSize).toFixed(2)} Kgs
-                            </span>
-                          )}
-                        </p>
-                      </div>
+                            )}
+                            getSearchableText={(rmItem) => `${rmItem.itemCode} ${rmItem.size} ${rmItem.grade}`}
+                          />
+                        </div>
 
                         {/* Annealing Count */}
                         <div>
-                          <label className="label">
-                            Annealing Count (0-{selectedParty?.annealingMax || 8}) *
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            Annealing *
                           </label>
                           <select
-                            className="input"
+                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             value={item.annealingCount}
-                            onChange={(e) =>
-                              updateItem(index, 'annealingCount', parseInt(e.target.value))
-                            }
+                            onChange={(e) => updateItem(index, 'annealingCount', parseInt(e.target.value))}
                             required
                           >
-                            {Array.from(
-                              { length: (selectedParty?.annealingMax || 8) + 1 },
-                              (_, i) => i
-                            ).map((count) => (
-                              <option key={count} value={count}>
-                                {count}
-                              </option>
+                            {Array.from({ length: (selectedParty?.annealingMax || 8) + 1 }, (_, i) => i).map((count) => (
+                              <option key={count} value={count}>{count}</option>
                             ))}
                           </select>
                         </div>
 
                         {/* Draw Pass Count */}
                         <div>
-                          <label className="label">
-                            Draw Pass Count (0-{selectedParty?.drawMax || 10}) *
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            Draw Pass *
                           </label>
                           <select
-                            className="input"
+                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             value={item.drawPassCount}
-                            onChange={(e) =>
-                              updateItem(index, 'drawPassCount', parseInt(e.target.value))
-                            }
+                            onChange={(e) => updateItem(index, 'drawPassCount', parseInt(e.target.value))}
                             required
                           >
-                            {Array.from(
-                              { length: (selectedParty?.drawMax || 10) + 1 },
-                              (_, i) => i
-                            ).map((count) => (
-                              <option key={count} value={count}>
-                                {count}
-                              </option>
+                            {Array.from({ length: (selectedParty?.drawMax || 10) + 1 }, (_, i) => i).map((count) => (
+                              <option key={count} value={count}>{count}</option>
                             ))}
                           </select>
                         </div>
 
-                        {/* Issued Challan No (Dropdown from GRN) */}
+                        {/* Issued Challan No */}
                         <div>
-                          <label className="label">Issued Challan No. *</label>
-                          <select
-                            className="input"
-                            value={item.issuedChallanNo || ''}
-                            onChange={(e) => {
-                              const challanNo = e.target.value;
-                              updateItem(index, 'issuedChallanNo', challanNo);
-                              
-                              // Clear coil number when challan changes
-                              updateItem(index, 'coilNumber', '');
+                          <ItemSelector
+                            label="Issued Challan"
+                            value={grns.find(g => String(g.partyChallanNumber).trim() === String(item.issuedChallanNo || '').trim())?._id || ''}
+                            onChange={(grnId) => {
+                              const selectedGRN = grns.find(g => String(g._id) === String(grnId));
+                              if (selectedGRN) {
+                                updateItem(index, 'issuedChallanNo', selectedGRN.partyChallanNumber);
+                                updateItem(index, 'coilNumber', '');
+                              } else {
+                                updateItem(index, 'issuedChallanNo', '');
+                              }
                             }}
+                            items={grns.filter(grn => grn.items.some((gi: any) => String(gi.rmSize._id || gi.rmSize) === String(item.originalSize)))}
+                            placeholder="Select"
                             required
-                          >
-                            <option value="">Select Challan</option>
-                            {grns
-                              .filter(grn => 
-                                grn.items.some((gi: any) => 
-                                  gi.rmSize._id === item.originalSize || 
-                                  gi.rmSize === item.originalSize
-                                )
-                              )
-                              .map(grn => (
-                                <option key={grn._id} value={grn.partyChallanNumber}>
-                                  {grn.partyChallanNumber} ({grn.sendingParty.partyName})
-                                </option>
-                              ))
-                            }
-                          </select>
-                          <p className="text-[10px] text-slate-400 mt-1">
-                            Filtered by selected Original Size
-                          </p>
+                            renderSelected={(grn) => (
+                              <span className="font-mono text-xs" style={{ color: 'var(--foreground)' }}>
+                                {grn.partyChallanNumber}
+                              </span>
+                            )}
+                            renderOption={(grn) => (
+                              <div>
+                                <div className="font-mono text-xs font-medium" style={{ color: 'var(--foreground)' }}>
+                                  {grn.partyChallanNumber}
+                                </div>
+                                <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                  {grn.sendingParty?.partyName || 'Unknown'}
+                                </div>
+                              </div>
+                            )}
+                            getSearchableText={(grn) => `${grn.partyChallanNumber} ${grn.sendingParty?.partyName || ''}`}
+                          />
                         </div>
 
-                        {/* Coil Number (8 digits) */}
+                        {/* Coil Number */}
                         <div>
-                          <label className="label">Coil Number (8 digits) *</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Coil No *</label>
                           <CoilNumberInput
                             value={item.coilNumber || ''}
                             onChange={(value) => {
                               updateItem(index, 'coilNumber', value);
-                              
-                              // If 8 digits filled, try to auto-fetch quantity/rate from GRN
-                              if (value.length === 8) {
+                              if (value.length > 0) {
                                 const selectedGRN = grns.find(g => g.partyChallanNumber === item.issuedChallanNo);
                                 if (selectedGRN) {
                                   const matchingItem = selectedGRN.items.find((gi: any) => 
-                                    gi.coilNumber === value && 
-                                    (gi.rmSize._id === item.originalSize || gi.rmSize === item.originalSize)
+                                    gi.coilNumber === value && (gi.rmSize._id === item.originalSize || gi.rmSize === item.originalSize)
                                   );
                                   if (matchingItem) {
                                     updateItem(index, 'quantity', matchingItem.quantity);
@@ -1068,31 +1014,27 @@ export default function OutwardChallanPage() {
                           />
                         </div>
 
-                        {/* Coil Reference (Remains as text or auto-filled) */}
+                        {/* Coil Reference */}
                         <div>
-                          <label className="label">Coil Reference</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Coil Ref</label>
                           <input
                             type="text"
-                            className="input"
+                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             value={item.coilReference || ''}
-                            onChange={(e) =>
-                              updateItem(index, 'coilReference', e.target.value)
-                            }
-                            placeholder="Coil Ref/ID"
+                            onChange={(e) => updateItem(index, 'coilReference', e.target.value)}
+                            placeholder="Ref/ID"
                           />
                         </div>
 
                         {/* Quantity */}
                         <div>
-                          <label className="label">Quantity *</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Quantity *</label>
                           <input
                             type="number"
                             step="0.01"
-                            className="input"
+                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             value={item.quantity}
-                            onChange={(e) =>
-                              updateItem(index, 'quantity', parseFloat(e.target.value) || 0)
-                            }
+                            onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
                             min="0.01"
                             required
                           />
@@ -1100,62 +1042,53 @@ export default function OutwardChallanPage() {
 
                         {/* Rate */}
                         <div>
-                          <label className="label">Rate (per unit) *</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Rate *</label>
                           <input
                             type="number"
                             step="0.01"
-                            className="input"
+                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             value={item.rate || 0}
-                            onChange={(e) =>
-                              updateItem(index, 'rate', parseFloat(e.target.value) || 0)
-                            }
+                            onChange={(e) => updateItem(index, 'rate', parseFloat(e.target.value) || 0)}
                             min="0"
                             required
                           />
                         </div>
-                      </div>
 
-                      {/* Item Total */}
-                      <div className="bg-slate-50 border border-slate-200 rounded p-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-slate-600">Item Total:</span>
-                          <span className="text-lg font-bold text-blue-600">
-                            ₹{item.itemTotal.toFixed(2)}
-                          </span>
+                        {/* Item Total */}
+                        <div className="flex items-end">
+                          <div className="w-full px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-right">
+                            <div className="text-[10px] text-slate-600 mb-0.5">Total</div>
+                            <div className="text-sm font-bold text-blue-600">₹{item.itemTotal.toFixed(2)}</div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
             </div>
 
-            {/* Grand Total */}
+            {/* Grand Total - Compact */}
             {formData.items.length > 0 && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-green-900">Grand Total:</span>
-                  <span className="text-2xl font-bold text-green-600">
-                    ₹{calculateTotal().toFixed(2)}
-                  </span>
-                </div>
+              <div className="flex justify-between items-center px-4 py-2 bg-green-50 border border-green-200 rounded">
+                <span className="text-sm font-semibold text-green-900">Grand Total:</span>
+                <span className="text-xl font-bold text-green-600">₹{calculateTotal().toFixed(2)}</span>
               </div>
             )}
 
-            {/* Submit Button */}
-            <div className="flex gap-4">
+            {/* Sticky Footer with Buttons */}
+            <div className="sticky bottom-0 bg-white border-t border-slate-200 -mx-6 -mb-6 px-6 py-3 flex gap-3 mt-4">
               <button
                 type="submit"
-                className="btn btn-primary flex-1"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 flex items-center justify-center gap-2"
                 disabled={formData.items.length === 0}
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-4 h-4" />
                 {editingChallan ? 'Update Challan' : 'Create Challan'}
               </button>
               <button
                 type="button"
                 onClick={resetForm}
-                className="btn btn-secondary"
+                className="px-6 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded hover:bg-slate-300"
               >
                 Cancel
               </button>

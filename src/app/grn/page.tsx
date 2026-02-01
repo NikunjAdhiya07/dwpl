@@ -153,8 +153,8 @@ export default function GRNPage() {
         setError(`Rate cannot be negative for item ${i + 1}`);
         return false;
       }
-      if (!item.coilNumber || item.coilNumber.trim().length < 8) {
-        setError(`Coil number must be exactly 8 characters for item ${i + 1}`);
+      if (!item.coilNumber || item.coilNumber.trim().length === 0) {
+        setError(`Please enter a coil number for item ${i + 1}`);
         return false;
       }
     }
@@ -364,22 +364,21 @@ export default function GRNPage() {
 
       {showForm && (
         <Card className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
               Create New GRN
             </h2>
             <button 
               onClick={resetForm} 
-              className="p-1 rounded transition-colors hover:bg-slate-100"
-              style={{ color: 'var(--text-muted)' }}
+              className="text-slate-400 hover:text-slate-600"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Party Details */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Top Row: Party | Challan Number | GRN Date | Add Item */}
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_180px_auto] gap-2 items-end">
               <ItemSelector
                 label="Sending Party"
                 value={formData.sendingParty}
@@ -401,10 +400,10 @@ export default function GRNPage() {
               />
 
               <div>
-                <label className="label">Party Challan Number *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Party Challan Number *</label>
                 <input
                   type="text"
-                  className="input"
+                  className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                   value={formData.partyChallanNumber}
                   onChange={(e) => setFormData({ ...formData, partyChallanNumber: e.target.value })}
                   placeholder="Enter challan number"
@@ -413,49 +412,49 @@ export default function GRNPage() {
               </div>
 
               <div>
-                <label className="label">GRN Date *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">GRN Date *</label>
                 <input
                   type="date"
-                  className="input"
+                  className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                   value={formData.grnDate}
                   onChange={(e) => setFormData({ ...formData, grnDate: e.target.value })}
                   required
                 />
               </div>
+
+              <button
+                type="button"
+                onClick={addItem}
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Item
+              </button>
             </div>
 
-            {/* Info Box */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-sm text-amber-800">
-                <strong>Note:</strong> Each party can have only one GRN with the same challan number. 
-                You can add multiple items (different sizes) to this single GRN.
+            {/* Info Box - Compact */}
+            <div className="bg-amber-50 border border-amber-200 rounded px-3 py-1.5">
+              <p className="text-[10px] text-amber-800">
+                <strong>Note:</strong> Each party can have only one GRN with the same challan number. You can add multiple items to this single GRN.
               </p>
             </div>
 
-            {/* Items Section */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-blue-900">Items</h3>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="btn btn-primary text-sm py-1 px-3"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Item
-                </button>
+            {/* Items Section - Compact */}
+            <div className="border border-slate-200 rounded">
+              <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
+                <h3 className="text-xs font-semibold text-slate-700 uppercase">Items</h3>
               </div>
 
-              <div className="space-y-3">
+              <div className="divide-y divide-slate-200">
                 {formItems.map((item, index) => (
-                  <div key={index} className="bg-white rounded-lg p-4 border border-blue-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-sm text-blue-900">Item {index + 1}</span>
+                  <div key={index} className="p-3 bg-white hover:bg-slate-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-slate-700">Item {index + 1}</span>
                       {formItems.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeItem(index)}
-                          className="text-red-600 hover:text-red-800"
+                          className="text-red-500 hover:text-red-700"
                           title="Remove item"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -463,7 +462,7 @@ export default function GRNPage() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                       <div className="md:col-span-2">
                         <ItemSelector
                           label="RM Size"
@@ -473,15 +472,13 @@ export default function GRNPage() {
                           placeholder="Select RM Size"
                           required
                           renderSelected={(rmItem) => (
-                            <span className="text-sm" style={{ color: 'var(--foreground)' }}>
+                            <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>
                               {rmItem.size} - {rmItem.grade}
                             </span>
                           )}
                           renderOption={(rmItem) => (
-                            <div>
-                              <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
-                                {rmItem.size} - {rmItem.grade}
-                              </div>
+                            <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
+                              {rmItem.size} - {rmItem.grade}
                             </div>
                           )}
                           getSearchableText={(rmItem) => `${rmItem.size} ${rmItem.grade}`}
@@ -489,11 +486,11 @@ export default function GRNPage() {
                       </div>
 
                       <div>
-                        <label className="label">Quantity *</label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Quantity *</label>
                         <input
                           type="number"
                           step="0.01"
-                          className="input"
+                          className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                           value={item.quantity}
                           onChange={(e) => updateItem(index, 'quantity', e.target.value)}
                           placeholder="0.00"
@@ -503,11 +500,11 @@ export default function GRNPage() {
                       </div>
 
                       <div>
-                        <label className="label">Rate (₹) *</label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Rate (₹) *</label>
                         <input
                           type="number"
                           step="0.01"
-                          className="input"
+                          className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                           value={item.rate}
                           onChange={(e) => updateItem(index, 'rate', e.target.value)}
                           placeholder="0.00"
@@ -516,19 +513,26 @@ export default function GRNPage() {
                         />
                       </div>
 
-                      <div className="md:col-span-2 mt-2">
-                        <label className="label">Coil Number (8 digits) *</label>
+                      <div className="flex items-end">
+                        <div className="w-full px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-right">
+                          <div className="text-[10px] text-slate-600 mb-0.5">Total</div>
+                          <div className="text-sm font-bold text-blue-600">₹{calculateItemTotal(item.quantity, item.rate)}</div>
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Coil Number *</label>
                         <CoilNumberInput
                           value={item.coilNumber}
                           onChange={(value) => updateItem(index, 'coilNumber', value)}
                         />
                       </div>
 
-                      <div className="md:col-span-2 mt-2">
-                        <label className="label">Coil Reference</label>
+                      <div className="md:col-span-3">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Coil Reference</label>
                         <input
                           type="text"
-                          className="input"
+                          className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                           value={item.coilReference}
                           onChange={(e) => updateItem(index, 'coilReference', e.target.value)}
                           placeholder="Internal Ref"
@@ -540,24 +544,25 @@ export default function GRNPage() {
               </div>
             </div>
 
-            {/* Grand Total */}
-            <div className="flex justify-end">
-              <div className="bg-slate-50 rounded px-6 py-3 border-l-4 border-blue-600">
-                <div className="text-right">
-                  <div className="text-sm text-slate-600 mb-1">Total Amount</div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    ₹{calculateGrandTotal()}
-                  </div>
-                </div>
-              </div>
+            {/* Grand Total - Compact */}
+            <div className="flex justify-between items-center px-4 py-2 bg-green-50 border border-green-200 rounded">
+              <span className="text-sm font-semibold text-green-900">Total Amount:</span>
+              <span className="text-xl font-bold text-green-600">₹{calculateGrandTotal()}</span>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <button type="submit" className="btn btn-primary">
+            {/* Sticky Footer with Buttons */}
+            <div className="sticky bottom-0 bg-white border-t border-slate-200 -mx-6 -mb-6 px-6 py-3 flex gap-3 mt-4">
+              <button 
+                type="submit" 
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
+              >
                 Create GRN
               </button>
-              <button type="button" onClick={resetForm} className="btn btn-outline">
+              <button 
+                type="button" 
+                onClick={resetForm} 
+                className="px-6 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded hover:bg-slate-300"
+              >
                 Cancel
               </button>
             </div>

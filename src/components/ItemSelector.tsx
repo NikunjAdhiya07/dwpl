@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 
 interface BaseItem {
@@ -41,8 +41,28 @@ export default function ItemSelector<T extends BaseItem>({
 }: ItemSelectorProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedItem = items.find((item) => item._id === value);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('click', handleClickOutside);
+    } else {
+      document.removeEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const selectedItem = items.find((item) => String(item._id) === String(value));
+  console.log('ItemSelector Render:', { label, value, hasSelectedItem: !!selectedItem, itemsCount: items.length });
 
   // Safe filtering with fallback
   const filteredItems = items.filter((item) => {
@@ -68,9 +88,9 @@ export default function ItemSelector<T extends BaseItem>({
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef} style={{ zIndex: isOpen ? 100 : 1 }}>
       <label className="label">
-        {label} {required && <span style={{ color: 'var(--error)' }}>*</span>}
+        {label.replace(' *', '')} {required && <span style={{ color: 'var(--error)' }}>*</span>}
       </label>
 
       {/* Selector Button */}
@@ -81,8 +101,8 @@ export default function ItemSelector<T extends BaseItem>({
         style={{
           opacity: disabled ? 0.5 : 1,
           cursor: disabled ? 'not-allowed' : 'pointer',
-          padding: '0.5rem 0.75rem',
-          minHeight: '38px',
+          padding: '0.375rem 0.625rem',
+          minHeight: '32px',
         }}
         className={`
           input flex items-center justify-between
@@ -132,24 +152,16 @@ export default function ItemSelector<T extends BaseItem>({
 
       {/* Dropdown */}
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-
-          {/* Dropdown Menu */}
-          <div 
-            className="absolute z-50 w-full mt-1 rounded-lg shadow-xl max-h-80 overflow-hidden"
-            style={{
-              background: 'var(--card-bg)',
-              border: '1px solid var(--border)',
-            }}
-          >
+        <div 
+          className="absolute z-[9999] w-full mt-1 rounded-lg shadow-2xl max-h-80 overflow-hidden border border-slate-300"
+          style={{
+            background: 'white',
+            pointerEvents: 'auto'
+          }}
+        >
             {/* Search Input */}
             <div 
-              className="p-3"
+              className="p-2"
               style={{ borderBottom: '1px solid var(--border)' }}
             >
               <input
@@ -157,7 +169,7 @@ export default function ItemSelector<T extends BaseItem>({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search..."
-                className="w-full px-3 py-2 text-sm rounded-lg focus:outline-none"
+                className="w-full px-2 py-1.5 text-xs rounded-lg focus:outline-none"
                 style={{
                   border: '1px solid var(--border)',
                   background: 'white',
@@ -171,17 +183,14 @@ export default function ItemSelector<T extends BaseItem>({
                   e.target.style.borderColor = 'var(--border)';
                   e.target.style.boxShadow = 'none';
                 }}
-                autoFocus
+                autoFocus={false}
               />
             </div>
 
             {/* Items List */}
-            <div className="overflow-y-auto max-h-64">
+            <div className="overflow-y-auto max-h-64 scrollbar-thin scrollbar-thumb-slate-200">
               {filteredItems.length === 0 ? (
-                <div 
-                  className="p-4 text-center text-sm"
-                  style={{ color: 'var(--text-muted)' }}
-                >
+                <div className="p-4 text-center text-sm text-slate-500">
                   {searchQuery ? 'No items match your search' : 'No items available'}
                 </div>
               ) : (
@@ -189,30 +198,37 @@ export default function ItemSelector<T extends BaseItem>({
                   <button
                     key={item._id}
                     type="button"
-                    onClick={() => handleSelect(item._id)}
-                    className="w-full p-3 text-left transition-colors"
-                    style={{
-                      background: value === item._id ? '#EFF6FF' : 'white',
-                      borderLeft: value === item._id ? '4px solid var(--primary)' : '4px solid transparent',
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      handleSelect(item._id);
                     }}
-                    onMouseEnter={(e) => {
-                      if (value !== item._id) {
-                        e.currentTarget.style.background = 'var(--hover-bg)';
-                      }
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                     }}
-                    onMouseLeave={(e) => {
-                      if (value !== item._id) {
-                        e.currentTarget.style.background = 'white';
-                      }
+                    className={`w-full p-2 text-left shadow-none transition-all border-l-4 flex items-center justify-between group ${
+                      String(value) === String(item._id)
+                        ? 'bg-blue-50 border-blue-600' 
+                        : 'bg-white border-transparent hover:bg-slate-50'
+                    }`}
+                    style={{ 
+                      pointerEvents: 'auto', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      zIndex: 10001
                     }}
                   >
-                    {renderOption(item)}
+                    <div className="flex-1 text-sm pointer-events-none">
+                      {renderOption(item)}
+                    </div>
+                    {String(value) === String(item._id) && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-600 ml-2" />
+                    )}
                   </button>
                 ))
               )}
             </div>
           </div>
-        </>
       )}
     </div>
   );

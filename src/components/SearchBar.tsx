@@ -17,10 +17,10 @@ export default function SearchBar({
     <div className={`relative w-full ${className}`}>
       <div className="relative">
         <Search 
-          className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" 
+          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" 
           style={{ 
-            width: '18px', 
-            height: '18px',
+            width: '14px', 
+            height: '14px',
             color: 'var(--text-muted)',
             strokeWidth: 2
           }}
@@ -30,15 +30,15 @@ export default function SearchBar({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full pl-12 pr-12 py-3 text-sm transition-all duration-200"
+          className="w-full pl-9 pr-9 py-1.5 text-xs transition-all duration-200"
           style={{
             background: 'var(--card-bg)',
             border: '1px solid var(--border)',
-            borderRadius: '8px',
+            borderRadius: '6px',
             color: 'var(--foreground)',
-            height: '48px',
-            fontSize: '0.875rem',
-            lineHeight: '1.5',
+            height: '34px',
+            fontSize: '0.8125rem',
+            lineHeight: '1.25',
             outline: 'none'
           }}
           onFocus={(e) => {

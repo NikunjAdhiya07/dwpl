@@ -48,7 +48,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'lg' }:
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
               {title}
             </h2>
@@ -61,7 +61,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'lg' }:
           </div>
 
           {/* Content */}
-          <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className="px-4 py-3 max-h-[calc(100vh-200px)] overflow-y-auto">
             {children}
           </div>
         </div>

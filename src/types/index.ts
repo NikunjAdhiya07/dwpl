@@ -8,6 +8,8 @@ export interface IPartyMaster extends Document {
   gstNumber: string;
   contactNumber: string;
   rate: number; // base rate per unit
+  sappdRate: number; // SAPPD Rate (₹/kg)
+  ppdFixedRate: number; // PPD Fixed Rate (₹/kg)
   annealingCharge: number; // per unit
   drawCharge: number; // per pass/unit
   annealingMax: number; // max annealing count (0-8)
@@ -84,6 +86,8 @@ export interface IOutwardChallanItem {
   originalSize: string; // RM Item ID (from BOM)
   annealingCount: number; // 1-10 (from party master)
   drawPassCount: number; // 1-8 (from party master)
+  extraAnnealingCount: number; // Extra annealing count for rate calc
+  extraPassCount: number; // Extra pass count for rate calc
   quantity: number;
   rate: number;
   annealingCharge: number; // auto-calculated from Party Master

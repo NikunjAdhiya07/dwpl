@@ -18,6 +18,8 @@ interface Party {
   address: string;
   gstNumber: string;
   rate: number;
+  sappdRate: number;
+  ppdFixedRate: number;
   annealingCharge: number;
   drawCharge: number;
   annealingMax: number;
@@ -63,8 +65,11 @@ interface ChallanItem {
   originalSize: string;
   annealingCount: number;
   drawPassCount: number;
+  extraAnnealingCount: number;
+  extraPassCount: number;
   quantity: number;
   rate: number;
+  rateOverride: boolean;
   annealingCharge: number;
   drawCharge: number;
   itemTotal: number;
@@ -83,6 +88,8 @@ interface OutwardChallan {
     gstNumber: string;
     contactNumber: string;
     rate: number;
+    sappdRate: number;
+    ppdFixedRate: number;
     annealingCharge: number;
     drawCharge: number;
     annealingMax: number;
@@ -119,6 +126,8 @@ interface OutwardChallan {
     };
     annealingCount: number;
     drawPassCount: number;
+    extraAnnealingCount: number;
+    extraPassCount: number;
     quantity: number;
     rate: number;
     annealingCharge: number;
@@ -303,8 +312,11 @@ export default function OutwardChallanPage() {
       originalSize: '',
       annealingCount: 0,
       drawPassCount: 0,
+      extraAnnealingCount: 0,
+      extraPassCount: 0,
       quantity: 0,
-      rate: selectedParty.rate,
+      rate: selectedParty.sappdRate || selectedParty.rate,
+      rateOverride: false,
       annealingCharge: selectedParty.annealingCharge,
       drawCharge: selectedParty.drawCharge,
       itemTotal: 0,
@@ -364,8 +376,16 @@ export default function OutwardChallanPage() {
       }
     }
     
-    // Recalculate item total: Qty * Rate = Total Amount (as per user requirement)
+    // Recalculate rate using formula: Final Rate = SAPPD + (A × EA) + (P × EP)
     const item = newItems[index];
+    if (!item.rateOverride && selectedParty) {
+      const S = selectedParty.sappdRate || selectedParty.rate;
+      const A = selectedParty.annealingCharge;
+      const P = selectedParty.drawCharge;
+      const EA = item.extraAnnealingCount || 0;
+      const EP = item.extraPassCount || 0;
+      item.rate = S + (A * EA) + (P * EP);
+    }
     item.itemTotal = item.quantity * item.rate;
     
     setFormData({ ...formData, items: newItems });
@@ -492,8 +512,11 @@ export default function OutwardChallanPage() {
         originalSize: item.originalSize._id,
         annealingCount: item.annealingCount,
         drawPassCount: item.drawPassCount,
+        extraAnnealingCount: item.extraAnnealingCount || 0,
+        extraPassCount: item.extraPassCount || 0,
         quantity: item.quantity,
         rate: item.rate,
+        rateOverride: false,
         annealingCharge: item.annealingCharge,
         drawCharge: item.drawCharge,
         itemTotal: item.itemTotal,
@@ -648,7 +671,7 @@ export default function OutwardChallanPage() {
                 required
                 helperText={
                   selectedParty
-                    ? `Annealing Max: ${selectedParty.annealingMax} | Draw Max: ${selectedParty.drawMax}`
+                    ? `SAPPD: ₹${selectedParty.sappdRate || 0}/kg | Annealing: ₹${selectedParty.annealingCharge} | Draw: ₹${selectedParty.drawCharge}`
                     : undefined
                 }
                 renderSelected={(party) => (
@@ -662,7 +685,7 @@ export default function OutwardChallanPage() {
                       {party.partyName}
                     </div>
                     <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      Annealing: ₹{party.annealingCharge}/unit | Draw: ₹{party.drawCharge}/pass
+                      SAPPD: ₹{party.sappdRate || 0}/kg | Annealing: ₹{party.annealingCharge}/unit | Draw: ₹{party.drawCharge}/pass
                     </div>
                   </div>
                 )}
@@ -836,7 +859,7 @@ export default function OutwardChallanPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold text-slate-700">#{index + 1}</span>
                           <span className="text-[10px] text-slate-500">
-                            Annealing: ₹{item.annealingCharge}/unit | Draw: ₹{item.drawCharge}/pass
+                            SAPPD: ₹{selectedParty?.sappdRate || 0}/kg | Annealing: ₹{item.annealingCharge}/unit | Draw: ₹{item.drawCharge}/pass
                           </span>
                         </div>
                         <button
@@ -1026,9 +1049,39 @@ export default function OutwardChallanPage() {
                           />
                         </div>
 
+                        {/* Extra Annealing Count */}
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            Extra Annealing (EA)
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            value={item.extraAnnealingCount}
+                            onChange={(e) => updateItem(index, 'extraAnnealingCount', parseInt(e.target.value) || 0)}
+                            min="0"
+                            step="1"
+                          />
+                        </div>
+
+                        {/* Extra Pass Count */}
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            Extra Pass (EP)
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            value={item.extraPassCount}
+                            onChange={(e) => updateItem(index, 'extraPassCount', parseInt(e.target.value) || 0)}
+                            min="0"
+                            step="1"
+                          />
+                        </div>
+
                         {/* Quantity */}
                         <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">Quantity *</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Quantity (kg) *</label>
                           <input
                             type="number"
                             step="0.01"
@@ -1040,18 +1093,70 @@ export default function OutwardChallanPage() {
                           />
                         </div>
 
-                        {/* Rate */}
+                        {/* Rate - Auto-calculated */}
                         <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">Rate *</label>
+                          <div className="flex items-center gap-1 mb-1">
+                            <label className="block text-xs font-medium text-slate-700">Rate (₹/kg)</label>
+                            <div className="relative group">
+                              <span className="text-[10px] text-blue-500 cursor-help">ℹ️</span>
+                              <div className="absolute z-50 bottom-full left-0 mb-1 hidden group-hover:block w-64">
+                                <div className="bg-slate-800 text-white text-[10px] rounded-lg p-2 shadow-lg">
+                                  <div className="font-semibold mb-1">🧮 Rate Formula:</div>
+                                  <div>Final Rate = S + (A × EA) + (P × EP)</div>
+                                  <div className="mt-1 text-slate-300">
+                                    S (SAPPD) = ₹{selectedParty?.sappdRate || 0}<br/>
+                                    A (Annealing) = ₹{selectedParty?.annealingCharge || 0}<br/>
+                                    P (Pass) = ₹{selectedParty?.drawCharge || 0}<br/>
+                                    EA = {item.extraAnnealingCount || 0}, EP = {item.extraPassCount || 0}
+                                  </div>
+                                  <div className="mt-1 font-semibold text-green-300">
+                                    = {selectedParty?.sappdRate || 0} + ({selectedParty?.annealingCharge || 0}×{item.extraAnnealingCount || 0}) + ({selectedParty?.drawCharge || 0}×{item.extraPassCount || 0}) = ₹{item.rate.toFixed(2)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <label className="flex items-center gap-1 ml-auto">
+                              <input
+                                type="checkbox"
+                                className="w-3 h-3"
+                                checked={item.rateOverride}
+                                onChange={(e) => {
+                                  const newItems = [...formData.items];
+                                  newItems[index] = { ...newItems[index], rateOverride: e.target.checked };
+                                  if (!e.target.checked && selectedParty) {
+                                    const S = selectedParty.sappdRate || selectedParty.rate;
+                                    const A = selectedParty.annealingCharge;
+                                    const P = selectedParty.drawCharge;
+                                    const EA = newItems[index].extraAnnealingCount || 0;
+                                    const EP = newItems[index].extraPassCount || 0;
+                                    newItems[index].rate = S + (A * EA) + (P * EP);
+                                    newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                                  }
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                              />
+                              <span className="text-[9px] text-slate-500">Override</span>
+                            </label>
+                          </div>
                           <input
                             type="number"
                             step="0.01"
-                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            className={`w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-blue-500 ${
+                              item.rateOverride 
+                                ? 'border-amber-400 bg-amber-50' 
+                                : 'border-green-300 bg-green-50'
+                            }`}
                             value={item.rate || 0}
                             onChange={(e) => updateItem(index, 'rate', parseFloat(e.target.value) || 0)}
                             min="0"
+                            readOnly={!item.rateOverride}
                             required
                           />
+                          {!item.rateOverride && (
+                            <p className="text-[9px] text-green-600 mt-0.5 flex items-center gap-0.5">
+                              🔒 Auto-calculated
+                            </p>
+                          )}
                         </div>
 
                         {/* Item Total */}
@@ -1059,6 +1164,11 @@ export default function OutwardChallanPage() {
                           <div className="w-full px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-right">
                             <div className="text-[10px] text-slate-600 mb-0.5">Total</div>
                             <div className="text-sm font-bold text-blue-600">₹{item.itemTotal.toFixed(2)}</div>
+                            {item.quantity > 0 && (
+                              <div className="text-[9px] text-slate-500 mt-0.5">
+                                {item.quantity.toFixed(2)} kg × ₹{item.rate.toFixed(2)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

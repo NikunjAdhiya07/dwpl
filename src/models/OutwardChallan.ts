@@ -25,6 +25,18 @@ const OutwardChallanItemSchema = new Schema<IOutwardChallanItem>(
       min: [0, 'Draw pass count cannot be negative'],
       max: [8, 'Draw pass count cannot exceed 8'],
     },
+    extraAnnealingCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Extra annealing count cannot be negative'],
+      max: [20, 'Extra annealing count cannot exceed 20'],
+    },
+    extraPassCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Extra pass count cannot be negative'],
+      max: [20, 'Extra pass count cannot exceed 20'],
+    },
     quantity: {
       type: Number,
       required: [true, 'Quantity is required'],

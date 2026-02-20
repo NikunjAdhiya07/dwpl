@@ -15,6 +15,8 @@ interface Party {
   gstNumber: string;
   contactNumber: string;
   rate: number;
+  sappdRate: number;
+  ppdFixedRate: number;
   annealingCharge: number;
   drawCharge: number;
   annealingMax: number;
@@ -28,6 +30,8 @@ interface PartyForm {
   gstNumber: string;
   contactNumber: string;
   rate: number;
+  sappdRate: number;
+  ppdFixedRate: number;
   annealingCharge: number;
   drawCharge: number;
   annealingMax: number;
@@ -49,6 +53,8 @@ export default function PartyMasterPage() {
     gstNumber: '',
     contactNumber: '',
     rate: 0,
+    sappdRate: 0,
+    ppdFixedRate: 0,
     annealingCharge: 0,
     drawCharge: 0,
     annealingMax: 8,
@@ -110,6 +116,8 @@ export default function PartyMasterPage() {
       gstNumber: party.gstNumber,
       contactNumber: party.contactNumber,
       rate: party.rate,
+      sappdRate: party.sappdRate || 0,
+      ppdFixedRate: party.ppdFixedRate || 0,
       annealingCharge: party.annealingCharge,
       drawCharge: party.drawCharge,
       annealingMax: party.annealingMax || 10,
@@ -147,6 +155,8 @@ export default function PartyMasterPage() {
       gstNumber: '',
       contactNumber: '',
       rate: 0,
+      sappdRate: 0,
+      ppdFixedRate: 0,
       annealingCharge: 0,
       drawCharge: 0,
       annealingMax: 10,
@@ -273,6 +283,40 @@ export default function PartyMasterPage() {
               </div>
 
               <div>
+                <label className="label">SAPPD Rate (₹/kg) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input"
+                  value={formData.sappdRate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sappdRate: parseFloat(e.target.value) || 0 })
+                  }
+                  placeholder="0.00"
+                  min="0"
+                  required
+                />
+                <p className="text-xs text-slate-500 mt-1">SAPPD processing rate per kg</p>
+              </div>
+
+              <div>
+                <label className="label">PPD Fixed Rate (₹/kg) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input"
+                  value={formData.ppdFixedRate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, ppdFixedRate: parseFloat(e.target.value) || 0 })
+                  }
+                  placeholder="0.00"
+                  min="0"
+                  required
+                />
+                <p className="text-xs text-slate-500 mt-1">PPD fixed processing rate per kg</p>
+              </div>
+
+              <div>
                 <label className="label">Annealing Charge (per unit) *</label>
                 <input
                   type="number"
@@ -377,6 +421,8 @@ export default function PartyMasterPage() {
                 <th>GST Number</th>
                 <th>Contact</th>
                 <th>Rate</th>
+                <th>SAPPD Rate</th>
+                <th>PPD Rate</th>
                 <th>Annealing Charge</th>
                 <th>Draw Charge</th>
                 <th>Annealing Max</th>
@@ -388,7 +434,7 @@ export default function PartyMasterPage() {
             <tbody>
               {filteredParties.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-8 text-slate-500">
+                  <td colSpan={12} className="text-center py-8 text-slate-500">
                     {searchQuery ? 'No parties found matching your search.' : 'No parties found. Click "Add Party" to create one.'}
                   </td>
                 </tr>
@@ -399,6 +445,8 @@ export default function PartyMasterPage() {
                     <td className="font-mono text-sm">{party.gstNumber}</td>
                     <td>{party.contactNumber}</td>
                     <td>₹{(party.rate ?? 0).toFixed(2)}</td>
+                    <td>₹{(party.sappdRate ?? 0).toFixed(2)}</td>
+                    <td>₹{(party.ppdFixedRate ?? 0).toFixed(2)}</td>
                     <td>₹{(party.annealingCharge ?? 0).toFixed(2)}</td>
                     <td>₹{(party.drawCharge ?? 0).toFixed(2)}</td>
                     <td>

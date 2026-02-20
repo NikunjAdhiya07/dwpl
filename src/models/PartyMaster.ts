@@ -31,6 +31,18 @@ const PartyMasterSchema = new Schema<IPartyMaster>(
       required: [true, 'Rate is required'],
       min: [0, 'Rate cannot be negative'],
     },
+    sappdRate: {
+      type: Number,
+      required: [true, 'SAPPD Rate is required'],
+      min: [0, 'SAPPD Rate cannot be negative'],
+      default: 0,
+    },
+    ppdFixedRate: {
+      type: Number,
+      required: [true, 'PPD Fixed Rate is required'],
+      min: [0, 'PPD Fixed Rate cannot be negative'],
+      default: 0,
+    },
     annealingCharge: {
       type: Number,
       required: [true, 'Annealing charge is required'],

@@ -205,10 +205,10 @@ TaxInvoiceSchema.pre('save', async function () {
   
   // Calculate item totals and base amount
   this.items.forEach(item => {
-    const materialAmount = item.quantity * item.rate;
-    const totalAnnealingCharge = item.annealingCharge * item.quantity * item.annealingCount;
-    const totalDrawCharge = item.drawCharge * item.quantity * item.drawPassCount;
-    item.itemTotal = materialAmount + totalAnnealingCharge + totalDrawCharge;
+    // For job work invoice, rate is the sum of processing charges per unit
+    const rate = (item.annealingCharge * (item.annealingCount || 0)) + (item.drawCharge * (item.drawPassCount || 0));
+    item.rate = rate; // Update the rate to reflect actual processing charges
+    item.itemTotal = item.quantity * rate;
   });
 
   this.baseAmount = this.items.reduce((sum, item) => sum + item.itemTotal, 0);

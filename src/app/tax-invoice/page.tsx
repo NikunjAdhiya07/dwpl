@@ -287,15 +287,15 @@ export default function TaxInvoicePage() {
         const annealingCharge = partyRef?.annealingCharge ?? item.annealingCharge;
         const drawCharge = partyRef?.drawCharge ?? item.drawCharge;
         
-        const material = item.quantity * item.rate;
-        const annealing = annealingCharge * item.quantity * item.annealingCount;
-        const drawing = drawCharge * item.quantity * item.drawPassCount;
+        const jobWorkRate = (annealingCharge * (item.annealingCount || 0)) + (drawCharge * (item.drawPassCount || 0));
+        const itemTotal = item.quantity * jobWorkRate;
         
         return {
           ...item,
           annealingCharge,
           drawCharge,
-          itemTotal: material + annealing + drawing,
+          rate: jobWorkRate,
+          itemTotal,
         };
       });
       setInvoiceItems(items);
@@ -534,6 +534,7 @@ export default function TaxInvoicePage() {
                         <th className="px-3 py-2">Qty</th>
                         <th className="px-3 py-2">Annealing Charge</th>
                         <th className="px-3 py-2">Draw Charge</th>
+                        <th className="px-3 py-2 text-right">Rate</th>
                         <th className="px-3 py-2 text-right">Total</th>
                       </tr>
                     </thead>
@@ -560,11 +561,10 @@ export default function TaxInvoicePage() {
                                   const newItems = [...invoiceItems];
                                   newItems[idx].annealingCharge = newVal;
                                   
-                                  // Recalculate itemTotal
-                                  const material = newItems[idx].quantity * newItems[idx].rate;
-                                  const annealing = newVal * newItems[idx].quantity * newItems[idx].annealingCount;
-                                  const drawing = newItems[idx].drawCharge * newItems[idx].quantity * newItems[idx].drawPassCount;
-                                  newItems[idx].itemTotal = material + annealing + drawing;
+                                  // Recalculate rate and itemTotal
+                                  const jobWorkRate = (newVal * (newItems[idx].annealingCount || 0)) + (newItems[idx].drawCharge * (newItems[idx].drawPassCount || 0));
+                                  newItems[idx].rate = jobWorkRate;
+                                  newItems[idx].itemTotal = newItems[idx].quantity * jobWorkRate;
                                   
                                   setInvoiceItems(newItems);
                                 }}
@@ -584,16 +584,18 @@ export default function TaxInvoicePage() {
                                   const newItems = [...invoiceItems];
                                   newItems[idx].drawCharge = newVal;
                                   
-                                  // Recalculate itemTotal
-                                  const material = newItems[idx].quantity * newItems[idx].rate;
-                                  const annealing = newItems[idx].annealingCharge * newItems[idx].quantity * newItems[idx].annealingCount;
-                                  const drawing = newVal * newItems[idx].quantity * newItems[idx].drawPassCount;
-                                  newItems[idx].itemTotal = material + annealing + drawing;
+                                  // Recalculate rate and itemTotal
+                                  const jobWorkRate = (newItems[idx].annealingCharge * (newItems[idx].annealingCount || 0)) + (newVal * (newItems[idx].drawPassCount || 0));
+                                  newItems[idx].rate = jobWorkRate;
+                                  newItems[idx].itemTotal = newItems[idx].quantity * jobWorkRate;
                                   
                                   setInvoiceItems(newItems);
                                 }}
                               />
                             </div>
+                          </td>
+                          <td className="px-2 py-1.5 text-right font-medium text-slate-600 text-xs">
+                            ₹{(item.rate || 0).toFixed(2)}
                           </td>
                           <td className="px-2 py-1.5 text-right font-bold text-blue-600 text-xs">
                             ₹{(item.itemTotal || 0).toFixed(2)}

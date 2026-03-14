@@ -318,13 +318,12 @@ export async function POST(request: NextRequest) {
     // Generate invoice number
     const invoiceNumber = await generateSequentialNumber('INV', TaxInvoice, 'invoiceNumber');
     
-    // Split GST into CGST and SGST (for intra-state transactions)
-    const halfGST = gstMaster.gstPercentage / 2;
-    
     console.log('Creating Tax Invoice with multi-items:', {
       invoiceNumber,
       itemCount: items.length,
-      gstPercentage: gstMaster.gstPercentage,
+      cgstPercentage: gstMaster.cgstPercentage,
+      sgstPercentage: gstMaster.sgstPercentage,
+      igstPercentage: gstMaster.igstPercentage,
       challanBillTo: (challan as any).billTo,
       challanShipTo: (challan as any).shipTo,
       challanParty: challan.party,
@@ -338,9 +337,9 @@ export async function POST(request: NextRequest) {
       billTo: (challan as any).billTo?._id || (challan as any).billTo || (challan.party as any)?._id || challan.party,
       shipTo: (challan as any).shipTo?._id || (challan as any).shipTo || (challan.party as any)?._id || challan.party,
       items,
-      gstPercentage: gstMaster.gstPercentage,
-      cgstPercentage: halfGST, // Split GST equally
-      sgstPercentage: halfGST, // Split GST equally
+      cgstPercentage: gstMaster.cgstPercentage,
+      sgstPercentage: gstMaster.sgstPercentage,
+      igstPercentage: gstMaster.igstPercentage,
       invoiceDate: body.invoiceDate || new Date(),
       
       // Transport Details from Challan

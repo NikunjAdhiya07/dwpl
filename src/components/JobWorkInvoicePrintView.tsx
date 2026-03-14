@@ -28,6 +28,10 @@ interface InvoiceItem {
 interface TaxInvoice {
   invoiceNumber: string;
   invoiceDate: string;
+  outwardChallan?: {
+    _id?: string;
+    challanNumber: string;
+  };
   party: {
     partyName: string;
     address: string;
@@ -160,6 +164,9 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
               <div className="font-bold">E-Way Bill No:</div>
               <div>{invoice.eWayBillNo || '-'}</div>
             </div>
+            <div className="mt-2 pt-2 border-t border-gray-200 text-[11px] font-bold">
+              Invoice Against Challan Number : {invoice.outwardChallan?.challanNumber || '-'}
+            </div>
           </div>
         </div>
 
@@ -171,7 +178,6 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
               <th className="border-r border-black px-2 py-2 text-left">Description (Finish Size)</th>
               <th className="border-r border-black px-2 py-2 text-left w-[100px]">RM</th>
               <th className="border-r border-black px-2 py-2 text-center w-[70px]">Wire Grade</th>
-              <th className="border-r border-black px-2 py-2 text-center w-[70px]">COIL</th>
               <th className="border-r border-black px-2 py-2 text-center w-[80px]">Process</th>
               <th className="border-r border-black px-2 py-2 text-center w-[90px]">Issued Challan No.</th>
               <th className="border-r border-black px-2 py-2 text-center w-[60px]">HSN</th>
@@ -193,14 +199,6 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
                 <td className="border-r border-black px-2 py-3 text-center align-top">
                   <p className="font-semibold">{item.finishSize.grade}</p>
                 </td>
-                <td className="border-r border-black px-2 py-3 text-center align-top">
-                  {item.coilNumber || item.coilReference ? (
-                    <>
-                      {item.coilNumber && <p className="font-medium">{item.coilNumber}</p>}
-                      {item.coilReference && <p className="text-[8px] text-gray-500">{item.coilReference}</p>}
-                    </>
-                  ) : '-'}
-                </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top capitalize">
                   <div className="text-[9px] leading-tight">
                     {item.annealingCount && item.annealingCount > 0 ? `Anneal (${item.annealingCount})` : ''}
@@ -220,9 +218,8 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
             
             {/* Empty Rows */}
             {Array.from({ length: emptyRowsCount }).map((_, i) => (
-              <tr key={`empty-${i}`} className="border-b border-black last:border-b-0 h-[40px]">
+              <tr key={`empty-${i}`} className="border-b border-black h-[40px]">
                 <td className="border-r border-black px-1 py-2"></td>
-                <td className="border-r border-black px-2 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
@@ -234,6 +231,16 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
                 <td className="px-2 py-2"></td>
               </tr>
             ))}
+            
+            {/* Total Quantity Row */}
+            <tr className="border-b-0 bg-gray-50 font-bold">
+              <td colSpan={7} className="border-r border-black px-2 py-2 text-right">Total Qty :</td>
+              <td className="border-r border-black px-2 py-2 text-center text-[11px] text-black">
+                {invoice.items?.reduce((sum, item) => sum + (item.quantity || 0), 0).toFixed(2)}
+              </td>
+              <td className="border-r border-black px-2 py-2"></td>
+              <td className="px-2 py-2 text-right"></td>
+            </tr>
           </tbody>
         </table>
 
@@ -263,6 +270,8 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
               <span className="p-1 px-2 border-b border-black text-right flex items-center justify-end">{formatIndianCurrency(invoice.igstAmount || 0)}</span>
               
               <span className="p-1 px-2 border-b border-black flex items-center">TCS {(invoice.tcsPercentage || 0).toFixed(1)}%:</span>
+              <span className="p-1 px-2 border-b border-black text-right flex items-center justify-end">{formatIndianCurrency(invoice.tcsAmount || 0)}</span>
+              
               <span className="p-1 px-2 border-b border-black font-bold flex items-center">Grand Total :</span>
               <span className="p-1 px-2 border-b border-black text-right font-bold flex items-center justify-end">{formatIndianCurrency(invoice.totalAmount)}</span>
             </div>

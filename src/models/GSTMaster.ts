@@ -9,11 +9,26 @@ const GSTMasterSchema = new Schema<IGSTMaster>(
       required: [true, 'Party is required'],
       unique: true,
     },
-    gstPercentage: {
+    cgstPercentage: {
       type: Number,
-      required: [true, 'GST percentage is required'],
-      min: [0, 'GST percentage cannot be negative'],
-      max: [100, 'GST percentage cannot exceed 100'],
+      required: [true, 'CGST percentage is required'],
+      min: [0, 'CGST percentage cannot be negative'],
+      max: [100, 'CGST percentage cannot exceed 100'],
+      default: 0,
+    },
+    sgstPercentage: {
+      type: Number,
+      required: [true, 'SGST percentage is required'],
+      min: [0, 'SGST percentage cannot be negative'],
+      max: [100, 'SGST percentage cannot exceed 100'],
+      default: 0,
+    },
+    igstPercentage: {
+      type: Number,
+      required: [true, 'IGST percentage is required'],
+      min: [0, 'IGST percentage cannot be negative'],
+      max: [100, 'IGST percentage cannot exceed 100'],
+      default: 0,
     },
     isActive: {
       type: Boolean,

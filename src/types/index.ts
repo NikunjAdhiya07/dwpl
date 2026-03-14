@@ -49,7 +49,9 @@ export interface IBOM extends Document {
 
 export interface IGSTMaster extends Document {
   party: string | IPartyMaster;
-  gstPercentage: number;
+  cgstPercentage: number;
+  sgstPercentage: number;
+  igstPercentage: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

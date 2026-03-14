@@ -15,13 +15,17 @@ interface GSTRate {
     _id: string;
     partyName: string;
   };
-  gstPercentage: number;
+  cgstPercentage: number;
+  sgstPercentage: number;
+  igstPercentage: number;
   isActive: boolean;
 }
 
 interface GSTForm {
   party: string;
-  gstPercentage: number;
+  cgstPercentage: number;
+  sgstPercentage: number;
+  igstPercentage: number;
   isActive: boolean;
 }
 
@@ -41,7 +45,9 @@ export default function GSTMasterPage() {
   const [parties, setParties] = useState<Party[]>([]);
   const [formData, setFormData] = useState<GSTForm>({
     party: '',
-    gstPercentage: 18,
+    cgstPercentage: 9,
+    sgstPercentage: 9,
+    igstPercentage: 0,
     isActive: true,
   });
 
@@ -104,7 +110,9 @@ export default function GSTMasterPage() {
   const handleEdit = (gst: GSTRate) => {
     setFormData({
       party: gst.party?._id || '',
-      gstPercentage: gst.gstPercentage,
+      cgstPercentage: gst.cgstPercentage || 0,
+      sgstPercentage: gst.sgstPercentage || 0,
+      igstPercentage: gst.igstPercentage || 0,
       isActive: gst.isActive,
     });
     setEditingId(gst._id);
@@ -114,7 +122,9 @@ export default function GSTMasterPage() {
   const resetForm = () => {
     setFormData({
       party: '',
-      gstPercentage: 18,
+      cgstPercentage: 9,
+      sgstPercentage: 9,
+      igstPercentage: 0,
       isActive: true,
     });
     setEditingId(null);
@@ -127,7 +137,9 @@ export default function GSTMasterPage() {
     const partyName = gst.party?.partyName?.toLowerCase() || '';
     return (
       partyName.includes(query) ||
-      gst.gstPercentage.toString().includes(query)
+      gst.cgstPercentage?.toString().includes(query) ||
+      gst.sgstPercentage?.toString().includes(query) ||
+      gst.igstPercentage?.toString().includes(query)
     );
   });
 
@@ -139,7 +151,7 @@ export default function GSTMasterPage() {
     <div className="animate-fade-in">
       <PageHeader
         title="Party GST Setup"
-        description="Configure specific GST percentages for parties"
+        description="Configure specific CGST, SGST, IGST percentages for parties"
         action={
           !showForm && (
             <button onClick={() => setShowForm(true)} className="btn btn-primary">
@@ -168,7 +180,7 @@ export default function GSTMasterPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div className="flex-1">
                 <ItemSelector
                   label="Party *"
@@ -184,14 +196,46 @@ export default function GSTMasterPage() {
               </div>
 
               <div>
-                <label className="label">GST Percentage *</label>
+                <label className="label">CGST (%) *</label>
                 <input
                   type="number"
                   step="0.01"
                   className="input"
-                  value={formData.gstPercentage}
+                  value={formData.cgstPercentage}
                   onChange={(e) =>
-                    setFormData({ ...formData, gstPercentage: parseFloat(e.target.value) })
+                    setFormData({ ...formData, cgstPercentage: parseFloat(e.target.value) || 0 })
+                  }
+                  min="0"
+                  max="100"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="label">SGST (%) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input"
+                  value={formData.sgstPercentage}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sgstPercentage: parseFloat(e.target.value) || 0 })
+                  }
+                  min="0"
+                  max="100"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="label">IGST (%) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input"
+                  value={formData.igstPercentage}
+                  onChange={(e) =>
+                    setFormData({ ...formData, igstPercentage: parseFloat(e.target.value) || 0 })
                   }
                   min="0"
                   max="100"
@@ -239,7 +283,9 @@ export default function GSTMasterPage() {
             <thead>
               <tr>
                 <th>Party</th>
-                <th>GST Percentage</th>
+                <th>CGST (%)</th>
+                <th>SGST (%)</th>
+                <th>IGST (%)</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -255,9 +301,9 @@ export default function GSTMasterPage() {
                 filteredGstRates.map((gst) => (
                   <tr key={gst._id}>
                     <td className="font-semibold">{gst.party?.partyName || 'Unknown Party'}</td>
-                    <td>
-                      <span className="badge badge-info text-lg">{gst.gstPercentage}%</span>
-                    </td>
+                    <td><span className="badge badge-info text-sm">{gst.cgstPercentage}%</span></td>
+                    <td><span className="badge badge-info text-sm">{gst.sgstPercentage}%</span></td>
+                    <td><span className="badge badge-warning text-sm">{gst.igstPercentage}%</span></td>
                     <td>
                       <span
                         className={`badge ${

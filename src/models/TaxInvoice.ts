@@ -96,8 +96,7 @@ const TaxInvoiceSchema = new Schema<ITaxInvoice>(
     },
     gstPercentage: {
       type: Number,
-      required: [true, 'GST percentage is required'],
-      min: [0, 'GST percentage cannot be negative'],
+      default: 0,
     },
     gstAmount: {
       type: Number,
@@ -222,49 +221,26 @@ TaxInvoiceSchema.pre('save', async function () {
   // Calculate GST breakdown
   // If CGST and SGST are set (intra-state), use them
   // Otherwise, use IGST (inter-state)
-  if (this.cgstPercentage && this.cgstPercentage > 0) {
+  if ((this.cgstPercentage || 0) > 0 || (this.sgstPercentage || 0) > 0) {
     // Intra-state transaction: CGST + SGST
-    this.cgstAmount = (this.assessableValue * this.cgstPercentage) / 100;
-    this.sgstAmount = (this.assessableValue * (this.sgstPercentage || this.cgstPercentage)) / 100;
+    this.cgstAmount = ((this.assessableValue || 0) * (this.cgstPercentage || 0)) / 100;
+    this.sgstAmount = ((this.assessableValue || 0) * (this.sgstPercentage || 0)) / 100;
     this.igstAmount = 0;
     this.gstAmount = this.cgstAmount + this.sgstAmount;
-    
-    console.log('GST calculated (CGST+SGST):', {
-      cgstPercentage: this.cgstPercentage,
-      sgstPercentage: this.sgstPercentage,
-      cgstAmount: this.cgstAmount,
-      sgstAmount: this.sgstAmount,
-      gstAmount: this.gstAmount,
-    });
-  } else if (this.igstPercentage && this.igstPercentage > 0) {
+    this.gstPercentage = (this.cgstPercentage || 0) + (this.sgstPercentage || 0);
+  } else if ((this.igstPercentage || 0) > 0) {
     // Inter-state transaction: IGST only
-    this.igstAmount = (this.assessableValue * this.igstPercentage) / 100;
+    this.igstAmount = ((this.assessableValue || 0) * (this.igstPercentage || 0)) / 100;
     this.cgstAmount = 0;
     this.sgstAmount = 0;
     this.gstAmount = this.igstAmount;
-    
-    console.log('GST calculated (IGST):', {
-      igstPercentage: this.igstPercentage,
-      igstAmount: this.igstAmount,
-      gstAmount: this.gstAmount,
-    });
+    this.gstPercentage = this.igstPercentage || 0;
   } else {
-    // Fallback: use gstPercentage and split equally into CGST/SGST
-    const halfGST = this.gstPercentage / 2;
-    this.cgstPercentage = halfGST;
-    this.sgstPercentage = halfGST;
-    this.cgstAmount = (this.assessableValue * halfGST) / 100;
-    this.sgstAmount = (this.assessableValue * halfGST) / 100;
+    this.cgstAmount = 0;
+    this.sgstAmount = 0;
     this.igstAmount = 0;
-    this.gstAmount = this.cgstAmount + this.sgstAmount;
-    
-    console.log('GST calculated (Fallback):', {
-      gstPercentage: this.gstPercentage,
-      halfGST,
-      cgstAmount: this.cgstAmount,
-      sgstAmount: this.sgstAmount,
-      gstAmount: this.gstAmount,
-    });
+    this.gstAmount = 0;
+    this.gstPercentage = 0;
   }
   
   // Calculate TCS if applicable

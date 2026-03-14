@@ -16,6 +16,7 @@ interface ChallanItem {
     grade: string;
   };
   processDetails?: string;
+  processType?: string;
   issuedChallanNo?: string;
   coilNumber?: string;
   coilReference?: string;
@@ -171,10 +172,10 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
               <tr key={index} className="border-b border-black last:border-b-0">
                 <td className="border-r border-black px-1 py-3 text-center align-top">{index + 1}</td>
                 <td className="border-r border-black px-2 py-3 align-top">
-                  <p className="font-bold">{item.finishSize.itemCode} - {item.finishSize.size}</p>
+                  <p className="font-bold text-[11px]">{item.finishSize.itemCode}</p>
                 </td>
                 <td className="border-r border-black px-2 py-3 align-top">
-                  <p className="text-[9px]">{item.originalSize.itemCode} - {item.originalSize.size}</p>
+                  <p className="text-[10px] font-semibold">{item.originalSize.itemCode}</p>
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top">
                   <p className="font-semibold">{item.finishSize.grade}</p>
@@ -187,17 +188,9 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
                     </>
                   ) : '-'}
                 </td>
-                <td className="border-r border-black px-2 py-3 text-center align-top capitalize">
-                  <div className="text-[9px] leading-tight">
-                    {item.processDetails || (
-                      <>
-                        {item.annealingCount && item.annealingCount > 0 ? `Anneal (${item.annealingCount})` : ''}
-                        {item.annealingCount && item.annealingCount > 0 && item.drawPassCount && item.drawPassCount > 0 ? ', ' : ''}
-                        <br />
-                        {item.drawPassCount && item.drawPassCount > 0 ? `Drawing (${item.drawPassCount})` : ''}
-                        {(!item.annealingCount && !item.drawPassCount) ? '-' : ''}
-                      </>
-                    )}
+                <td className="border-r border-black px-2 py-3 text-center align-top uppercase">
+                  <div className="text-[10px] font-semibold leading-tight">
+                    {item.processType || item.processDetails || '-'}
                   </div>
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top">{item.issuedChallanNo || '-'}</td>
@@ -209,7 +202,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
             
             {/* Empty Rows */}
             {Array.from({ length: emptyRowsCount }).map((_, i) => (
-              <tr key={`empty-${i}`} className="border-b border-black last:border-b-0 h-[40px]">
+              <tr key={`empty-${i}`} className="border-b border-black h-[40px]">
                 <td className="border-r border-black px-1 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
@@ -222,6 +215,16 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
                 <td className="px-2 py-2"></td>
               </tr>
             ))}
+            
+            {/* Total Quantity Row */}
+            <tr className="border-b-0 bg-gray-50 font-bold">
+              <td colSpan={7} className="border-r border-black px-2 py-2 text-right">Total Qty :</td>
+              <td className="border-r border-black px-2 py-2 text-center text-[11px] text-black">
+                {challan.items.reduce((sum, item) => sum + (item.quantity || 0), 0).toFixed(2)}
+              </td>
+              <td className="border-r border-black px-2 py-2"></td>
+              <td className="px-2 py-2 text-right"></td>
+            </tr>
           </tbody>
         </table>
 

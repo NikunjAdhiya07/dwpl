@@ -146,7 +146,9 @@ export default function TaxInvoicePage() {
   const [parties, setParties] = useState<any[]>([]);
   const [gstMasters, setGstMasters] = useState<any[]>([]);
   const [invoiceParty, setInvoiceParty] = useState(''); // auto-defaulted from billTo;
-  const [selectedGstPercentage, setSelectedGstPercentage] = useState<number | null>(null);
+  const [selectedCgst, setSelectedCgst] = useState<number | null>(null);
+  const [selectedSgst, setSelectedSgst] = useState<number | null>(null);
+  const [selectedIgst, setSelectedIgst] = useState<number | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -294,7 +296,15 @@ export default function TaxInvoicePage() {
         
         // Find GST matching the selected billTo party
         const partyGst = gstMasters.find(g => (g.party?._id || g.party) === defaultPartyId);
-        setSelectedGstPercentage(partyGst ? partyGst.gstPercentage : null);
+        if (partyGst) {
+          setSelectedCgst(partyGst.cgstPercentage);
+          setSelectedSgst(partyGst.sgstPercentage);
+          setSelectedIgst(partyGst.igstPercentage);
+        } else {
+          setSelectedCgst(null);
+          setSelectedSgst(null);
+          setSelectedIgst(null);
+        }
         
         // Find the party details from parties state to get current charges
         const partyRef = parties.find(p => p._id === defaultPartyId || p._id === (challan.party._id || challan.party));
@@ -324,7 +334,9 @@ export default function TaxInvoicePage() {
     setInvoiceDate(new Date().toISOString().split('T')[0]);
     setInvoiceItems([]);
     setInvoiceParty('');
-    setSelectedGstPercentage(null);
+    setSelectedCgst(null);
+    setSelectedSgst(null);
+    setSelectedIgst(null);
   };
 
   const handlePrint = (invoice: TaxInvoice) => {
@@ -477,13 +489,14 @@ export default function TaxInvoicePage() {
                 <div>
                   <strong>Bill To:</strong> {parties.find(p => p._id === invoiceParty)?.partyName || 'Unknown Party'} (auto-defaulted)
                 </div>
-                {selectedGstPercentage !== null ? (
-                  <div className="mt-1 text-green-700">
-                    <strong>GST Rate:</strong> {selectedGstPercentage}% (fetches automatically from Party GST Master)
+                {selectedCgst !== null ? (
+                  <div className="mt-1 text-green-700 space-y-0.5">
+                    <strong>GST Rates:</strong>
+                    <div>CGST: {selectedCgst}% | SGST: {selectedSgst}% | IGST: {selectedIgst}% (fetches automatically from Party GST Master)</div>
                   </div>
                 ) : (
                   <div className="mt-1 text-red-600 font-semibold">
-                    ⚠️ GST Rate not configured for this party in GST Master!
+                    ⚠️ GST Rates not configured for this party in GST Master!
                   </div>
                 )}
               </div>
@@ -669,7 +682,7 @@ export default function TaxInvoicePage() {
                 <th>FG Size</th>
                 <th>Quantity</th>
                 <th>Base Amount</th>
-                <th>GST %</th>
+                <th>Taxes</th>
                 <th>GST Amount</th>
                 <th>Total Amount</th>
                 <th>Actions</th>
@@ -722,7 +735,12 @@ export default function TaxInvoicePage() {
                     </td>
                     <td>₹{invoice.baseAmount.toFixed(2)}</td>
                     <td>
-                      <span className="badge badge-info">{invoice.gstPercentage}%</span>
+                      <div className="flex flex-col gap-1 items-start text-[10px]">
+                        {(invoice.cgstPercentage || 0) > 0 && <span className="badge badge-info p-1 h-auto">CGST: {invoice.cgstPercentage}%</span>}
+                        {(invoice.sgstPercentage || 0) > 0 && <span className="badge badge-info p-1 h-auto">SGST: {invoice.sgstPercentage}%</span>}
+                        {(invoice.igstPercentage || 0) > 0 && <span className="badge badge-warning p-1 h-auto">IGST: {invoice.igstPercentage}%</span>}
+                        {!invoice.cgstPercentage && !invoice.sgstPercentage && !invoice.igstPercentage && <span className="text-slate-400">0%</span>}
+                      </div>
                     </td>
                     <td className="text-amber-600 font-semibold">
                       ₹{invoice.gstAmount.toFixed(2)}

@@ -232,9 +232,6 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
               <p className="italic text-[9px] leading-tight text-gray-600 mb-1">Rupees in words:</p>
               <p className="italic font-semibold text-[10px] leading-tight uppercase">Rs. {numberToIndianWords(challan.totalAmount)} ONLY</p>
             </div>
-            <div className="p-3 font-bold text-[12px] flex items-center bg-gray-50">
-              Total Quantity : {challan.items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)}
-            </div>
           </div>
           <div className="w-[40%] text-[9px]">
             <div className="grid grid-cols-[1fr_90px] divide-x divide-black border-collapse h-full">

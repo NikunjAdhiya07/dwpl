@@ -60,13 +60,20 @@ interface Stock {
   quantity: number;
 }
 
+interface CoilEntry {
+  coilNumber: string;
+  coilWeight: number;
+}
+
 interface ChallanItem {
   finishSize: string;
   originalSize: string;
+  processType: 'SAPP' | 'SAPPD' | 'PPD' | 'Draw' | 'Annealing';
   annealingCount: number;
   drawPassCount: number;
   extraAnnealingCount: number;
   extraPassCount: number;
+  coilEntries: CoilEntry[];
   quantity: number;
   rate: number;
   rateOverride: boolean;
@@ -76,6 +83,10 @@ interface ChallanItem {
   issuedChallanNo?: string;
   coilNumber?: string;
   coilReference?: string;
+}
+
+interface VehicleEntry {
+  vehicleNumber: string;
 }
 
 interface OutwardChallan {
@@ -124,10 +135,12 @@ interface OutwardChallan {
       hsnCode: string;
       category: string;
     };
+    processType?: string;
     annealingCount: number;
     drawPassCount: number;
     extraAnnealingCount: number;
     extraPassCount: number;
+    coilEntries?: CoilEntry[];
     quantity: number;
     rate: number;
     annealingCharge: number;
@@ -140,6 +153,7 @@ interface OutwardChallan {
   totalAmount: number;
   challanDate: string;
   vehicleNumber?: string;
+  vehicles?: VehicleEntry[];
   transportName?: string;
   ownerName?: string;
   dispatchedThrough?: string;
@@ -153,7 +167,7 @@ interface ChallanForm {
   shipTo?: string;
   items: ChallanItem[];
   challanDate: string;
-  vehicleNumber?: string;
+  vehicles: VehicleEntry[];
   transportName?: string;
   ownerName?: string;
   dispatchedThrough?: string;
@@ -185,7 +199,7 @@ export default function OutwardChallanPage() {
     shipTo: '',
     items: [],
     challanDate: new Date().toISOString().split('T')[0],
-    vehicleNumber: '',
+    vehicles: [{ vehicleNumber: '' }],
     transportName: '',
     ownerName: '',
     dispatchedThrough: 'By Road',
@@ -310,10 +324,12 @@ export default function OutwardChallanPage() {
     const newItem: ChallanItem = {
       finishSize: '',
       originalSize: '',
+      processType: 'SAPPD',
       annealingCount: 0,
       drawPassCount: 0,
       extraAnnealingCount: 0,
       extraPassCount: 0,
+      coilEntries: [],
       quantity: 0,
       rate: selectedParty.sappdRate || selectedParty.rate,
       rateOverride: false,
@@ -376,16 +392,30 @@ export default function OutwardChallanPage() {
       }
     }
     
-    // Recalculate rate using formula: Final Rate = SAPPD + (A × EA) + (P × EP)
+    // Recalculate rate using formula: Base(processType) + (A × EA) + (P × EP)
     const item = newItems[index];
     if (!item.rateOverride && selectedParty) {
-      const S = selectedParty.sappdRate || selectedParty.rate;
+      const rateMap: Record<string, number> = {
+        SAPP: selectedParty.rate,
+        SAPPD: selectedParty.sappdRate || selectedParty.rate,
+        PPD: selectedParty.ppdFixedRate,
+        Draw: selectedParty.drawCharge,
+        Annealing: selectedParty.annealingCharge,
+      };
+      const S = rateMap[item.processType] ?? (selectedParty.sappdRate || selectedParty.rate);
       const A = selectedParty.annealingCharge;
       const P = selectedParty.drawCharge;
       const EA = item.extraAnnealingCount || 0;
       const EP = item.extraPassCount || 0;
       item.rate = S + (A * EA) + (P * EP);
     }
+    
+    // Auto-compute quantity from coil entries if any exist
+    if (item.coilEntries && item.coilEntries.length > 0) {
+      const coilTotal = item.coilEntries.reduce((sum, c) => sum + (c.coilWeight || 0), 0);
+      if (coilTotal > 0) item.quantity = coilTotal;
+    }
+    
     item.itemTotal = item.quantity * item.rate;
     
     setFormData({ ...formData, items: newItems });
@@ -396,7 +426,7 @@ export default function OutwardChallanPage() {
     if (transport) {
       setFormData({
         ...formData,
-        vehicleNumber: transport.vehicleNumber,
+        vehicles: [{ vehicleNumber: transport.vehicleNumber }],
         transportName: transport.transporterName,
         ownerName: transport.ownerName,
       });
@@ -490,7 +520,7 @@ export default function OutwardChallanPage() {
       shipTo: '',
       items: [],
       challanDate: new Date().toISOString().split('T')[0],
-      vehicleNumber: '',
+      vehicles: [{ vehicleNumber: '' }],
       transportName: '',
       ownerName: '',
       dispatchedThrough: 'By Road',
@@ -510,10 +540,12 @@ export default function OutwardChallanPage() {
       items: challan.items.map(item => ({
         finishSize: item.finishSize._id,
         originalSize: item.originalSize._id,
+        processType: (item.processType as any) || 'SAPPD',
         annealingCount: item.annealingCount,
         drawPassCount: item.drawPassCount,
         extraAnnealingCount: item.extraAnnealingCount || 0,
         extraPassCount: item.extraPassCount || 0,
+        coilEntries: item.coilEntries || [],
         quantity: item.quantity,
         rate: item.rate,
         rateOverride: false,
@@ -525,7 +557,9 @@ export default function OutwardChallanPage() {
         coilReference: item.coilReference || '',
       })),
       challanDate: new Date(challan.challanDate).toISOString().split('T')[0],
-      vehicleNumber: challan.vehicleNumber || '',
+      vehicles: challan.vehicles && challan.vehicles.length > 0
+        ? challan.vehicles
+        : [{ vehicleNumber: challan.vehicleNumber || '' }],
       transportName: challan.transportName || '',
       ownerName: challan.ownerName || '',
       dispatchedThrough: challan.dispatchedThrough || 'By Road',
@@ -660,8 +694,8 @@ export default function OutwardChallanPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            {/* Top Row: Party | Challan Date | Add Item Button */}
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_200px_auto] gap-2 items-end">
+            {/* Top Row: Party only (Date and Add Item are below Total) */}
+            <div className="grid grid-cols-1 gap-2 items-end">
               <ItemSelector
                 label="Party"
                 value={formData.party}
@@ -691,27 +725,6 @@ export default function OutwardChallanPage() {
                 )}
                 getSearchableText={(party) => party.partyName}
               />
-
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Challan Date *</label>
-                <input
-                  type="date"
-                  className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.challanDate}
-                  onChange={(e) => setFormData({ ...formData, challanDate: e.target.value })}
-                  required
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={addItem}
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center gap-1.5 whitespace-nowrap"
-                disabled={!selectedParty}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Item
-              </button>
             </div>
 
             {/* Billing & Shipping (Collapsible) */}
@@ -799,16 +812,6 @@ export default function OutwardChallanPage() {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Vehicle No</label>
-                    <input
-                      type="text"
-                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                      value={formData.vehicleNumber || ''}
-                      onChange={(e) => setFormData({ ...formData, vehicleNumber: e.target.value })}
-                      placeholder="GJ01AB1234"
-                    />
-                  </div>
 
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Transporter</label>
@@ -832,15 +835,53 @@ export default function OutwardChallanPage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">E-Way Bill No</label>
-                    <input
-                      type="text"
-                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                      value={formData.eWayBillNo || ''}
-                      onChange={(e) => setFormData({ ...formData, eWayBillNo: e.target.value })}
-                      placeholder="123456789012"
-                    />
+                </div>
+
+                {/* Multi-vehicle entries */}
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Vehicle Numbers <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({ ...formData, vehicles: [...formData.vehicles, { vehicleNumber: '' }] })
+                      }
+                      className="text-[10px] text-blue-600 hover:text-blue-800 border border-blue-300 rounded px-2 py-0.5 flex items-center gap-0.5"
+                    >
+                      <Plus className="w-3 h-3" /> Add Vehicle
+                    </button>
+                  </div>
+                  <div className="space-y-1">
+                    {formData.vehicles.map((v, vi) => (
+                      <div key={vi} className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 w-4">{vi + 1}.</span>
+                        <input
+                          type="text"
+                          className="flex-1 px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                          value={v.vehicleNumber}
+                          onChange={(e) => {
+                            const nv = [...formData.vehicles];
+                            nv[vi] = { vehicleNumber: e.target.value };
+                            setFormData({ ...formData, vehicles: nv });
+                          }}
+                          placeholder="e.g. GJ01AB1234"
+                          required={vi === 0}
+                        />
+                        {formData.vehicles.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData({ ...formData, vehicles: formData.vehicles.filter((_, i) => i !== vi) })
+                            }
+                            className="text-red-400 hover:text-red-600"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -856,10 +897,53 @@ export default function OutwardChallanPage() {
                 {formData.items.map((item, index) => (
                     <div key={index} className="p-3 bg-white hover:bg-slate-50">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-semibold text-slate-700">#{index + 1}</span>
+                          {/* Process Type Dropdown */}
+                          <select
+                            className="text-xs border border-blue-300 bg-blue-50 text-blue-800 rounded px-1.5 py-0.5 font-semibold focus:ring-1 focus:ring-blue-500"
+                            value={item.processType}
+                            onChange={(e) => {
+                              const pt = e.target.value as ChallanItem['processType'];
+                              const newItems = [...formData.items];
+                              newItems[index].processType = pt;
+                              if (!newItems[index].rateOverride && selectedParty) {
+                                const rateMap: Record<string, number> = {
+                                  SAPP: selectedParty.rate,
+                                  SAPPD: selectedParty.sappdRate || selectedParty.rate,
+                                  PPD: selectedParty.ppdFixedRate,
+                                  Draw: selectedParty.drawCharge,
+                                  Annealing: selectedParty.annealingCharge,
+                                };
+                                const baseRate = rateMap[pt] || 0;
+                                const A = selectedParty.annealingCharge;
+                                const P = selectedParty.drawCharge;
+                                const EA = newItems[index].extraAnnealingCount || 0;
+                                const EP = newItems[index].extraPassCount || 0;
+                                newItems[index].rate = baseRate + (A * EA) + (P * EP);
+                                newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                              }
+                              setFormData({ ...formData, items: newItems });
+                            }}
+                          >
+                            <option value="SAPP">SAPP</option>
+                            <option value="SAPPD">SAPPD</option>
+                            <option value="PPD">PPD</option>
+                            <option value="Draw">Draw</option>
+                            <option value="Annealing">Annealing</option>
+                          </select>
                           <span className="text-[10px] text-slate-500">
-                            SAPPD: ₹{selectedParty?.sappdRate || 0}/kg | Annealing: ₹{item.annealingCharge}/unit | Draw: ₹{item.drawCharge}/pass
+                            Base: ₹{(() => {
+                              if (!selectedParty) return 0;
+                              const rm: Record<string, number> = {
+                                SAPP: selectedParty.rate,
+                                SAPPD: selectedParty.sappdRate || selectedParty.rate,
+                                PPD: selectedParty.ppdFixedRate,
+                                Draw: selectedParty.drawCharge,
+                                Annealing: selectedParty.annealingCharge,
+                              };
+                              return rm[item.processType] || 0;
+                            })()} | EA: ₹{item.annealingCharge} | EP: ₹{item.drawCharge}
                           </span>
                         </div>
                         <button
@@ -871,11 +955,11 @@ export default function OutwardChallanPage() {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                      <div className="flex sm:flex-row flex-col gap-1 items-start sm:items-end w-full">
                         {/* FG Selection */}
-                        <div>
+                        <div className="w-full sm:w-[15%]">
                           <ItemSelector
-                            label="Finish Size (FG)"
+                            label="FG *"
                             value={item.finishSize}
                             onChange={(value) => updateItem(index, 'finishSize', value)}
                             items={fgItems}
@@ -883,20 +967,17 @@ export default function OutwardChallanPage() {
                             required
                             renderSelected={(fgItem) => (
                               <div className="flex items-center gap-1">
-                                <span className="font-mono text-[10px] bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
-                                  {fgItem.itemCode}
-                                </span>
-                                <span className="text-xs font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                                <span className="text-[10px] font-medium truncate" style={{ color: 'var(--foreground)' }}>
                                   {fgItem.size}
                                 </span>
                               </div>
                             )}
                             renderOption={(fgItem) => (
                               <div className="flex items-center gap-1">
-                                <span className="font-mono text-[10px] bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
+                                <span className="font-mono text-[9px] bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
                                   {fgItem.itemCode}
                                 </span>
-                                <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>
+                                <span className="text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
                                   {fgItem.size} - {fgItem.grade}
                                 </span>
                               </div>
@@ -906,9 +987,9 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* RM Selection */}
-                        <div>
+                        <div className="w-full sm:w-[15%]">
                           <ItemSelector
-                            label="Original Size (RM)"
+                            label="RM *"
                             value={item.originalSize}
                             onChange={(value) => updateItem(index, 'originalSize', value)}
                             items={rmItems}
@@ -916,25 +997,22 @@ export default function OutwardChallanPage() {
                             required
                             helperText={
                               item.originalSize
-                                ? `Stock: ${getStockForItem(item.originalSize).toFixed(2)} Kgs`
+                                ? `Stock: ${getStockForItem(item.originalSize).toFixed(2)}`
                                 : undefined
                             }
                             renderSelected={(rmItem) => (
                               <div className="flex items-center gap-1">
-                                <span className="font-mono text-[10px] bg-green-100 text-green-800 px-1 py-0.5 rounded">
-                                  {rmItem.itemCode}
-                                </span>
-                                <span className="text-xs font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                                <span className="text-[10px] font-medium truncate" style={{ color: 'var(--foreground)' }}>
                                   {rmItem.size}
                                 </span>
                               </div>
                             )}
                             renderOption={(rmItem) => (
                               <div className="flex items-center gap-1">
-                                <span className="font-mono text-[10px] bg-green-100 text-green-800 px-1 py-0.5 rounded">
+                                <span className="font-mono text-[9px] bg-green-100 text-green-800 px-1 py-0.5 rounded">
                                   {rmItem.itemCode}
                                 </span>
-                                <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>
+                                <span className="text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
                                   {rmItem.size} - {rmItem.grade}
                                 </span>
                               </div>
@@ -944,12 +1022,12 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* Annealing Count */}
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">
-                            Annealing *
+                        <div className="w-full sm:w-[5%]">
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">
+                            Ann *
                           </label>
                           <select
-                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
                             value={item.annealingCount}
                             onChange={(e) => updateItem(index, 'annealingCount', parseInt(e.target.value))}
                             required
@@ -961,12 +1039,12 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* Draw Pass Count */}
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">
-                            Draw Pass *
+                        <div className="w-full sm:w-[5%]">
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">
+                            Draw *
                           </label>
                           <select
-                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
                             value={item.drawPassCount}
                             onChange={(e) => updateItem(index, 'drawPassCount', parseInt(e.target.value))}
                             required
@@ -978,34 +1056,33 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* Issued Challan No */}
-                        <div>
+                        <div className="w-full sm:w-[13%]">
                           <ItemSelector
-                            label="Issued Challan"
+                            label="Challan"
                             value={grns.find(g => String(g.partyChallanNumber).trim() === String(item.issuedChallanNo || '').trim())?._id || ''}
                             onChange={(grnId) => {
                               const selectedGRN = grns.find(g => String(g._id) === String(grnId));
                               if (selectedGRN) {
                                 updateItem(index, 'issuedChallanNo', selectedGRN.partyChallanNumber);
-                                updateItem(index, 'coilNumber', '');
                               } else {
                                 updateItem(index, 'issuedChallanNo', '');
                               }
                             }}
-                            items={grns.filter(grn => grn.items.some((gi: any) => String(gi.rmSize._id || gi.rmSize) === String(item.originalSize)))}
+                            items={
+                              item.originalSize
+                                ? grns.filter(grn => grn.items.some((gi: any) => String(gi.rmSize._id || gi.rmSize) === String(item.originalSize)))
+                                : grns
+                            }
                             placeholder="Select"
-                            required
                             renderSelected={(grn) => (
-                              <span className="font-mono text-xs" style={{ color: 'var(--foreground)' }}>
+                              <span className="font-mono text-[10px]" style={{ color: 'var(--foreground)' }}>
                                 {grn.partyChallanNumber}
                               </span>
                             )}
                             renderOption={(grn) => (
                               <div>
-                                <div className="font-mono text-xs font-medium" style={{ color: 'var(--foreground)' }}>
+                                <div className="font-mono text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
                                   {grn.partyChallanNumber}
-                                </div>
-                                <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                                  {grn.sendingParty?.partyName || 'Unknown'}
                                 </div>
                               </div>
                             )}
@@ -1013,50 +1090,14 @@ export default function OutwardChallanPage() {
                           />
                         </div>
 
-                        {/* Coil Number */}
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">Coil No *</label>
-                          <CoilNumberInput
-                            value={item.coilNumber || ''}
-                            onChange={(value) => {
-                              updateItem(index, 'coilNumber', value);
-                              if (value.length > 0) {
-                                const selectedGRN = grns.find(g => g.partyChallanNumber === item.issuedChallanNo);
-                                if (selectedGRN) {
-                                  const matchingItem = selectedGRN.items.find((gi: any) => 
-                                    gi.coilNumber === value && (gi.rmSize._id === item.originalSize || gi.rmSize === item.originalSize)
-                                  );
-                                  if (matchingItem) {
-                                    updateItem(index, 'quantity', matchingItem.quantity);
-                                    updateItem(index, 'rate', matchingItem.rate);
-                                    updateItem(index, 'coilReference', matchingItem.coilReference || '');
-                                  }
-                                }
-                              }
-                            }}
-                          />
-                        </div>
-
-                        {/* Coil Reference */}
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">Coil Ref</label>
-                          <input
-                            type="text"
-                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                            value={item.coilReference || ''}
-                            onChange={(e) => updateItem(index, 'coilReference', e.target.value)}
-                            placeholder="Ref/ID"
-                          />
-                        </div>
-
                         {/* Extra Annealing Count */}
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">
-                            Extra Annealing (EA)
+                        <div className="w-full sm:w-[5%]">
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">
+                            EA
                           </label>
                           <input
                             type="number"
-                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
                             value={item.extraAnnealingCount}
                             onChange={(e) => updateItem(index, 'extraAnnealingCount', parseInt(e.target.value) || 0)}
                             min="0"
@@ -1065,13 +1106,13 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* Extra Pass Count */}
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">
-                            Extra Pass (EP)
+                        <div className="w-full sm:w-[5%]">
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">
+                            EP
                           </label>
                           <input
                             type="number"
-                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
                             value={item.extraPassCount}
                             onChange={(e) => updateItem(index, 'extraPassCount', parseInt(e.target.value) || 0)}
                             min="0"
@@ -1079,46 +1120,35 @@ export default function OutwardChallanPage() {
                           />
                         </div>
 
-                        {/* Quantity */}
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">Quantity (kg) *</label>
+                        {/* Quantity – auto-filled from coil sum */}
+                        <div className="w-full sm:w-[9%] relative">
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none absolute -top-1 left-0 right-0 truncate">
+                            Qty (kg) * {item.coilEntries.length > 0 && <span className="text-[9px] text-green-600">🔒</span>}
+                          </label>
                           <input
                             type="number"
                             step="0.01"
-                            className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px] mt-3"
                             value={item.quantity}
-                            onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                            onChange={(e) => {
+                              if (item.coilEntries.length === 0) {
+                                updateItem(index, 'quantity', parseFloat(e.target.value) || 0);
+                              }
+                            }}
+                            readOnly={item.coilEntries.length > 0}
                             min="0.01"
                             required
                           />
                         </div>
 
                         {/* Rate - Auto-calculated */}
-                        <div>
-                          <div className="flex items-center gap-1 mb-1">
-                            <label className="block text-xs font-medium text-slate-700">Rate (₹/kg)</label>
-                            <div className="relative group">
-                              <span className="text-[10px] text-blue-500 cursor-help">ℹ️</span>
-                              <div className="absolute z-50 bottom-full left-0 mb-1 hidden group-hover:block w-64">
-                                <div className="bg-slate-800 text-white text-[10px] rounded-lg p-2 shadow-lg">
-                                  <div className="font-semibold mb-1">🧮 Rate Formula:</div>
-                                  <div>Final Rate = S + (A × EA) + (P × EP)</div>
-                                  <div className="mt-1 text-slate-300">
-                                    S (SAPPD) = ₹{selectedParty?.sappdRate || 0}<br/>
-                                    A (Annealing) = ₹{selectedParty?.annealingCharge || 0}<br/>
-                                    P (Pass) = ₹{selectedParty?.drawCharge || 0}<br/>
-                                    EA = {item.extraAnnealingCount || 0}, EP = {item.extraPassCount || 0}
-                                  </div>
-                                  <div className="mt-1 font-semibold text-green-300">
-                                    = {selectedParty?.sappdRate || 0} + ({selectedParty?.annealingCharge || 0}×{item.extraAnnealingCount || 0}) + ({selectedParty?.drawCharge || 0}×{item.extraPassCount || 0}) = ₹{item.rate.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <label className="flex items-center gap-1 ml-auto">
+                        <div className="w-full sm:w-[13%] flex flex-col pt-0.5">
+                          <div className="flex items-center gap-0.5 mb-0.5 mt-[-1px]">
+                            <label className="block text-[10px] font-medium text-slate-700 leading-none">Rate (₹)</label>
+                            <label className="flex items-center ml-auto">
                               <input
                                 type="checkbox"
-                                className="w-3 h-3"
+                                className="w-2.5 h-2.5"
                                 checked={item.rateOverride}
                                 onChange={(e) => {
                                   const newItems = [...formData.items];
@@ -1135,13 +1165,12 @@ export default function OutwardChallanPage() {
                                   setFormData({ ...formData, items: newItems });
                                 }}
                               />
-                              <span className="text-[9px] text-slate-500">Override</span>
                             </label>
                           </div>
                           <input
                             type="number"
                             step="0.01"
-                            className={`w-full px-2 py-1.5 text-sm border rounded focus:ring-2 focus:ring-blue-500 ${
+                            className={`w-full px-1 py-1 text-xs border rounded focus:ring-1 focus:ring-blue-500 min-h-[32px] ${
                               item.rateOverride 
                                 ? 'border-amber-400 bg-amber-50' 
                                 : 'border-green-300 bg-green-50'
@@ -1152,25 +1181,98 @@ export default function OutwardChallanPage() {
                             readOnly={!item.rateOverride}
                             required
                           />
-                          {!item.rateOverride && (
-                            <p className="text-[9px] text-green-600 mt-0.5 flex items-center gap-0.5">
-                              🔒 Auto-calculated
-                            </p>
-                          )}
                         </div>
 
                         {/* Item Total */}
-                        <div className="flex items-end">
-                          <div className="w-full px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-right">
-                            <div className="text-[10px] text-slate-600 mb-0.5">Total</div>
-                            <div className="text-sm font-bold text-blue-600">₹{item.itemTotal.toFixed(2)}</div>
-                            {item.quantity > 0 && (
-                              <div className="text-[9px] text-slate-500 mt-0.5">
-                                {item.quantity.toFixed(2)} kg × ₹{item.rate.toFixed(2)}
-                              </div>
-                            )}
+                        <div className="w-full sm:w-[15%]">
+                          <label className="block text-[10px] font-medium text-slate-700 opacity-0 mb-0.5 leading-none">Total</label>
+                          <div className="w-full px-1.5 py-1 bg-blue-50 border border-blue-200 rounded text-right min-h-[32px] flex flex-col justify-center mt-3">
+                            <div className="text-[11px] font-bold text-blue-600 leading-none">₹{item.itemTotal.toFixed(2)}</div>
                           </div>
                         </div>
+                      </div>
+
+                      {/* Coil Entries – multiple coils, sum becomes Quantity */}
+                      <div className="mt-2 border-t border-slate-100 pt-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-wide">
+                            Coil Entries
+                            {item.coilEntries.length > 0 && (
+                              <span className="ml-1 text-green-600 font-bold">
+                                (Total: {item.coilEntries.reduce((s, c) => s + (c.coilWeight || 0), 0).toFixed(2)} kg)
+                              </span>
+                            )}
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newItems = [...formData.items];
+                              const newCoils = [...(newItems[index].coilEntries || []), { coilNumber: '', coilWeight: 0 }];
+                              newItems[index].coilEntries = newCoils;
+                              const total = newCoils.reduce((s, c) => s + (c.coilWeight || 0), 0);
+                              if (total > 0) newItems[index].quantity = total;
+                              newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                              setFormData({ ...formData, items: newItems });
+                            }}
+                            className="text-[10px] text-blue-600 border border-blue-300 rounded px-1.5 py-0.5 flex items-center gap-0.5"
+                          >
+                            <Plus className="w-3 h-3" /> Add Coil
+                          </button>
+                        </div>
+                        {item.coilEntries.length > 0 && (
+                          <div className="space-y-1">
+                            {item.coilEntries.map((coil, ci) => (
+                              <div key={ci} className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-400 w-4">{ci + 1}.</span>
+                                <input
+                                  type="text"
+                                  className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded"
+                                  value={coil.coilNumber}
+                                  onChange={(e) => {
+                                    const newItems = [...formData.items];
+                                    const newCoils = [...newItems[index].coilEntries];
+                                    newCoils[ci] = { ...newCoils[ci], coilNumber: e.target.value };
+                                    newItems[index].coilEntries = newCoils;
+                                    setFormData({ ...formData, items: newItems });
+                                  }}
+                                  placeholder="Coil No"
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="w-24 px-2 py-1 text-xs border border-slate-200 rounded"
+                                  value={coil.coilWeight || ''}
+                                  onChange={(e) => {
+                                    const newItems = [...formData.items];
+                                    const newCoils = [...newItems[index].coilEntries];
+                                    newCoils[ci] = { ...newCoils[ci], coilWeight: parseFloat(e.target.value) || 0 };
+                                    newItems[index].coilEntries = newCoils;
+                                    const total = newCoils.reduce((s, c) => s + (c.coilWeight || 0), 0);
+                                    newItems[index].quantity = total > 0 ? total : newItems[index].quantity;
+                                    newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                                    setFormData({ ...formData, items: newItems });
+                                  }}
+                                  placeholder="Weight (kg)"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newItems = [...formData.items];
+                                    const newCoils = newItems[index].coilEntries.filter((_, i) => i !== ci);
+                                    newItems[index].coilEntries = newCoils;
+                                    const total = newCoils.reduce((s, c) => s + (c.coilWeight || 0), 0);
+                                    if (newCoils.length > 0) newItems[index].quantity = total;
+                                    newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                                    setFormData({ ...formData, items: newItems });
+                                  }}
+                                  className="text-red-400 hover:text-red-600"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1184,6 +1286,29 @@ export default function OutwardChallanPage() {
                 <span className="text-xl font-bold text-green-600">₹{calculateTotal().toFixed(2)}</span>
               </div>
             )}
+
+            {/* Date + Add Item (below Total as per JBOM layout) */}
+            <div className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
+              <div className="flex-1 min-w-[160px]">
+                <label className="block text-xs font-medium text-slate-700 mb-1">Challan Date *</label>
+                <input
+                  type="date"
+                  className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={formData.challanDate}
+                  onChange={(e) => setFormData({ ...formData, challanDate: e.target.value })}
+                  required
+                />
+              </div>
+              <button
+                type="button"
+                onClick={addItem}
+                className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center gap-1.5 whitespace-nowrap"
+                disabled={!selectedParty}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Item
+              </button>
+            </div>
 
             {/* Sticky Footer with Buttons */}
             <div className="sticky bottom-0 bg-white border-t border-slate-200 -mx-6 -mb-6 px-6 py-3 flex gap-3 mt-4">

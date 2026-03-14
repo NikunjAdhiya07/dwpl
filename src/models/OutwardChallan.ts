@@ -1,6 +1,12 @@
 import mongoose, { Schema } from 'mongoose';
 import { IOutwardChallan, IOutwardChallanItem } from '@/types';
 
+// Coil entry sub-schema
+const CoilEntrySchema = new Schema({
+  coilNumber: { type: String, trim: true },
+  coilWeight: { type: Number, default: 0 },
+}, { _id: false });
+
 const OutwardChallanItemSchema = new Schema<IOutwardChallanItem>(
   {
     finishSize: {
@@ -12,6 +18,12 @@ const OutwardChallanItemSchema = new Schema<IOutwardChallanItem>(
       type: String,
       ref: 'ItemMaster',
       required: [true, 'Original Size (RM) is required'],
+    },
+    // Main process type (SAPP, SAPPD, PPD, Draw, Annealing)
+    processType: {
+      type: String,
+      enum: ['SAPP', 'SAPPD', 'PPD', 'Draw', 'Annealing'],
+      default: 'SAPPD',
     },
     annealingCount: {
       type: Number,
@@ -36,6 +48,11 @@ const OutwardChallanItemSchema = new Schema<IOutwardChallanItem>(
       default: 0,
       min: [0, 'Extra pass count cannot be negative'],
       max: [20, 'Extra pass count cannot exceed 20'],
+    },
+    // Coil entries – sum of coilWeight becomes quantity
+    coilEntries: {
+      type: [CoilEntrySchema],
+      default: [],
     },
     quantity: {
       type: Number,
@@ -121,9 +138,14 @@ const OutwardChallanSchema = new Schema<IOutwardChallan>(
     },
     
     // Transport Details
+    // Support multiple vehicles via array; legacy single vehicleNumber also stored
     vehicleNumber: {
       type: String,
       trim: true,
+    },
+    vehicles: {
+      type: [{ vehicleNumber: { type: String, trim: true } }],
+      default: [],
     },
     transportName: {
       type: String,

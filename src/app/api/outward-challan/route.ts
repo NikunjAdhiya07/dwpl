@@ -110,7 +110,9 @@ export async function POST(request: NextRequest) {
       shipTo: body.shipTo || body.party, // Default to party if not specified
       items: body.items,
       challanDate: body.challanDate,
-      vehicleNumber: body.vehicleNumber,
+      // Support multiple vehicles
+      vehicles: body.vehicles || (body.vehicleNumber ? [{ vehicleNumber: body.vehicleNumber }] : []),
+      vehicleNumber: body.vehicleNumber || (body.vehicles?.[0]?.vehicleNumber || ''),
       transportName: body.transportName,
       ownerName: body.ownerName,
       dispatchedThrough: body.dispatchedThrough || 'By Road',

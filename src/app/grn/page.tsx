@@ -462,22 +462,22 @@ export default function GRNPage() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                      <div className="md:col-span-2">
+                    <div className="flex sm:flex-row flex-col gap-1.5 items-start sm:items-end w-full">
+                      <div className="w-full sm:w-[25%]">
                         <ItemSelector
-                          label="RM Size"
+                          label="RM Size *"
                           value={item.rmSize}
                           onChange={(value) => updateItem(index, 'rmSize', value)}
                           items={rmItems}
-                          placeholder="Select RM Size"
+                          placeholder="Select RM"
                           required
                           renderSelected={(rmItem) => (
-                            <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>
+                            <span className="text-[11px] font-medium" style={{ color: 'var(--foreground)' }}>
                               {rmItem.size} - {rmItem.grade}
                             </span>
                           )}
                           renderOption={(rmItem) => (
-                            <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
+                            <div className="font-medium text-[11px]" style={{ color: 'var(--foreground)' }}>
                               {rmItem.size} - {rmItem.grade}
                             </div>
                           )}
@@ -485,12 +485,12 @@ export default function GRNPage() {
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Quantity *</label>
+                      <div className="w-full sm:w-[12%]">
+                        <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">Qty *</label>
                         <input
                           type="number"
                           step="0.01"
-                          className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-1.5 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
                           value={item.quantity}
                           onChange={(e) => updateItem(index, 'quantity', e.target.value)}
                           placeholder="0.00"
@@ -499,12 +499,12 @@ export default function GRNPage() {
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Rate (₹) *</label>
+                      <div className="w-full sm:w-[12%]">
+                        <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">Rate *</label>
                         <input
                           type="number"
                           step="0.01"
-                          className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-1.5 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
                           value={item.rate}
                           onChange={(e) => updateItem(index, 'rate', e.target.value)}
                           placeholder="0.00"
@@ -513,29 +513,29 @@ export default function GRNPage() {
                         />
                       </div>
 
-                      <div className="flex items-end">
-                        <div className="w-full px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-right">
-                          <div className="text-[10px] text-slate-600 mb-0.5">Total</div>
-                          <div className="text-sm font-bold text-blue-600">₹{calculateItemTotal(item.quantity, item.rate)}</div>
+                      <div className="w-full sm:w-[15%]">
+                        <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none opacity-0">Total</label>
+                        <div className="w-full px-1.5 py-1 bg-blue-50 border border-blue-200 rounded text-right min-h-[32px] flex flex-col justify-center">
+                          <div className="text-xs font-bold text-blue-600 leading-none">₹{calculateItemTotal(item.quantity, item.rate)}</div>
                         </div>
                       </div>
 
-                      <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Coil Number *</label>
+                      <div className="w-full sm:w-[20%]">
+                        <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">Coil No *</label>
                         <CoilNumberInput
-                          value={item.coilNumber}
+                          value={item.coilNumber || ''}
                           onChange={(value) => updateItem(index, 'coilNumber', value)}
                         />
                       </div>
 
-                      <div className="md:col-span-3">
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Coil Reference</label>
+                      <div className="w-full sm:w-[16%]">
+                        <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">Coil Ref</label>
                         <input
                           type="text"
-                          className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-1.5 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
                           value={item.coilReference}
                           onChange={(e) => updateItem(index, 'coilReference', e.target.value)}
-                          placeholder="Internal Ref"
+                          placeholder="Ref"
                         />
                       </div>
                     </div>

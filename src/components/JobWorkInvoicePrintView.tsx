@@ -242,13 +242,7 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
           <div className="w-[60%] border-r border-black flex flex-col">
             <div className="p-3 border-b border-black flex-1 flex flex-col justify-center">
               <p className="italic text-[9px] leading-tight text-gray-600 mb-1">Rupees in words:</p>
-              <p className="italic font-semibold text-[10px] leading-tight uppercase">Rs. {numberToIndianWords(invoice.baseAmount)} ONLY</p>
-            </div>
-            <div className="p-3 border-b border-black">
-              <p className="font-bold text-[10px] leading-tight">Net Total Rs {numberToIndianWords(invoice.totalAmount)} ONLY</p>
-            </div>
-            <div className="p-3 font-bold text-[12px] flex items-center bg-gray-50">
-              Net Payable : {formatIndianCurrency(invoice.totalAmount)}
+              <p className="italic font-semibold text-[10px] leading-tight uppercase">Rs. {numberToIndianWords(invoice.totalAmount)} ONLY</p>
             </div>
           </div>
           <div className="w-[40%] text-[9px]">
@@ -269,10 +263,8 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
               <span className="p-1 px-2 border-b border-black text-right flex items-center justify-end">{formatIndianCurrency(invoice.igstAmount || 0)}</span>
               
               <span className="p-1 px-2 border-b border-black flex items-center">TCS {(invoice.tcsPercentage || 0).toFixed(1)}%:</span>
-              <span className="p-1 px-2 border-b border-black text-right flex items-center justify-end">{formatIndianCurrency(invoice.tcsAmount || 0)}</span>
-              
-              <span className="p-1 px-2 font-bold bg-slate-50 flex items-center">Net Payable :</span>
-              <span className="p-1 px-2 text-right font-bold bg-slate-50 flex items-center justify-end">{formatIndianCurrency(invoice.totalAmount)}</span>
+              <span className="p-1 px-2 border-b border-black font-bold flex items-center">Grand Total :</span>
+              <span className="p-1 px-2 border-b border-black text-right font-bold flex items-center justify-end">{formatIndianCurrency(invoice.totalAmount)}</span>
             </div>
           </div>
         </div>

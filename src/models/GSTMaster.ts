@@ -3,10 +3,10 @@ import { IGSTMaster } from '@/types';
 
 const GSTMasterSchema = new Schema<IGSTMaster>(
   {
-    hsnCode: {
-      type: String,
-      required: [true, 'HSN Code is required'],
-      trim: true,
+    party: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PartyMaster',
+      required: [true, 'Party is required'],
       unique: true,
     },
     gstPercentage: {

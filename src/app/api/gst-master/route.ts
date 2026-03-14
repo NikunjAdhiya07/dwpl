@@ -5,7 +5,7 @@ import { GSTMaster } from '@/models/GSTMaster';
 export async function GET() {
   try {
     await connectDB();
-    const gstRates = await GSTMaster.find().sort({ hsnCode: 1 });
+    const gstRates = await GSTMaster.find().populate('party').sort({ createdAt: -1 });
     return NextResponse.json({ success: true, data: gstRates });
   } catch (error: any) {
     return NextResponse.json(

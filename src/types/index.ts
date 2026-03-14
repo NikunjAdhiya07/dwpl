@@ -48,7 +48,7 @@ export interface IBOM extends Document {
 }
 
 export interface IGSTMaster extends Document {
-  hsnCode: string;
+  party: string | IPartyMaster;
   gstPercentage: number;
   isActive: boolean;
   createdAt: Date;
@@ -81,21 +81,32 @@ export interface IStock extends Document {
   lastUpdated: Date;
 }
 
+export interface ICoilEntry {
+  coilNumber?: string;
+  coilWeight: number;
+}
+
 export interface IOutwardChallanItem {
   finishSize: string; // FG Item ID
   originalSize: string; // RM Item ID (from BOM)
+  processType?: 'SAPP' | 'SAPPD' | 'PPD' | 'Draw' | 'Annealing'; // Main process
   annealingCount: number; // 1-10 (from party master)
   drawPassCount: number; // 1-8 (from party master)
   extraAnnealingCount: number; // Extra annealing count for rate calc
   extraPassCount: number; // Extra pass count for rate calc
+  coilEntries?: ICoilEntry[]; // Individual coils; sum of weights = quantity
   quantity: number;
   rate: number;
   annealingCharge: number; // auto-calculated from Party Master
   drawCharge: number; // auto-calculated from Party Master
   itemTotal: number; // total for this item
   issuedChallanNo?: string; // Reference to incoming challan
-  coilNumber?: string; // Coil number for tracking
+  coilNumber?: string; // Legacy coil number
   coilReference?: string; // Coil reference/identifier
+}
+
+export interface IVehicleEntry {
+  vehicleNumber: string;
 }
 
 export interface IOutwardChallan extends Document {
@@ -108,7 +119,8 @@ export interface IOutwardChallan extends Document {
   challanDate: Date;
   
   // Transport Details
-  vehicleNumber?: string;
+  vehicleNumber?: string; // Legacy single vehicle
+  vehicles?: IVehicleEntry[]; // Multiple vehicles
   transportName?: string;
   ownerName?: string;
   dispatchedThrough?: string; // e.g., "By Road"

@@ -302,24 +302,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get FG item to fetch HSN code (from the first item)
-    const firstItemFinishSize = challan.items && challan.items.length > 0 
-      ? challan.items[0].finishSize 
-      : (challan as any).finishSize;
-
-    const fgItem = firstItemFinishSize as any;
-    if (!fgItem) {
-      return NextResponse.json(
-        { success: false, error: 'Finish Size item not found' },
-        { status: 400 }
-      );
-    }
-    
     // Get GST percentage from GST Master
-    const gstMaster = await GSTMaster.findOne({ hsnCode: fgItem.hsnCode, isActive: true });
+    const invoiceParty = (challan as any).billTo?._id || (challan as any).billTo || (challan.party as any)?._id || challan.party;
+    
+    const gstMaster = await GSTMaster.findOne({ party: invoiceParty, isActive: true });
+    
     if (!gstMaster) {
+      // Fallback to a default GST % or throw error
       return NextResponse.json(
-        { success: false, error: `GST rate not found for HSN Code: ${fgItem.hsnCode}` },
+        { success: false, error: `GST setup not found for the selected Party. Please configure it in GST Master.` },
         { status: 400 }
       );
     }

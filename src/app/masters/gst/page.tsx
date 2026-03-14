@@ -7,18 +7,28 @@ import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import SearchBar from '@/components/SearchBar';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
+import ItemSelector from '@/components/ItemSelector';
 
 interface GSTRate {
   _id: string;
-  hsnCode: string;
+  party: {
+    _id: string;
+    partyName: string;
+  };
   gstPercentage: number;
   isActive: boolean;
 }
 
 interface GSTForm {
-  hsnCode: string;
+  party: string;
   gstPercentage: number;
   isActive: boolean;
+}
+
+interface Party {
+  _id: string;
+  partyName: string;
+  gstNumber?: string;
 }
 
 export default function GSTMasterPage() {
@@ -28,24 +38,34 @@ export default function GSTMasterPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [parties, setParties] = useState<Party[]>([]);
   const [formData, setFormData] = useState<GSTForm>({
-    hsnCode: '',
+    party: '',
     gstPercentage: 18,
     isActive: true,
   });
 
   useEffect(() => {
-    fetchGSTRates();
+    fetchData();
   }, []);
 
-  const fetchGSTRates = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch('/api/gst-master');
-      const data = await response.json();
-      if (data.success) {
-        setGstRates(data.data);
+      const [gstRes, partiesRes] = await Promise.all([
+        fetch('/api/gst-master'),
+        fetch('/api/party-master'),
+      ]);
+      const gstData = await gstRes.json();
+      const partiesData = await partiesRes.json();
+
+      if (gstData.success) {
+        setGstRates(gstData.data);
       } else {
-        setError(data.error);
+        setError(gstData.error);
+      }
+
+      if (partiesData.success) {
+        setParties(partiesData.data);
       }
     } catch (err: any) {
       setError(err.message);
@@ -71,7 +91,7 @@ export default function GSTMasterPage() {
       const data = await response.json();
 
       if (data.success) {
-        await fetchGSTRates();
+        await fetchData();
         resetForm();
       } else {
         setError(data.error);
@@ -83,7 +103,7 @@ export default function GSTMasterPage() {
 
   const handleEdit = (gst: GSTRate) => {
     setFormData({
-      hsnCode: gst.hsnCode,
+      party: gst.party?._id || '',
       gstPercentage: gst.gstPercentage,
       isActive: gst.isActive,
     });
@@ -93,7 +113,7 @@ export default function GSTMasterPage() {
 
   const resetForm = () => {
     setFormData({
-      hsnCode: '',
+      party: '',
       gstPercentage: 18,
       isActive: true,
     });
@@ -104,8 +124,9 @@ export default function GSTMasterPage() {
   // Filter GST rates based on search query
   const filteredGstRates = gstRates.filter((gst) => {
     const query = searchQuery.toLowerCase();
+    const partyName = gst.party?.partyName?.toLowerCase() || '';
     return (
-      gst.hsnCode.toLowerCase().includes(query) ||
+      partyName.includes(query) ||
       gst.gstPercentage.toString().includes(query)
     );
   });
@@ -117,8 +138,8 @@ export default function GSTMasterPage() {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="GST Master"
-        description="Manage HSN codes and GST percentages"
+        title="Party GST Setup"
+        description="Configure specific GST percentages for parties"
         action={
           !showForm && (
             <button onClick={() => setShowForm(true)} className="btn btn-primary">
@@ -148,15 +169,17 @@ export default function GSTMasterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="label">HSN Code *</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={formData.hsnCode}
-                  onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })}
-                  placeholder="e.g., 7217"
+              <div className="flex-1">
+                <ItemSelector
+                  label="Party *"
+                  value={formData.party}
+                  onChange={(val) => setFormData({ ...formData, party: val })}
+                  items={parties}
                   required
+                  placeholder="Select a party..."
+                  getSearchableText={(p) => p.partyName}
+                  renderSelected={(p) => <span className="font-semibold">{p.partyName}</span>}
+                  renderOption={(p) => <div>{p.partyName}</div>}
                 />
               </div>
 
@@ -206,7 +229,7 @@ export default function GSTMasterPage() {
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Search by HSN Code or GST Percentage..."
+          placeholder="Search by Party Name or GST Percentage..."
         />
       </div>
 
@@ -215,7 +238,7 @@ export default function GSTMasterPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>HSN Code</th>
+                <th>Party</th>
                 <th>GST Percentage</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -231,7 +254,7 @@ export default function GSTMasterPage() {
               ) : (
                 filteredGstRates.map((gst) => (
                   <tr key={gst._id}>
-                    <td className="font-mono font-semibold">{gst.hsnCode}</td>
+                    <td className="font-semibold">{gst.party?.partyName || 'Unknown Party'}</td>
                     <td>
                       <span className="badge badge-info text-lg">{gst.gstPercentage}%</span>
                     </td>

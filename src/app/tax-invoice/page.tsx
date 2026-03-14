@@ -144,6 +144,9 @@ export default function TaxInvoicePage() {
   const [companyData, setCompanyData] = useState<any>(null);
   const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
   const [parties, setParties] = useState<any[]>([]);
+  const [gstMasters, setGstMasters] = useState<any[]>([]);
+  const [invoiceParty, setInvoiceParty] = useState(''); // auto-defaulted from billTo;
+  const [selectedGstPercentage, setSelectedGstPercentage] = useState<number | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -152,11 +155,12 @@ export default function TaxInvoicePage() {
   const fetchData = async () => {
     try {
       console.log('Fetching tax invoices and outward challans...');
-      const [invoicesRes, challansRes, companyRes, partiesRes] = await Promise.all([
+      const [invoicesRes, challansRes, companyRes, partiesRes, gstRes] = await Promise.all([
         fetch('/api/tax-invoice'),
         fetch('/api/outward-challan'),
         fetch('/api/company'),
         fetch('/api/party-master'),
+        fetch('/api/gst-master'),
       ]);
 
       // Check if responses are OK
@@ -173,11 +177,12 @@ export default function TaxInvoicePage() {
       }
 
       // Parse JSON with error handling
-      const [invoicesData, challansData, companyDataResponse, partiesData] = await Promise.all([
+      const [invoicesData, challansData, companyDataResponse, partiesData, gstData] = await Promise.all([
         invoicesRes.json(),
         challansRes.json(),
         companyRes.json(),
         partiesRes.json(),
+        gstRes.json(),
       ]);
 
       console.log('Tax Invoices API Response:', invoicesData);
@@ -230,6 +235,9 @@ export default function TaxInvoicePage() {
       if (partiesData.success) {
         setParties(partiesData.data);
       }
+      if (gstData.success) {
+        setGstMasters(gstData.data);
+      }
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError(err.message);
@@ -278,35 +286,45 @@ export default function TaxInvoicePage() {
       return;
     }
 
-    const challan = challans.find(c => c._id === challanId) as any;
-    if (challan) {
-      // Find the party details from parties state to get current charges
-      const partyRef = parties.find(p => p._id === (challan.party._id || challan.party));
-      
-      const items = challan.items.map((item: any) => {
-        const annealingCharge = partyRef?.annealingCharge ?? item.annealingCharge;
-        const drawCharge = partyRef?.drawCharge ?? item.drawCharge;
+      const challan = challans.find(c => c._id === challanId) as any;
+      if (challan) {
+        // Auto-default party to billTo if present, else party
+        const defaultPartyId = challan.billTo?._id || challan.party?._id || '';
+        setInvoiceParty(defaultPartyId);
         
-        const jobWorkRate = (annealingCharge * (item.annealingCount || 0)) + (drawCharge * (item.drawPassCount || 0));
-        const itemTotal = item.quantity * jobWorkRate;
+        // Find GST matching the selected billTo party
+        const partyGst = gstMasters.find(g => (g.party?._id || g.party) === defaultPartyId);
+        setSelectedGstPercentage(partyGst ? partyGst.gstPercentage : null);
         
-        return {
-          ...item,
-          annealingCharge,
-          drawCharge,
-          rate: jobWorkRate,
-          itemTotal,
-        };
-      });
-      setInvoiceItems(items);
-    }
+        // Find the party details from parties state to get current charges
+        const partyRef = parties.find(p => p._id === defaultPartyId || p._id === (challan.party._id || challan.party));
+        
+        const items = challan.items.map((item: any) => {
+          const annealingCharge = partyRef?.annealingCharge ?? item.annealingCharge;
+          const drawCharge = partyRef?.drawCharge ?? item.drawCharge;
+          
+          // Process charge only = sum of processing rates
+          const jobWorkRate = (annealingCharge * (item.annealingCount || 0)) + (drawCharge * (item.drawPassCount || 0));
+          const itemTotal = item.quantity * jobWorkRate;
+          
+          return {
+            ...item,
+            annealingCharge,
+            drawCharge,
+            rate: jobWorkRate,
+            itemTotal,
+          };
+        });
+        setInvoiceItems(items);
+      }
   };
 
   const resetForm = () => {
     setSelectedChallan('');
-    setInvoiceItems([]);
     setInvoiceDate(new Date().toISOString().split('T')[0]);
-    setShowForm(false);
+    setInvoiceItems([]);
+    setInvoiceParty('');
+    setSelectedGstPercentage(null);
   };
 
   const handlePrint = (invoice: TaxInvoice) => {
@@ -451,12 +469,29 @@ export default function TaxInvoicePage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-              <p className="text-sm text-blue-800 mb-3">
-                <strong>Note:</strong> Select an outward challan to generate invoice. GST will be
-                auto-calculated based on HSN code.
-              </p>
-            </div>
+            {selectedChallan && invoiceParty ? (
+              <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm border border-blue-200">
+                <div className="font-semibold mb-1">
+                  Creating Job Work Invoice for Challan No: {challans.find(c => c._id === selectedChallan)?.challanNumber}
+                </div>
+                <div>
+                  <strong>Bill To:</strong> {parties.find(p => p._id === invoiceParty)?.partyName || 'Unknown Party'} (auto-defaulted)
+                </div>
+                {selectedGstPercentage !== null ? (
+                  <div className="mt-1 text-green-700">
+                    <strong>GST Rate:</strong> {selectedGstPercentage}% (fetches automatically from Party GST Master)
+                  </div>
+                ) : (
+                  <div className="mt-1 text-red-600 font-semibold">
+                    ⚠️ GST Rate not configured for this party in GST Master!
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm border border-blue-200">
+                <strong>Note:</strong> Select an outward challan to generate invoice. Only process charges will be calculated.
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <ItemSelector

@@ -694,37 +694,52 @@ export default function OutwardChallanPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            {/* Top Row: Party only (Date and Add Item are below Total) */}
-            <div className="grid grid-cols-1 gap-2 items-end">
-              <ItemSelector
-                label="Party"
-                value={formData.party}
-                onChange={(value) => setFormData({ ...formData, party: value })}
-                items={parties}
-                placeholder="Select Party"
-                required
-                helperText={
-                  selectedParty
-                    ? `SAPPD: ₹${selectedParty.sappdRate || 0}/kg | Annealing: ₹${selectedParty.annealingCharge} | Draw: ₹${selectedParty.drawCharge}`
-                    : undefined
-                }
-                renderSelected={(party) => (
-                  <span className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
-                    {party.partyName}
-                  </span>
-                )}
-                renderOption={(party) => (
-                  <div>
-                    <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
+            {/* Top Row: Date and Party */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start mb-2">
+              <div className="w-full">
+                <label className="block text-xs font-medium text-slate-700 flex justify-between mb-1">
+                  Challan Date *
+                </label>
+                <input
+                  type="date"
+                  className="w-full px-2 lg:py-[10px] py-[6px] text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={formData.challanDate}
+                  onChange={(e) => setFormData({ ...formData, challanDate: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="w-full">
+                <ItemSelector
+                  label="Party"
+                  value={formData.party}
+                  onChange={(value) => setFormData({ ...formData, party: value })}
+                  items={parties}
+                  placeholder="Select Party"
+                  required
+                  helperText={
+                    selectedParty
+                      ? `SAPPD: ₹${selectedParty.sappdRate || 0}/kg | Annealing: ₹${selectedParty.annealingCharge} | Draw: ₹${selectedParty.drawCharge}`
+                      : undefined
+                  }
+                  renderSelected={(party) => (
+                    <span className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
                       {party.partyName}
+                    </span>
+                  )}
+                  renderOption={(party) => (
+                    <div>
+                      <div className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>
+                        {party.partyName}
+                      </div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        SAPPD: ₹{party.sappdRate || 0}/kg | Annealing: ₹{party.annealingCharge}/unit | Draw: ₹{party.drawCharge}/pass
+                      </div>
                     </div>
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      SAPPD: ₹{party.sappdRate || 0}/kg | Annealing: ₹{party.annealingCharge}/unit | Draw: ₹{party.drawCharge}/pass
-                    </div>
-                  </div>
-                )}
-                getSearchableText={(party) => party.partyName}
-              />
+                  )}
+                  getSearchableText={(party) => party.partyName}
+                />
+              </div>
             </div>
 
             {/* Billing & Shipping (Collapsible) */}
@@ -1245,7 +1260,14 @@ export default function OutwardChallanPage() {
                                   onChange={(e) => {
                                     const newItems = [...formData.items];
                                     const newCoils = [...newItems[index].coilEntries];
-                                    newCoils[ci] = { ...newCoils[ci], coilWeight: parseFloat(e.target.value) || 0 };
+                                    const newWeight = parseFloat(e.target.value) || 0;
+                                    newCoils[ci] = { ...newCoils[ci], coilWeight: newWeight };
+                                    
+                                    // Automatic addition for next coil if this one is the last and is not completely empty
+                                    if (ci === newCoils.length - 1 && newWeight > 0) {
+                                      newCoils.push({ coilNumber: '', coilWeight: 0 });
+                                    }
+
                                     newItems[index].coilEntries = newCoils;
                                     const total = newCoils.reduce((s, c) => s + (c.coilWeight || 0), 0);
                                     newItems[index].quantity = total > 0 ? total : newItems[index].quantity;
@@ -1287,18 +1309,8 @@ export default function OutwardChallanPage() {
               </div>
             )}
 
-            {/* Date + Add Item (below Total as per JBOM layout) */}
-            <div className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
-              <div className="flex-1 min-w-[160px]">
-                <label className="block text-xs font-medium text-slate-700 mb-1">Challan Date *</label>
-                <input
-                  type="date"
-                  className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={formData.challanDate}
-                  onChange={(e) => setFormData({ ...formData, challanDate: e.target.value })}
-                  required
-                />
-              </div>
+            {/* Add Item Action */}
+            <div className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 mt-2">
               <button
                 type="button"
                 onClick={addItem}

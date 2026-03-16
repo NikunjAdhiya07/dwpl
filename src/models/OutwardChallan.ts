@@ -1,5 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { IOutwardChallan, IOutwardChallanItem } from '@/types';
+import './PartyMaster';
+import './ItemMaster';
 
 // Coil entry sub-schema
 const CoilEntrySchema = new Schema({

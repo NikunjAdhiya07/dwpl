@@ -1382,10 +1382,10 @@ export default function OutwardChallanPage() {
                         {new Date(challan.challanDate).toLocaleDateString('en-IN')}
                       </span>
                       <span className="text-sm font-medium text-slate-800 sm:col-span-2">
-                        {challan.party.partyName}
+                        {challan.party?.partyName || '—'}
                       </span>
                       <span className="font-bold text-sm text-green-600 text-right">
-                        ₹{challan.totalAmount.toFixed(2)}
+                        ₹{(challan.totalAmount || 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>

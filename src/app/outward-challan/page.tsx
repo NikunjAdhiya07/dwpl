@@ -7,7 +7,7 @@ import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
 import CoilNumberInput from '@/components/CoilNumberInput';
-import { Plus, X, Minus, Send, Trash2, Edit, Download, AlertCircle, MapPin, Truck, History } from 'lucide-react';
+import { Plus, X, Minus, Send, Trash2, Edit, Download, AlertCircle, MapPin, Truck, History, ChevronDown } from 'lucide-react';
 import { exportToPDF, exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 import ChallanPrintView from '@/components/ChallanPrintView';
@@ -192,6 +192,7 @@ export default function OutwardChallanPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [challanToDelete, setChallanToDelete] = useState<OutwardChallan | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [expandedChallanId, setExpandedChallanId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<ChallanForm>({
     party: '',
@@ -1360,61 +1361,156 @@ export default function OutwardChallanPage() {
             <p className="text-sm">Create your first challan to get started</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Challan No.</th>
-                  <th>Date</th>
-                  <th>Party</th>
-                  <th>Items</th>
-                  <th>Total Amount</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {challans.map((challan) => (
-                  <tr key={challan._id}>
-                    <td className="font-semibold">{challan.challanNumber}</td>
-                    <td>{new Date(challan.challanDate).toLocaleDateString()}</td>
-                    <td>{challan.party.partyName}</td>
-                    <td>
-                      <span className="badge badge-blue">
-                        {challan.items.length} item{challan.items.length !== 1 ? 's' : ''}
+          <div className="space-y-2">
+            {challans.map((challan) => {
+              const isExpanded = expandedChallanId === challan._id;
+              return (
+                <div key={challan._id} className="border border-slate-200 rounded-lg overflow-hidden">
+                  {/* Header Row */}
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 cursor-pointer select-none"
+                    onClick={() => setExpandedChallanId(isExpanded ? null : challan._id)}
+                  >
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                    <div className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-2 items-center">
+                      <span className="font-bold text-sm text-blue-700">{challan.challanNumber}</span>
+                      <span className="text-sm text-slate-600">
+                        {new Date(challan.challanDate).toLocaleDateString('en-IN')}
                       </span>
-                    </td>
-                    <td className="font-semibold text-green-600">
-                      ₹{challan.totalAmount.toFixed(2)}
-                    </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handlePDFExport(challan)}
-                          className="btn btn-sm btn-primary"
-                          title="Export PDF"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(challan)}
-                          className="btn btn-sm btn-secondary"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(challan)}
-                          className="btn btn-sm btn-danger"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <span className="text-sm font-medium text-slate-800 sm:col-span-2">
+                        {challan.party.partyName}
+                      </span>
+                      <span className="font-bold text-sm text-green-600 text-right">
+                        ₹{challan.totalAmount.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handlePDFExport(challan)}
+                        className="btn btn-sm btn-primary"
+                        title="Export PDF"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(challan)}
+                        className="btn btn-sm btn-secondary"
+                        title="Edit"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(challan)}
+                        className="btn btn-sm btn-danger"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded Detail Panel */}
+                  {isExpanded && (
+                    <div className="border-t border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                        Items ({challan.items.length})
+                      </p>
+                      <div className="space-y-2">
+                        {challan.items.map((item, idx) => (
+                          <div key={idx} className="bg-white border border-slate-200 rounded p-2.5">
+                            {/* Item header */}
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <span className="text-[10px] font-semibold text-slate-500">#{idx + 1}</span>
+                              <span className="text-[10px] bg-blue-100 text-blue-800 font-semibold px-1.5 py-0.5 rounded">
+                                {item.processType || 'SAPPD'}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-slate-400">FG:</span>
+                                <span className="text-[11px] font-bold text-slate-800">
+                                  {item.finishSize?.itemCode || '—'}
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  ({item.finishSize?.size || '—'})
+                                </span>
+                              </div>
+                              <span className="text-slate-300">|</span>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-slate-400">RM:</span>
+                                <span className="text-[11px] font-bold text-slate-800">
+                                  {item.originalSize?.itemCode || '—'}
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  ({item.originalSize?.size || '—'})
+                                </span>
+                              </div>
+                              <span className="text-slate-300">|</span>
+                              <span className="text-[10px] text-slate-600">
+                                <span className="font-semibold">{item.quantity.toFixed(2)} kg</span>
+                                {' @ ₹'}{item.rate.toFixed(2)}
+                                {' = '}
+                                <span className="font-bold text-green-700">₹{item.itemTotal.toFixed(2)}</span>
+                              </span>
+                              {item.issuedChallanNo && (
+                                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                                  Challan: {item.issuedChallanNo}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Coil Entries */}
+                            {item.coilEntries && item.coilEntries.length > 0 ? (
+                              <div className="mt-1.5 pl-2 border-l-2 border-blue-200">
+                                <p className="text-[9px] font-semibold uppercase text-slate-400 mb-1">Coil Entries</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {item.coilEntries.map((coil, ci) => (
+                                    <div
+                                      key={ci}
+                                      className="flex items-center gap-1 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5"
+                                    >
+                                      <span className="text-[9px] text-slate-400">{ci + 1}.</span>
+                                      {coil.coilNumber && (
+                                        <span className="font-mono text-[10px] font-bold text-blue-800">
+                                          {coil.coilNumber}
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] text-slate-600">
+                                        {coil.coilWeight ? `${coil.coilWeight.toFixed(2)} kg` : ''}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  <span className="text-[10px] font-bold text-green-700 self-center ml-1">
+                                    Total: {item.coilEntries.reduce((s, c) => s + (c.coilWeight || 0), 0).toFixed(2)} kg
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-slate-400 italic pl-2">No coil entries</p>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+                      {/* Vehicle info */}
+                      {(challan.vehicleNumber || (challan.vehicles && challan.vehicles.length > 0)) && (
+                        <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-500">
+                          <Truck className="w-3 h-3" />
+                          <span>
+                            {challan.vehicles && challan.vehicles.length > 0
+                              ? challan.vehicles.map(v => v.vehicleNumber).filter(Boolean).join(', ')
+                              : challan.vehicleNumber}
+                          </span>
+                          {challan.transportName && <span>— {challan.transportName}</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>

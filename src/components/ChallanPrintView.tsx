@@ -3,6 +3,11 @@
 import React from 'react';
 import { formatIndianCurrency, numberToIndianWords } from '@/lib/numberToWords';
 
+interface CoilEntry {
+  coilNumber?: string;
+  coilWeight?: number;
+}
+
 interface ChallanItem {
   finishSize: {
     itemCode: string;
@@ -20,6 +25,7 @@ interface ChallanItem {
   issuedChallanNo?: string;
   coilNumber?: string;
   coilReference?: string;
+  coilEntries?: CoilEntry[];
   quantity: number;
   rate: number;
   itemTotal: number;
@@ -187,12 +193,28 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
                   <p className="font-semibold">{item.finishSize.grade}</p>
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top">
-                  {item.coilNumber || item.coilReference ? (
-                    <>
-                      {item.coilNumber && <p className="font-medium">{item.coilNumber}</p>}
-                      {item.coilReference && <p className="text-[8px] text-gray-500">{item.coilReference}</p>}
-                    </>
-                  ) : '-'}
+                  {(() => {
+                    // Prefer coilEntries (new system), fall back to legacy coilNumber
+                    const entries = item.coilEntries?.filter(c => c.coilNumber);
+                    if (entries && entries.length > 0) {
+                      return (
+                        <div className="text-[9px] leading-snug">
+                          {entries.map((c, ci) => (
+                            <p key={ci} className="font-medium">{c.coilNumber}</p>
+                          ))}
+                        </div>
+                      );
+                    }
+                    if (item.coilNumber || item.coilReference) {
+                      return (
+                        <>
+                          {item.coilNumber && <p className="font-medium text-[9px]">{item.coilNumber}</p>}
+                          {item.coilReference && <p className="text-[8px] text-gray-500">{item.coilReference}</p>}
+                        </>
+                      );
+                    }
+                    return '-';
+                  })()}
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top uppercase">
                   <div className="text-[10px] font-semibold leading-tight">

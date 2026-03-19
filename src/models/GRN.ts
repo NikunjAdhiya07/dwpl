@@ -1,5 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { IGRN } from '@/types';
+import './PartyMaster';
+import './ItemMaster';
 
 const GRNItemSchema = new Schema({
   rmSize: {

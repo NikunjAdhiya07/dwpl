@@ -273,6 +273,9 @@ export default function OutwardChallanPage() {
       
       if (grnsData.success) {
         setGrns(grnsData.data);
+      } else {
+        console.warn('GRN API returned error:', grnsData.error);
+        setGrns([]);
       }
       
       if (companyDataResponse.success) {

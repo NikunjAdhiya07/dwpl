@@ -172,10 +172,16 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
               <tr key={index} className="border-b border-black last:border-b-0">
                 <td className="border-r border-black px-1 py-3 text-center align-top">{index + 1}</td>
                 <td className="border-r border-black px-2 py-3 align-top">
-                  <p className="font-bold text-[11px]">{item.finishSize.itemCode}</p>
+                  <p className="font-bold text-[11px]">{item.finishSize.size || item.finishSize.itemCode || '—'}</p>
+                  {item.finishSize.itemCode && (
+                    <p className="text-[9px] text-gray-500 mt-0.5">{item.finishSize.itemCode}</p>
+                  )}
                 </td>
                 <td className="border-r border-black px-2 py-3 align-top">
-                  <p className="text-[10px] font-semibold">{item.originalSize.itemCode}</p>
+                  <p className="text-[10px] font-semibold">{item.originalSize.size || item.originalSize.itemCode || '—'}</p>
+                  {item.originalSize.itemCode && (
+                    <p className="text-[9px] text-gray-500 mt-0.5">{item.originalSize.itemCode}</p>
+                  )}
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top">
                   <p className="font-semibold">{item.finishSize.grade}</p>

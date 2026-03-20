@@ -248,7 +248,7 @@ export default function GRNPage() {
         <tr>
           <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: center;">${index + 1}</td>
           <td style="border: 1px solid #cbd5e1; padding: 0.75rem;">
-            <p style="font-weight: 600; margin: 0 0 0.25rem 0;">${item.rmSize.size} - ${item.rmSize.grade}</p>
+            <p style="font-weight: 600; margin: 0 0 0.25rem 0;">${item.rmSize?.size || 'Unknown'} - ${item.rmSize?.grade || 'Unknown'}</p>
           </td>
           <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right; font-weight: 600;">${item.quantity.toFixed(2)}</td>
           <td style="border: 1px solid #cbd5e1; padding: 0.75rem; text-align: right;">₹${item.rate.toFixed(2)}</td>
@@ -278,9 +278,9 @@ export default function GRNPage() {
           <div style="margin-bottom: 2rem;">
             <h3 style="font-size: 1.125rem; font-weight: 600; color: #1e293b; margin-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Sending Party Details</h3>
             <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem;">
-              <p style="font-weight: 600; font-size: 1.125rem; margin-bottom: 0.5rem;">${grn.sendingParty.partyName}</p>
-              ${grn.sendingParty.address ? `<p style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${grn.sendingParty.address}</p>` : ''}
-              ${grn.sendingParty.gstNumber ? `<p style="font-size: 0.875rem; color: #64748b; margin: 0;"><span style="font-weight: 500;">GST:</span> ${grn.sendingParty.gstNumber}</p>` : ''}
+              <p style="font-weight: 600; font-size: 1.125rem; margin-bottom: 0.5rem;">${grn.sendingParty?.partyName || 'Unknown Party'}</p>
+              ${grn.sendingParty?.address ? `<p style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${grn.sendingParty.address}</p>` : ''}
+              ${grn.sendingParty?.gstNumber ? `<p style="font-size: 0.875rem; color: #64748b; margin: 0;"><span style="font-weight: 500;">GST:</span> ${grn.sendingParty.gstNumber}</p>` : ''}
             </div>
           </div>
 
@@ -672,13 +672,13 @@ export default function GRNPage() {
                         day: 'numeric',
                       })}
                     </td>
-                    <td className="font-medium">{grn.sendingParty.partyName}</td>
+                    <td className="font-medium">{grn.sendingParty?.partyName || 'Unknown Party'}</td>
                     <td className="font-mono text-sm">{grn.partyChallanNumber}</td>
                     <td>
                       <div className="space-y-1">
                         {grn.items.map((item, idx) => (
                           <div key={idx} className="text-sm">
-                            {item.rmSize.size} - {item.rmSize.grade}
+                            {item.rmSize?.size || 'Unknown'} - {item.rmSize?.grade || 'Unknown'}
                             {item.coilNumber && (
                               <span className="font-mono text-xs bg-slate-100 px-1 rounded ml-2">
                                 {item.coilNumber}

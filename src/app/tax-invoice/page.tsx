@@ -521,7 +521,7 @@ export default function TaxInvoicePage() {
                       {challan.challanNumber}
                     </span>
                     <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                      - {challan.party.partyName}
+                      - {challan.party?.partyName || 'Unknown Party'}
                     </span>
                   </div>
                 )}
@@ -536,7 +536,7 @@ export default function TaxInvoicePage() {
                       </span>
                     </div>
                     <div className="text-sm mt-1" style={{ color: 'var(--secondary)' }}>
-                      {challan.party.partyName}
+                      {challan.party?.partyName || 'Unknown Party'}
                     </div>
                     <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                       {challan.items && challan.items.length > 0 ? (
@@ -551,7 +551,7 @@ export default function TaxInvoicePage() {
                   </div>
                 )}
                 getSearchableText={(challan) => 
-                  `${challan.challanNumber} ${challan.party.partyName} ${
+                  `${challan.challanNumber} ${challan.party?.partyName || ''} ${
                     challan.items && challan.items.length > 0 
                       ? challan.items.map(i => i.finishSize?.size).join(' ') 
                       : (challan.finishSize?.size || '')
@@ -709,12 +709,12 @@ export default function TaxInvoicePage() {
                         day: 'numeric',
                       })}
                     </td>
-                    <td className="font-medium">{invoice.party.partyName}</td>
+                    <td className="font-medium">{invoice.party?.partyName || 'Unknown Party'}</td>
                     <td>
                       <div className="text-sm">
                         {invoice.items && invoice.items.length > 0 ? (
                           <>
-                            <span className="font-semibold">{invoice.items[0].finishSize.size}</span>
+                            <span className="font-semibold">{invoice.items[0].finishSize?.size || 'Unknown'}</span>
                             {invoice.items.length > 1 && (
                               <span className="text-blue-600 ml-1">+{invoice.items.length - 1} items</span>
                             )}

@@ -807,104 +807,104 @@ export default function OutwardChallanPage() {
               </div>
             </details>
 
-            {/* Transport Details (Collapsible) */}
-            <details className="border border-slate-200 rounded">
-              <summary className="px-3 py-2 bg-slate-50 cursor-pointer text-xs font-semibold text-slate-700 hover:bg-slate-100 flex items-center justify-between">
-                <span>Transport Details (Optional)</span>
-                <span className="text-[10px] text-slate-500">Click to expand</span>
-              </summary>
-              <div className="p-3 bg-white border-t border-slate-200">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Select Transport</label>
+            {/* Transport Details – Single Horizontal Row */}
+            <div className="border border-slate-200 rounded bg-slate-50">
+              <div className="px-3 py-1.5 border-b border-slate-200 flex items-center gap-1">
+                <Truck className="w-3 h-3 text-slate-500" />
+                <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">Transport Details</span>
+              </div>
+              <div className="px-3 py-2">
+                <div className="flex flex-wrap items-end gap-2">
+                  {/* Select Transport */}
+                  <div className="flex-1 min-w-[130px] max-w-[180px]">
+                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">Quick Select</label>
                     <select
-                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
                       onChange={(e) => handleTransportSelect(e.target.value)}
                       value=""
                     >
-                      <option value="">-- Select --</option>
+                      <option value="">-- Select Transport --</option>
                       {transports.map((transport) => (
                         <option key={transport._id} value={transport._id}>
-                          {transport.vehicleNumber} - {transport.transporterName}
+                          {transport.vehicleNumber} – {transport.transporterName}
                         </option>
                       ))}
                     </select>
                   </div>
 
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Transporter</label>
+                  {/* Transporter */}
+                  <div className="flex-1 min-w-[110px] max-w-[160px]">
+                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">Transporter</label>
                     <input
                       type="text"
-                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
                       value={formData.transportName || ''}
                       onChange={(e) => setFormData({ ...formData, transportName: e.target.value })}
-                      placeholder="ABC Transport"
+                      placeholder="Transporter name"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Owner Name</label>
+                  {/* Owner Name */}
+                  <div className="flex-1 min-w-[110px] max-w-[160px]">
+                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">Owner Name</label>
                     <input
                       type="text"
-                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
                       value={formData.ownerName || ''}
                       onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
-                      placeholder="John Doe"
+                      placeholder="Owner name"
                     />
                   </div>
 
-                </div>
-
-                {/* Multi-vehicle entries */}
-                <div className="mt-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-slate-700">
-                      Vehicle Numbers <span className="text-red-500">*</span>
+                  {/* Vehicle Numbers – inline chips */}
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">
+                      Vehicle No. <span className="text-red-500">*</span>
                     </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData({ ...formData, vehicles: [...formData.vehicles, { vehicleNumber: '' }] })
-                      }
-                      className="text-[10px] text-blue-600 hover:text-blue-800 border border-blue-300 rounded px-2 py-0.5 flex items-center gap-0.5"
-                    >
-                      <Plus className="w-3 h-3" /> Add Vehicle
-                    </button>
-                  </div>
-                  <div className="space-y-1">
-                    {formData.vehicles.map((v, vi) => (
-                      <div key={vi} className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 w-4">{vi + 1}.</span>
-                        <input
-                          type="text"
-                          className="flex-1 px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                          value={v.vehicleNumber}
-                          onChange={(e) => {
-                            const nv = [...formData.vehicles];
-                            nv[vi] = { vehicleNumber: e.target.value };
-                            setFormData({ ...formData, vehicles: nv });
-                          }}
-                          placeholder="e.g. GJ01AB1234"
-                          required={vi === 0}
-                        />
-                        {formData.vehicles.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData({ ...formData, vehicles: formData.vehicles.filter((_, i) => i !== vi) })
-                            }
-                            className="text-red-400 hover:text-red-600"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {formData.vehicles.map((v, vi) => (
+                        <div key={vi} className="flex items-center gap-0.5 bg-white border border-slate-300 rounded px-1.5 py-0.5">
+                          <input
+                            type="text"
+                            className="text-xs outline-none w-[90px] bg-transparent"
+                            value={v.vehicleNumber}
+                            onChange={(e) => {
+                              const nv = [...formData.vehicles];
+                              nv[vi] = { vehicleNumber: e.target.value };
+                              setFormData({ ...formData, vehicles: nv });
+                            }}
+                            placeholder="GJ01AB1234"
+                            required={vi === 0}
+                          />
+                          {formData.vehicles.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormData({ ...formData, vehicles: formData.vehicles.filter((_, i) => i !== vi) })
+                              }
+                              className="text-red-400 hover:text-red-600 ml-0.5"
+                              title="Remove vehicle"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({ ...formData, vehicles: [...formData.vehicles, { vehicleNumber: '' }] })
+                        }
+                        className="text-[10px] text-blue-600 hover:text-blue-800 border border-blue-300 rounded px-1.5 py-0.5 flex items-center gap-0.5 bg-white whitespace-nowrap"
+                        title="Add another vehicle"
+                      >
+                        <Plus className="w-3 h-3" /> Add
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </details>
+            </div>
 
             {/* Items Section - Compact */}
             <div className="border border-slate-200 rounded">
@@ -962,7 +962,7 @@ export default function OutwardChallanPage() {
                                 Annealing: selectedParty.annealingCharge,
                               };
                               return rm[item.processType] || 0;
-                            })()} | EA: ₹{item.annealingCharge} | EP: ₹{item.drawCharge}
+                            })()} /kg
                           </span>
                         </div>
                         <button
@@ -974,9 +974,10 @@ export default function OutwardChallanPage() {
                         </button>
                       </div>
 
-                      <div className="flex sm:flex-row flex-col gap-1 items-start sm:items-end w-full">
+                      {/* Item Fields – Single Horizontal Row (no EA/EP) */}
+                      <div className="flex flex-wrap gap-1.5 items-end w-full">
                         {/* FG Selection */}
-                        <div className="w-full sm:w-[15%]">
+                        <div style={{ minWidth: '120px', flex: '2' }}>
                           <ItemSelector
                             label="FG *"
                             value={item.finishSize}
@@ -985,11 +986,9 @@ export default function OutwardChallanPage() {
                             placeholder="Select FG"
                             required
                             renderSelected={(fgItem) => (
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] font-medium truncate" style={{ color: 'var(--foreground)' }}>
-                                  {fgItem.size}
-                                </span>
-                              </div>
+                              <span className="text-[10px] font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                                {fgItem.size}
+                              </span>
                             )}
                             renderOption={(fgItem) => (
                               <div className="flex items-center gap-1">
@@ -997,7 +996,7 @@ export default function OutwardChallanPage() {
                                   {fgItem.itemCode}
                                 </span>
                                 <span className="text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
-                                  {fgItem.size} - {fgItem.grade}
+                                  {fgItem.size} – {fgItem.grade}
                                 </span>
                               </div>
                             )}
@@ -1006,7 +1005,7 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* RM Selection */}
-                        <div className="w-full sm:w-[15%]">
+                        <div style={{ minWidth: '120px', flex: '2' }}>
                           <ItemSelector
                             label="RM *"
                             value={item.originalSize}
@@ -1020,11 +1019,9 @@ export default function OutwardChallanPage() {
                                 : undefined
                             }
                             renderSelected={(rmItem) => (
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] font-medium truncate" style={{ color: 'var(--foreground)' }}>
-                                  {rmItem.size}
-                                </span>
-                              </div>
+                              <span className="text-[10px] font-medium truncate" style={{ color: 'var(--foreground)' }}>
+                                {rmItem.size}
+                              </span>
                             )}
                             renderOption={(rmItem) => (
                               <div className="flex items-center gap-1">
@@ -1032,7 +1029,7 @@ export default function OutwardChallanPage() {
                                   {rmItem.itemCode}
                                 </span>
                                 <span className="text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
-                                  {rmItem.size} - {rmItem.grade}
+                                  {rmItem.size} – {rmItem.grade}
                                 </span>
                               </div>
                             )}
@@ -1041,12 +1038,10 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* Annealing Count */}
-                        <div className="w-full sm:w-[5%]">
-                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">
-                            Ann *
-                          </label>
+                        <div style={{ minWidth: '52px', flex: '0.6' }}>
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">Ann *</label>
                           <select
-                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
+                            className="w-full px-1 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500"
                             value={item.annealingCount}
                             onChange={(e) => updateItem(index, 'annealingCount', parseInt(e.target.value))}
                             required
@@ -1058,12 +1053,10 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* Draw Pass Count */}
-                        <div className="w-full sm:w-[5%]">
-                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">
-                            Draw *
-                          </label>
+                        <div style={{ minWidth: '52px', flex: '0.6' }}>
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">Draw *</label>
                           <select
-                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
+                            className="w-full px-1 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500"
                             value={item.drawPassCount}
                             onChange={(e) => updateItem(index, 'drawPassCount', parseInt(e.target.value))}
                             required
@@ -1075,7 +1068,7 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* Issued Challan No */}
-                        <div className="w-full sm:w-[13%]">
+                        <div style={{ minWidth: '110px', flex: '1.5' }}>
                           <ItemSelector
                             label="Challan"
                             value={grns.find(g => String(g.partyChallanNumber).trim() === String(item.issuedChallanNo || '').trim())?._id || ''}
@@ -1099,55 +1092,26 @@ export default function OutwardChallanPage() {
                               </span>
                             )}
                             renderOption={(grn) => (
-                              <div>
-                                <div className="font-mono text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
-                                  {grn.partyChallanNumber}
-                                </div>
+                              <div className="font-mono text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
+                                {grn.partyChallanNumber}
                               </div>
                             )}
                             getSearchableText={(grn) => `${grn.partyChallanNumber} ${grn.sendingParty?.partyName || ''}`}
                           />
                         </div>
 
-                        {/* Extra Annealing Count */}
-                        <div className="w-full sm:w-[5%]">
-                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">
-                            EA
-                          </label>
-                          <input
-                            type="number"
-                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
-                            value={item.extraAnnealingCount}
-                            onChange={(e) => updateItem(index, 'extraAnnealingCount', parseInt(e.target.value) || 0)}
-                            min="0"
-                            step="1"
-                          />
-                        </div>
-
-                        {/* Extra Pass Count */}
-                        <div className="w-full sm:w-[5%]">
-                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">
-                            EP
-                          </label>
-                          <input
-                            type="number"
-                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px]"
-                            value={item.extraPassCount}
-                            onChange={(e) => updateItem(index, 'extraPassCount', parseInt(e.target.value) || 0)}
-                            min="0"
-                            step="1"
-                          />
-                        </div>
-
                         {/* Quantity – auto-filled from coil sum */}
-                        <div className="w-full sm:w-[9%] relative">
-                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none absolute -top-1 left-0 right-0 truncate">
-                            Qty (kg) * {item.coilEntries.length > 0 && <span className="text-[9px] text-green-600">🔒</span>}
+                        <div style={{ minWidth: '72px', flex: '1' }}>
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none flex items-center gap-1">
+                            Qty (kg) *
+                            {item.coilEntries.length > 0 && <span className="text-[9px] text-green-600">🔒</span>}
                           </label>
                           <input
                             type="number"
                             step="0.01"
-                            className="w-full px-1 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 min-h-[32px] mt-3"
+                            className={`w-full px-1 py-1.5 text-xs border rounded focus:ring-1 focus:ring-blue-500 ${
+                              item.coilEntries.length > 0 ? 'bg-green-50 border-green-300' : 'border-slate-300'
+                            }`}
                             value={item.quantity}
                             onChange={(e) => {
                               if (item.coilEntries.length === 0) {
@@ -1161,10 +1125,10 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* Rate - Auto-calculated */}
-                        <div className="w-full sm:w-[13%] flex flex-col pt-0.5">
-                          <div className="flex items-center gap-0.5 mb-0.5 mt-[-1px]">
-                            <label className="block text-[10px] font-medium text-slate-700 leading-none">Rate (₹)</label>
-                            <label className="flex items-center ml-auto">
+                        <div style={{ minWidth: '90px', flex: '1.2' }}>
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <label className="text-[10px] font-medium text-slate-700 leading-none">Rate (₹)</label>
+                            <label className="flex items-center ml-auto cursor-pointer" title="Override rate">
                               <input
                                 type="checkbox"
                                 className="w-2.5 h-2.5"
@@ -1189,9 +1153,9 @@ export default function OutwardChallanPage() {
                           <input
                             type="number"
                             step="0.01"
-                            className={`w-full px-1 py-1 text-xs border rounded focus:ring-1 focus:ring-blue-500 min-h-[32px] ${
-                              item.rateOverride 
-                                ? 'border-amber-400 bg-amber-50' 
+                            className={`w-full px-1 py-1.5 text-xs border rounded focus:ring-1 focus:ring-blue-500 ${
+                              item.rateOverride
+                                ? 'border-amber-400 bg-amber-50'
                                 : 'border-green-300 bg-green-50'
                             }`}
                             value={item.rate || 0}
@@ -1203,25 +1167,25 @@ export default function OutwardChallanPage() {
                         </div>
 
                         {/* Item Total */}
-                        <div className="w-full sm:w-[15%]">
-                          <label className="block text-[10px] font-medium text-slate-700 opacity-0 mb-0.5 leading-none">Total</label>
-                          <div className="w-full px-1.5 py-1 bg-blue-50 border border-blue-200 rounded text-right min-h-[32px] flex flex-col justify-center mt-3">
-                            <div className="text-[11px] font-bold text-blue-600 leading-none">₹{item.itemTotal.toFixed(2)}</div>
+                        <div style={{ minWidth: '90px', flex: '1.2' }}>
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">Total</label>
+                          <div className="w-full px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-right">
+                            <span className="text-[11px] font-bold text-blue-600">₹{item.itemTotal.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Coil Entries – multiple coils, sum becomes Quantity */}
+                      {/* Coil Entries – compact vertical list */}
                       <div className="mt-2 border-t border-slate-100 pt-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-wide">
-                            Coil Entries
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[10px] font-semibold text-slate-600 uppercase tracking-wide">Coil Entries</label>
                             {item.coilEntries.length > 0 && (
-                              <span className="ml-1 text-green-600 font-bold">
-                                (Total: {item.coilEntries.reduce((s, c) => s + (c.coilWeight || 0), 0).toFixed(2)} kg)
+                              <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
+                                Total: {item.coilEntries.reduce((s, c) => s + (c.coilWeight || 0), 0).toFixed(2)} kg
                               </span>
                             )}
-                          </label>
+                          </div>
                           <button
                             type="button"
                             onClick={() => {
@@ -1233,19 +1197,19 @@ export default function OutwardChallanPage() {
                               newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
                               setFormData({ ...formData, items: newItems });
                             }}
-                            className="text-[10px] text-blue-600 border border-blue-300 rounded px-1.5 py-0.5 flex items-center gap-0.5"
+                            className="text-[10px] text-blue-600 border border-blue-300 bg-blue-50 rounded px-2 py-0.5 flex items-center gap-0.5 hover:bg-blue-100"
                           >
                             <Plus className="w-3 h-3" /> Add Coil
                           </button>
                         </div>
                         {item.coilEntries.length > 0 && (
-                          <div className="space-y-1">
+                          <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
                             {item.coilEntries.map((coil, ci) => (
-                              <div key={ci} className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-400 w-4">{ci + 1}.</span>
+                              <div key={ci} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded px-1.5 py-1">
+                                <span className="text-[9px] text-slate-400 font-semibold w-4 flex-shrink-0">{ci + 1}.</span>
                                 <input
                                   type="text"
-                                  className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded"
+                                  className="flex-1 px-1.5 py-0.5 text-xs border border-slate-200 rounded bg-white min-w-0"
                                   value={coil.coilNumber}
                                   onChange={(e) => {
                                     const newItems = [...formData.items];
@@ -1254,32 +1218,33 @@ export default function OutwardChallanPage() {
                                     newItems[index].coilEntries = newCoils;
                                     setFormData({ ...formData, items: newItems });
                                   }}
-                                  placeholder="Coil No"
+                                  placeholder="Coil number"
                                 />
                                 <input
                                   type="number"
                                   step="0.01"
-                                  className="w-24 px-2 py-1 text-xs border border-slate-200 rounded"
+                                  className="w-20 px-1.5 py-0.5 text-xs border border-slate-200 rounded bg-white flex-shrink-0"
                                   value={coil.coilWeight || ''}
                                   onChange={(e) => {
                                     const newItems = [...formData.items];
                                     const newCoils = [...newItems[index].coilEntries];
                                     const newWeight = parseFloat(e.target.value) || 0;
                                     newCoils[ci] = { ...newCoils[ci], coilWeight: newWeight };
-                                    
-                                    // Automatic addition for next coil if this one is the last and is not completely empty
+                                    // Auto-add next coil when last entry weight is set
                                     if (ci === newCoils.length - 1 && newWeight > 0) {
                                       newCoils.push({ coilNumber: '', coilWeight: 0 });
                                     }
-
                                     newItems[index].coilEntries = newCoils;
                                     const total = newCoils.reduce((s, c) => s + (c.coilWeight || 0), 0);
                                     newItems[index].quantity = total > 0 ? total : newItems[index].quantity;
                                     newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
                                     setFormData({ ...formData, items: newItems });
                                   }}
-                                  placeholder="Weight (kg)"
+                                  placeholder="kg"
                                 />
+                                {coil.coilWeight > 0 && (
+                                  <span className="text-[9px] text-green-600 font-semibold flex-shrink-0">{coil.coilWeight.toFixed(1)}kg</span>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1291,7 +1256,8 @@ export default function OutwardChallanPage() {
                                     newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
                                     setFormData({ ...formData, items: newItems });
                                   }}
-                                  className="text-red-400 hover:text-red-600"
+                                  className="text-red-400 hover:text-red-600 flex-shrink-0"
+                                  title="Remove coil"
                                 >
                                   <X className="w-3 h-3" />
                                 </button>

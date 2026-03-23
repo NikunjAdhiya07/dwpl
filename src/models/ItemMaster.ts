@@ -50,22 +50,22 @@ ItemMasterSchema.pre('save', async function () {
     
     // Find the last item with the same category prefix
     const lastItem = await ItemMasterModel.findOne(
-      { category: this.category, itemCode: new RegExp(`^${prefix}\\d+`) },
+      { category: this.category, itemCode: new RegExp(`^${prefix}-\\d+`) },
       {},
       { sort: { itemCode: -1 } }
     );
     
     let nextNumber = 1;
     if (lastItem && lastItem.itemCode) {
-      // Extract number from last item code (e.g., "FG00001" -> 1)
-      const match = lastItem.itemCode.match(/[A-Z]+(\d+)/);
+      // Extract number from last item code (e.g., "RM-0001" -> 1)
+      const match = lastItem.itemCode.match(/[A-Z]+-?(\d+)/);
       if (match) {
         nextNumber = parseInt(match[1], 10) + 1;
       }
     }
     
-    // Format as FG00001, RM00001, etc. (padded to 5 digits)
-    this.itemCode = `${prefix}${nextNumber.toString().padStart(5, '0')}`;
+    // Format as RM-0001, FG-0001 etc. (padded to 4 digits with dash)
+    this.itemCode = `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
   }
 });
 

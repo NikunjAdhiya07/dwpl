@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
   { 
     name: 'Masters', 
     icon: Settings,
@@ -41,7 +41,7 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-slate-900 text-white min-h-screen fixed left-0 top-0 overflow-y-auto">
       <div className="p-6 border-b border-slate-800/50 mb-4">
-        <Link href="/" className="flex items-center gap-4 group">
+        <Link href="/dashboard" className="flex items-center gap-4 group">
           <div className="relative w-12 h-12 overflow-hidden rounded-xl bg-white flex items-center justify-center p-2 transition-transform group-hover:scale-105 shadow-lg shadow-blue-500/20">
             <img 
               src="/icon.png" 

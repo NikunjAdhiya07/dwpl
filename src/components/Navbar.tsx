@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { 
   Home, 
   Users, 
@@ -15,11 +15,13 @@ import {
   Warehouse,
   Send,
   Receipt,
-  ChevronDown
+  ChevronDown,
+  LogOut,
+  ShieldAlert
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
   { 
     name: 'Masters', 
     icon: Settings,
@@ -39,7 +41,27 @@ const navigation = [
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      setIsAdmin(document.cookie.includes('dwpl_role=SUPER_ADMIN'));
+    }
+  }, [pathname]);
+
+  if (pathname === '/login') return null;
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.refresh();
+      router.push('/login');
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
@@ -47,7 +69,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-3 group">
+            <Link href="/dashboard" className="flex items-center gap-3 group">
               <div className="relative w-10 h-10 overflow-hidden rounded-xl bg-slate-100 flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
                 <img 
                   src="/icon.png" 
@@ -137,13 +159,27 @@ export default function Navbar() {
 
           {/* Right side - could add user menu, notifications, etc. */}
           <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600 hidden lg:block">
+            {isAdmin && (
+              <Link href="/admin/users" className="hidden lg:flex items-center gap-2 px-3 py-1.5 text-xs uppercase tracking-wider font-extrabold text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-amber-200 shadow-sm mr-2">
+                <ShieldAlert className="w-4 h-4" />
+                Admin Panel
+              </Link>
+            )}
+            <span className="text-sm font-medium text-slate-600 hidden lg:block">
               {new Date().toLocaleDateString('en-IN', { 
                 day: 'numeric', 
                 month: 'short', 
                 year: 'numeric' 
               })}
             </span>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden md:block">Logout</span>
+            </button>
           </div>
         </div>
       </div>

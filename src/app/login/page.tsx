@@ -125,11 +125,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-200/60 text-center">
-            <p className="text-xs text-slate-500 font-medium">
-              Super Admin: <span className="text-slate-700 font-semibold bg-slate-100 px-2 py-1 rounded-md">admin</span> / <span className="text-slate-700 font-semibold bg-slate-100 px-2 py-1 rounded-md">admin123</span>
-            </p>
-          </div>
+
         </div>
       </div>
     </div>

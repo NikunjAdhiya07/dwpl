@@ -26,7 +26,7 @@ export default function ManageUsers() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users');
+      const res = await fetch('/api/users', { credentials: 'same-origin' });
       const data = await res.json();
       if (data.success) {
         setUsers(data.data);
@@ -53,6 +53,7 @@ export default function ManageUsers() {
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ name, password, role }),
       });
       const data = await res.json();
@@ -77,7 +78,7 @@ export default function ManageUsers() {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
     try {
-      const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/users/${id}`, { method: 'DELETE', credentials: 'same-origin' });
       const data = await res.json();
       if (data.success) {
         fetchUsers();
@@ -95,8 +96,9 @@ export default function ManageUsers() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold text-slate-800">Access Denied</h2>
-        <p className="text-slate-500 mt-2">You must be a SUPER_ADMIN to view this page.</p>
+        <h2 className="text-2xl font-bold text-slate-800">Access Denied / Error</h2>
+        <p className="text-slate-500 mt-2">Error details: {error}</p>
+        <p className="text-slate-400 text-sm mt-4">Make sure you are logged in properly as SUPER_ADMIN.</p>
       </div>
     );
   }

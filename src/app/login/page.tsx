@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, ArrowRight, Loader2, Factory } from 'lucide-react';
+import { Lock, User, ArrowRight, Loader2, Factory } from 'lucide-react';
 
 export default function Login() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,7 +20,7 @@ export default function Login() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ name, password }),
       });
 
       const data = await res.json();
@@ -68,17 +68,17 @@ export default function Login() {
             )}
             
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Email Address</label>
+              <label className="text-sm font-semibold text-slate-700 ml-1">User ID / Name</label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-600 transition-colors">
-                  <Mail className="h-5 w-5" />
+                  <User className="h-5 w-5" />
                 </div>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   className="w-full pl-11 pr-4 py-3.5 bg-white/50 border border-slate-200/60 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all outline-none"
-                  placeholder="admin@dwpl.com"
+                  placeholder="Enter User ID"
                   required
                 />
               </div>
@@ -127,7 +127,7 @@ export default function Login() {
 
           <div className="mt-8 pt-6 border-t border-slate-200/60 text-center">
             <p className="text-xs text-slate-500 font-medium">
-              Demo Credentials: <span className="text-slate-700 font-semibold bg-slate-100 px-2 py-1 rounded-md">admin@dwpl.com</span> / <span className="text-slate-700 font-semibold bg-slate-100 px-2 py-1 rounded-md">admin123</span>
+              Super Admin: <span className="text-slate-700 font-semibold bg-slate-100 px-2 py-1 rounded-md">admin</span> / <span className="text-slate-700 font-semibold bg-slate-100 px-2 py-1 rounded-md">admin123</span>
             </p>
           </div>
         </div>

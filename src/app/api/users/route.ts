@@ -32,9 +32,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     await connectDB();
     
-    const existingUser = await User.findOne({ email: body.email });
+    const existingUser = await User.findOne({ name: body.name });
     if (existingUser) {
-      return NextResponse.json({ success: false, error: 'Email already exists' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'User ID / Name already exists' }, { status: 400 });
     }
 
     const user = new User(body);

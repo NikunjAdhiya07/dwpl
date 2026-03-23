@@ -6,10 +6,10 @@ import { User } from '@/models/User';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { name, password } = body;
 
     // Hardcoded SUPER_ADMIN fallback
-    if (email === 'admin@dwpl.com' && password === 'admin123') {
+    if (name === 'admin' && password === 'admin123') {
       const cookieStore = await cookies();
       cookieStore.set('dwpl_auth', 'authenticated', {
         httpOnly: true,
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
-    const user = await User.findOne({ email, password });
+    const user = await User.findOne({ name, password });
 
     if (!user) {
       return NextResponse.json(

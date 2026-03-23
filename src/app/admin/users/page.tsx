@@ -3,12 +3,11 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
-import { ShieldAlert, Trash2, UserPlus, Mail, Lock, User as UserIcon, Shield } from 'lucide-react';
+import { ShieldAlert, Trash2, UserPlus, Lock, User as UserIcon, Shield } from 'lucide-react';
 
 interface User {
   _id: string;
   name: string;
-  email: string;
   role: string;
   isActive: boolean;
   createdAt: string;
@@ -21,13 +20,10 @@ export default function ManageUsers() {
 
   // Form states
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('USER');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check if SUPER ADMIN on client side simply by checking cookie if possible
-  // Since we don't have SSR cookie checks here, we rely on the API.
   const fetchUsers = async () => {
     try {
       const res = await fetch('/api/users');
@@ -57,14 +53,13 @@ export default function ManageUsers() {
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, password, role }),
       });
       const data = await res.json();
       
       if (data.success) {
         // Reset form and refresh list
         setName('');
-        setEmail('');
         setPassword('');
         setRole('USER');
         fetchUsers();
@@ -130,7 +125,7 @@ export default function ManageUsers() {
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">Full Name</label>
+                <label className="text-sm font-semibold text-slate-700">User ID / Full Name</label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
@@ -139,22 +134,7 @@ export default function ManageUsers() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-sm"
-                    placeholder="John Doe"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-sm"
-                    placeholder="john@dwpl.com"
+                    placeholder="E.g., John Doe"
                   />
                 </div>
               </div>
@@ -209,8 +189,7 @@ export default function ManageUsers() {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-y border-slate-100">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Name</th>
-                    <th className="px-4 py-3 font-semibold">Email</th>
+                    <th className="px-4 py-3 font-semibold">User ID / Name</th>
                     <th className="px-4 py-3 font-semibold">Role</th>
                     <th className="px-4 py-3 justify-end flex font-semibold">Actions</th>
                   </tr>
@@ -219,7 +198,6 @@ export default function ManageUsers() {
                   {users.map((user) => (
                     <tr key={user._id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-4 py-3 font-medium text-slate-800">{user.name}</td>
-                      <td className="px-4 py-3 text-slate-600">{user.email}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-md text-[10px] font-bold tracking-wider ${
                           user.role === 'SUPER_ADMIN' 
@@ -242,7 +220,7 @@ export default function ManageUsers() {
                   ))}
                   {users.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                      <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
                         No users have been created yet.
                       </td>
                     </tr>

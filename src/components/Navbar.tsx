@@ -72,7 +72,7 @@ export default function Navbar() {
             <Link href="/dashboard" className="flex items-center gap-3 group">
               <div className="relative w-10 h-10 overflow-hidden rounded-xl bg-slate-100 flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
                 <img 
-                  src="/icon.png" 
+                  src="/icon.png?v=2" 
                   alt="DWPL Logo" 
                   className="w-full h-full object-contain"
                 />

@@ -9,4 +9,9 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-export const User = mongoose.models.User || mongoose.model('User', userSchema);
+// Clear cached model to force recompilation of the schema during hot-reloads
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+
+export const User = mongoose.model('User', userSchema);

@@ -44,7 +44,7 @@ export default function Sidebar() {
         <Link href="/dashboard" className="flex items-center gap-4 group">
           <div className="relative w-12 h-12 overflow-hidden rounded-xl bg-white flex items-center justify-center p-2 transition-transform group-hover:scale-105 shadow-lg shadow-blue-500/20">
             <img 
-              src="/icon.png" 
+              src="/icon.png?v=2" 
               alt="DWPL Logo" 
               className="w-full h-full object-contain"
             />

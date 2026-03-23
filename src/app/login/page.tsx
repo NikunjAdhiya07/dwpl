@@ -50,8 +50,8 @@ export default function Login() {
       
       <div className="relative w-full max-w-[420px] p-6 lg:p-0">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center p-3 mb-6 transform hover:scale-105 transition-all duration-300 ring-1 ring-slate-900/5">
-            <Factory className="w-8 h-8 text-indigo-600" />
+          <div className="mx-auto w-24 h-24 bg-white rounded-3xl shadow-xl flex items-center justify-center p-4 mb-6 transform hover:scale-105 transition-all duration-300 ring-1 ring-slate-900/5">
+            <img src="/icon.png?v=2" alt="DWPL Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-br from-slate-900 to-slate-700 bg-clip-text text-transparent">
             Welcome Back

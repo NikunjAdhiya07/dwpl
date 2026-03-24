@@ -351,60 +351,6 @@ export default function OutwardChallanPage() {
     });
   };
 
-  const addAnnealingItem = () => {
-    if (!selectedParty) {
-      setError('Please select a party first');
-      return;
-    }
-    const newItem: ChallanItem = {
-      finishSize: '',
-      originalSize: '',
-      processType: 'Annealing',
-      annealingCount: 1,
-      drawPassCount: 0,
-      extraAnnealingCount: 0,
-      extraPassCount: 0,
-      coilEntries: [],
-      quantity: 0,
-      rate: selectedParty.annealingCharge,
-      rateOverride: false,
-      annealingCharge: selectedParty.annealingCharge,
-      drawCharge: selectedParty.drawCharge,
-      itemTotal: 0,
-      issuedChallanNo: '',
-      coilNumber: '',
-      coilReference: '',
-    };
-    setFormData({ ...formData, items: [...formData.items, newItem] });
-  };
-
-  const addDrawItem = () => {
-    if (!selectedParty) {
-      setError('Please select a party first');
-      return;
-    }
-    const newItem: ChallanItem = {
-      finishSize: '',
-      originalSize: '',
-      processType: 'Draw',
-      annealingCount: 0,
-      drawPassCount: 1,
-      extraAnnealingCount: 0,
-      extraPassCount: 0,
-      coilEntries: [],
-      quantity: 0,
-      rate: selectedParty.drawCharge,
-      rateOverride: false,
-      annealingCharge: selectedParty.annealingCharge,
-      drawCharge: selectedParty.drawCharge,
-      itemTotal: 0,
-      issuedChallanNo: '',
-      coilNumber: '',
-      coilReference: '',
-    };
-    setFormData({ ...formData, items: [...formData.items, newItem] });
-  };
-
 
   const removeItem = (index: number) => {
     const newItems = formData.items.filter((_, i) => i !== index);
@@ -464,8 +410,8 @@ export default function OutwardChallanPage() {
       const S = rateMap[item.processType] ?? (selectedParty.sappdRate || selectedParty.rate);
       const A = selectedParty.annealingCharge;
       const P = selectedParty.drawCharge;
-      const EA = item.extraAnnealingCount || 0;
-      const EP = item.extraPassCount || 0;
+      const EA = item.annealingCount || 0;
+      const EP = item.drawPassCount || 0;
       item.rate = S + (A * EA) + (P * EP);
     }
     
@@ -994,8 +940,8 @@ export default function OutwardChallanPage() {
                                 const baseRate = rateMap[pt] || 0;
                                 const A = selectedParty.annealingCharge;
                                 const P = selectedParty.drawCharge;
-                                const EA = newItems[index].extraAnnealingCount || 0;
-                                const EP = newItems[index].extraPassCount || 0;
+                                const EA = newItems[index].annealingCount || 0;
+                                const EP = newItems[index].drawPassCount || 0;
                                 newItems[index].rate = baseRate + (A * EA) + (P * EP);
                                 newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
                               }
@@ -1346,26 +1292,6 @@ export default function OutwardChallanPage() {
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add Item
-              </button>
-              <button
-                type="button"
-                onClick={addAnnealingItem}
-                className="px-4 py-1.5 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 flex items-center gap-1.5 whitespace-nowrap"
-                disabled={!selectedParty}
-                title={selectedParty ? `Annealing Charge: ₹${selectedParty.annealingCharge}/unit` : 'Select a party first'}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Annealing {selectedParty && <span className="font-bold">(₹{selectedParty.annealingCharge})</span>}
-              </button>
-              <button
-                type="button"
-                onClick={addDrawItem}
-                className="px-4 py-1.5 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 flex items-center gap-1.5 whitespace-nowrap"
-                disabled={!selectedParty}
-                title={selectedParty ? `Draw Charge: ₹${selectedParty.drawCharge}/pass` : 'Select a party first'}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Draw {selectedParty && <span className="font-bold">(₹{selectedParty.drawCharge})</span>}
               </button>
             </div>
 

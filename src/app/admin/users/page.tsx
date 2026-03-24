@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
-import { ShieldAlert, Trash2, UserPlus, Lock, User as UserIcon, Shield, CheckSquare } from 'lucide-react';
+import { ShieldAlert, Trash2, UserPlus, Lock, User as UserIcon, Shield, CheckSquare, Edit2, X } from 'lucide-react';
 
 interface User {
   _id: string;
@@ -20,6 +20,7 @@ export default function ManageUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -54,29 +55,48 @@ export default function ManageUsers() {
     setError('');
 
     try {
-      const res = await fetch('/api/users', {
-        method: 'POST',
+      const url = editingUser ? `/api/users/${editingUser._id}` : '/api/users';
+      const method = editingUser ? 'PATCH' : 'POST';
+      const bodyPayload: any = { name, role, allowedSections: role === 'SUPER_ADMIN' ? AVAILABLE_SECTIONS : allowedSections };
+      if (!editingUser || password) {
+        bodyPayload.password = password;
+      }
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ name, password, role, allowedSections: role === 'SUPER_ADMIN' ? AVAILABLE_SECTIONS : allowedSections }),
+        body: JSON.stringify(bodyPayload),
       });
       const data = await res.json();
       
       if (data.success) {
-        // Reset form and refresh list
-        setName('');
-        setPassword('');
-        setRole('USER');
-        setAllowedSections(AVAILABLE_SECTIONS);
+        cancelEdit();
         fetchUsers();
       } else {
-        setError(data.error || 'Failed to create user');
+        setError(data.error || `Failed to ${editingUser ? 'update' : 'create'} user`);
       }
     } catch (e) {
       setError('An error occurred');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    setName(user.name);
+    setRole(user.role);
+    setAllowedSections(user.allowedSections || AVAILABLE_SECTIONS);
+    setPassword('');
+  };
+
+  const cancelEdit = () => {
+    setEditingUser(null);
+    setName('');
+    setPassword('');
+    setRole('USER');
+    setAllowedSections(AVAILABLE_SECTIONS);
   };
 
   const handleDelete = async (id: string) => {
@@ -126,8 +146,8 @@ export default function ManageUsers() {
         <div className="lg:col-span-1">
           <Card>
             <div className="flex items-center gap-2 mb-6">
-              <UserPlus className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-bold text-slate-800">Create New User</h3>
+              {editingUser ? <Edit2 className="w-5 h-5 text-amber-600" /> : <UserPlus className="w-5 h-5 text-blue-600" />}
+              <h3 className="text-lg font-bold text-slate-800">{editingUser ? 'Edit User' : 'Create New User'}</h3>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -147,12 +167,12 @@ export default function ManageUsers() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">Password</label>
+                <label className="text-sm font-semibold text-slate-700">Password {editingUser && <span className="text-slate-400 font-normal">(Leave blank to keep current)</span>}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
-                    required
+                    required={!editingUser}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-sm"
@@ -201,13 +221,24 @@ export default function ManageUsers() {
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-sm transition-all disabled:opacity-70 mt-2 text-sm"
-              >
-                {isSubmitting ? 'Creating...' : 'Create User'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-sm transition-all disabled:opacity-70 mt-2 text-sm"
+                >
+                  {isSubmitting ? 'Saving...' : editingUser ? 'Save Updates' : 'Create User'}
+                </button>
+                {editingUser && (
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold shadow-sm transition-all mt-2 text-sm max-w-fit"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </form>
           </Card>
         </div>
@@ -256,7 +287,14 @@ export default function ManageUsers() {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 flex justify-end">
+                      <td className="px-4 py-3 flex justify-end gap-1">
+                        <button
+                          onClick={() => handleEdit(user)}
+                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          title="Edit User"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleDelete(user._id)}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"

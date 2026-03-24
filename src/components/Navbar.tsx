@@ -48,7 +48,8 @@ export default function Navbar() {
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      setIsAdmin(document.cookie.includes('dwpl_role=SUPER_ADMIN'));
+      const isSuperAdmin = document.cookie.includes('dwpl_role=SUPER_ADMIN');
+      setIsAdmin(isSuperAdmin);
       
       const sectionsCookie = document.cookie.split('; ').find(row => row.startsWith('dwpl_sections='));
       if (sectionsCookie) {
@@ -58,6 +59,8 @@ export default function Navbar() {
         } else if (sectionsMatch) {
           setAllowedSections(decodeURIComponent(sectionsMatch).split(','));
         }
+      } else if (isSuperAdmin) {
+        setAllowedSections(['ALL']);
       }
     }
   }, [pathname]);

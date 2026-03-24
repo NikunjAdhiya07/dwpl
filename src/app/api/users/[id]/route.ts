@@ -49,6 +49,12 @@ export async function PATCH(
     if (body.allowedSections !== undefined) {
       user.allowedSections = body.allowedSections;
     }
+    if (body.name) user.name = body.name;
+    if (body.role) user.role = body.role;
+    if (body.password) {
+      user.password = body.password; // Note: plaintext as current setup lacks hashing in route
+    }
+    
     await user.save();
     
     return NextResponse.json({ success: true, data: user });

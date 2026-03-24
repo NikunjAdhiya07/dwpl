@@ -46,7 +46,6 @@ export default function ItemMasterPage() {
 
   useEffect(() => {
     fetchItems();
-    fetchHSNCodes();
   }, []);
 
   const fetchItems = async () => {
@@ -55,6 +54,10 @@ export default function ItemMasterPage() {
       const data = await response.json();
       if (data.success) {
         setItems(data.data);
+        
+        // Extract unique HSN codes from existing items
+        const codes = Array.from(new Set(data.data.map((item: any) => item.hsnCode).filter(Boolean)));
+        setHsnCodes(codes as string[]);
       } else {
         setError(data.error);
       }
@@ -65,21 +68,6 @@ export default function ItemMasterPage() {
     }
   };
 
-  const fetchHSNCodes = async () => {
-    try {
-      const response = await fetch('/api/gst-master');
-      const data = await response.json();
-      if (data.success) {
-        // Extract unique HSN codes from active GST records
-        const codes = data.data
-          .filter((gst: any) => gst.isActive)
-          .map((gst: any) => gst.hsnCode);
-        setHsnCodes(codes);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch HSN codes:', err);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -246,21 +234,22 @@ export default function ItemMasterPage() {
 
               <div>
                 <label className="label">HSN Code *</label>
-                <select
+                <input
+                  type="text"
                   className="input"
+                  list="hsn-datalist"
                   value={formData.hsnCode}
                   onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })}
+                  placeholder="e.g., 7228"
                   required
-                >
-                  <option value="">Select HSN Code</option>
+                />
+                <datalist id="hsn-datalist">
                   {hsnCodes.map((code) => (
-                    <option key={code} value={code}>
-                      {code}
-                    </option>
+                    <option key={code} value={code} />
                   ))}
-                </select>
+                </datalist>
                 <p className="text-xs text-slate-500 mt-1">
-                  Select from GST Master. Add new HSN codes in GST Master if needed.
+                  Type a new HSN code or select an existing one.
                 </p>
               </div>
 

@@ -23,6 +23,16 @@ export async function POST(request: Request) {
         path: '/',
         maxAge: 60 * 60 * 24 * 7,
       });
+      cookieStore.set('dwpl_name', 'Admin', {
+        httpOnly: false,
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      cookieStore.set('dwpl_sections', 'ALL', {
+        httpOnly: false,
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      });
       return NextResponse.json({ success: true, role: 'SUPER_ADMIN' });
     }
 
@@ -56,8 +66,20 @@ export async function POST(request: Request) {
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
     });
+    cookieStore.set('dwpl_name', user.name, {
+      httpOnly: false,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    
+    const sections = user.role === 'SUPER_ADMIN' ? 'ALL' : (user.allowedSections?.join(',') || '');
+    cookieStore.set('dwpl_sections', sections, {
+      httpOnly: false,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
 
-    return NextResponse.json({ success: true, role: user.role });
+    return NextResponse.json({ success: true, role: user.role, name: user.name, sections });
   } catch (error) {
     return NextResponse.json(
       { success: false, message: 'Internal server error' },

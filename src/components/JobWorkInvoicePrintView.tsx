@@ -23,6 +23,7 @@ interface InvoiceItem {
   quantity: number;
   rate: number;
   itemTotal: number;
+  processType?: string;
 }
 
 interface TaxInvoice {
@@ -58,6 +59,7 @@ interface TaxInvoice {
   sgstAmount?: number;
   igstAmount?: number;
   gstAmount: number;
+  roundOff?: number;
   tcsPercentage?: number;
   tcsAmount?: number;
   totalAmount: number;
@@ -83,12 +85,14 @@ interface JobWorkInvoicePrintViewProps {
   invoice: TaxInvoice;
   company?: Company;
   copyType?: string;
+  preparedBy?: string;
 }
 
 const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({ 
   invoice,
   company,
-  copyType = 'Original For Recipient' 
+  copyType = 'Original For Recipient',
+  preparedBy = '',
 }) => {
   // Default company data if not provided
   const companyData: Company = company || {
@@ -201,11 +205,11 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top capitalize">
                   <div className="text-[9px] leading-tight">
-                    {item.annealingCount && item.annealingCount > 0 ? `Anneal (${item.annealingCount})` : ''}
-                    {item.annealingCount && item.annealingCount > 0 && item.drawPassCount && item.drawPassCount > 0 ? ', ' : ''}
-                    <br />
-                    {item.drawPassCount && item.drawPassCount > 0 ? `Drawing (${item.drawPassCount})` : ''}
-                    {(!item.annealingCount && !item.drawPassCount) ? '-' : ''}
+                    <span className="font-bold">{item.processType || 'Job Work'}</span><br/>
+                    {item.annealingCount && item.annealingCount > 0 ? `A(${item.annealingCount})` : ''}
+                    {item.annealingCount && item.annealingCount > 0 && item.drawPassCount && item.drawPassCount > 0 ? ' ' : ''}
+                    {item.drawPassCount && item.drawPassCount > 0 ? `D(${item.drawPassCount})` : ''}
+                    {(!item.annealingCount && !item.drawPassCount) ? '' : ''}
                   </div>
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top">{item.issuedChallanNo || '-'}</td>
@@ -272,6 +276,9 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
               <span className="p-1 px-2 border-b border-black flex items-center">TCS {(invoice.tcsPercentage || 0).toFixed(1)}%:</span>
               <span className="p-1 px-2 border-b border-black text-right flex items-center justify-end">{formatIndianCurrency(invoice.tcsAmount || 0)}</span>
               
+              <span className="p-1 px-2 border-b border-black flex items-center">Round Off:</span>
+              <span className="p-1 px-2 border-b border-black text-right flex items-center justify-end">{formatIndianCurrency(invoice.roundOff || 0)}</span>
+              
               <span className="p-1 px-2 border-b border-black font-bold flex items-center">Grand Total :</span>
               <span className="p-1 px-2 border-b border-black text-right font-bold flex items-center justify-end">{formatIndianCurrency(invoice.totalAmount)}</span>
             </div>
@@ -285,6 +292,7 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
           <div className="w-1/3">
             <div className="border-t border-black pt-1 w-2/3 text-center text-[11px]">
               <p className="font-bold">Prepared By:</p>
+              {preparedBy && <p className="text-[10px] text-gray-700 mt-0.5">{preparedBy}</p>}
             </div>
           </div>
           <div className="w-1/3">

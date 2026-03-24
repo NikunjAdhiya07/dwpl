@@ -265,37 +265,23 @@ export default function BOMPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="label">
-                  {editingId ? 'Finish Size (FG) *' : 'Finish Sizes (FG) - Multiple allowed *'}
+                  {editingId ? 'Finish Size (FG) *' : 'Finish Size (FG) *'}
                 </label>
-                {editingId ? (
-                  <select
-                    className="input"
-                    value={formData.fgSizes}
-                    onChange={(e) => setFormData({ ...formData, fgSizes: e.target.value })}
-                    required
-                  >
-                    <option value="">Select FG Item</option>
-                    {fgItems.map((item) => (
-                      <option key={item._id} value={item.size}>
-                        {item.itemCode} - {item.size} ({item.grade})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    className="input"
-                    value={formData.fgSizes}
-                    onChange={(e) => setFormData({ ...formData, fgSizes: e.target.value })}
-                    placeholder="e.g., 6mm, 5.5mm, 5mm"
-                    required
-                  />
-                )}
-                <p className="text-xs mt-1">
-                  {editingId 
-                    ? <span className="text-slate-500">Select from Item Master (FG items only)</span>
-                    : <span className="text-green-600">💡 Enter multiple sizes (e.g., 13.55, 12.50, 11.00). <strong>Missing FG items will be auto-created!</strong></span>
-                  }
+                <select
+                  className="input"
+                  value={formData.fgSizes}
+                  onChange={(e) => setFormData({ ...formData, fgSizes: e.target.value })}
+                  required
+                >
+                  <option value="">Select FG Item</option>
+                  {fgItems.map((item) => (
+                    <option key={item._id} value={item.size}>
+                      {item.itemCode} - {item.size} ({item.grade})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">
+                  Select from Item Master (FG items only)
                 </p>
               </div>
 

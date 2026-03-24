@@ -6,7 +6,7 @@ import Card from '@/components/Card';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import SearchBar from '@/components/SearchBar';
-import { Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, FileText } from 'lucide-react';
 
 interface Party {
   _id: string;
@@ -46,6 +46,17 @@ export default function PartyMasterPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Tax Setup states
+  const [showTaxModal, setShowTaxModal] = useState(false);
+  const [taxParty, setTaxParty] = useState<Party | null>(null);
+  const [isSavingTax, setIsSavingTax] = useState(false);
+  const [taxData, setTaxData] = useState({
+    cgstPercentage: 9,
+    sgstPercentage: 9,
+    igstPercentage: 0,
+    tcsPercentage: 0,
+  });
 
   const [formData, setFormData] = useState<PartyForm>({
     partyName: '',
@@ -145,6 +156,60 @@ export default function PartyMasterPage() {
       }
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  const openTaxModal = async (party: Party) => {
+    setTaxParty(party);
+    setTaxData({ cgstPercentage: 9, sgstPercentage: 9, igstPercentage: 0, tcsPercentage: 0 }); // reset to defaults
+    setShowTaxModal(true);
+    
+    // Fetch existing tax data
+    try {
+      const res = await fetch('/api/gst-master');
+      const data = await res.json();
+      if (data.success) {
+        // Find existing tax data for this party
+        const existingTax = data.data.find((g: any) => (g.party?._id || g.party) === party._id);
+        if (existingTax) {
+          setTaxData({
+            cgstPercentage: existingTax.cgstPercentage,
+            sgstPercentage: existingTax.sgstPercentage,
+            igstPercentage: existingTax.igstPercentage,
+            tcsPercentage: existingTax.tcsPercentage || 0,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch tax data', err);
+    }
+  };
+
+  const handleSaveTax = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!taxParty) return;
+    setIsSavingTax(true);
+    try {
+      const response = await fetch('/api/gst-master', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          party: taxParty._id,
+          ...taxData,
+          isActive: true
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setShowTaxModal(false);
+        alert('Tax configurations saved successfully!');
+      } else {
+        alert(data.error || 'Failed to save tax details');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSavingTax(false);
     }
   };
 
@@ -268,7 +333,7 @@ export default function PartyMasterPage() {
               </div>
 
               <div>
-                <label className="label">Base Rate (per unit) *</label>
+                <label className="label">SAPP Rate (per unit) *</label>
                 <input
                   type="number"
                   step="0.01"
@@ -420,7 +485,7 @@ export default function PartyMasterPage() {
                 <th>Party Name</th>
                 <th>GST Number</th>
                 <th>Contact</th>
-                <th>Rate</th>
+                <th>SAPP</th>
                 <th>SAPPD Rate</th>
                 <th>PPD Rate</th>
                 <th>Annealing Charge</th>
@@ -471,6 +536,13 @@ export default function PartyMasterPage() {
                     <td>
                       <div className="flex gap-2">
                         <button
+                          onClick={() => openTaxModal(party)}
+                          className="text-amber-600 hover:text-amber-800"
+                          title="Tax Setup"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleEdit(party)}
                           className="text-blue-600 hover:text-blue-800"
                           title="Edit"
@@ -493,6 +565,75 @@ export default function PartyMasterPage() {
           </table>
         </div>
       </Card>
+
+      {/* Tax Setup Modal */}
+      {showTaxModal && taxParty && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <Card className="max-w-md w-full animate-scale-in relative border-slate-200 border-2 shadow-2xl">
+            <button
+              onClick={() => setShowTaxModal(false)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-amber-600" />
+              Tax Setup for Party
+            </h3>
+            <form onSubmit={handleSaveTax} className="space-y-4">
+              <div className="bg-slate-50 p-4 rounded-lg mb-4 text-sm break-all font-mono border border-slate-200 text-slate-700">
+                Party: <span className="font-semibold text-amber-600">{taxParty.partyName}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700 ml-1">CGST (%)</label>
+                  <input
+                    type="number" step="0.01" min="0" max="100" required
+                    value={taxData.cgstPercentage}
+                    onChange={(e) => setTaxData({ ...taxData, cgstPercentage: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-amber-500 transition-all font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700 ml-1">SGST (%)</label>
+                  <input
+                    type="number" step="0.01" min="0" max="100" required
+                    value={taxData.sgstPercentage}
+                    onChange={(e) => setTaxData({ ...taxData, sgstPercentage: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-amber-500 transition-all font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700 ml-1">IGST (%)</label>
+                  <input
+                    type="number" step="0.01" min="0" max="100" required
+                    value={taxData.igstPercentage}
+                    onChange={(e) => setTaxData({ ...taxData, igstPercentage: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-amber-500 transition-all font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700 ml-1">TCS (%)</label>
+                  <input
+                    type="number" step="0.01" min="0" max="100" required
+                    value={taxData.tcsPercentage}
+                    onChange={(e) => setTaxData({ ...taxData, tcsPercentage: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-amber-500 transition-all font-mono"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={isSavingTax} className="w-full btn btn-primary py-2.5 text-sm uppercase tracking-wide disabled:opacity-50">
+                  {isSavingTax ? 'Saving...' : 'Save Configuration'}
+                </button>
+                <button type="button" onClick={() => setShowTaxModal(false)} className="w-full btn btn-outline py-2.5 text-sm uppercase tracking-wide">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

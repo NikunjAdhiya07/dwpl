@@ -351,6 +351,61 @@ export default function OutwardChallanPage() {
     });
   };
 
+  const addAnnealingItem = () => {
+    if (!selectedParty) {
+      setError('Please select a party first');
+      return;
+    }
+    const newItem: ChallanItem = {
+      finishSize: '',
+      originalSize: '',
+      processType: 'Annealing',
+      annealingCount: 1,
+      drawPassCount: 0,
+      extraAnnealingCount: 0,
+      extraPassCount: 0,
+      coilEntries: [],
+      quantity: 0,
+      rate: selectedParty.annealingCharge,
+      rateOverride: false,
+      annealingCharge: selectedParty.annealingCharge,
+      drawCharge: selectedParty.drawCharge,
+      itemTotal: 0,
+      issuedChallanNo: '',
+      coilNumber: '',
+      coilReference: '',
+    };
+    setFormData({ ...formData, items: [...formData.items, newItem] });
+  };
+
+  const addDrawItem = () => {
+    if (!selectedParty) {
+      setError('Please select a party first');
+      return;
+    }
+    const newItem: ChallanItem = {
+      finishSize: '',
+      originalSize: '',
+      processType: 'Draw',
+      annealingCount: 0,
+      drawPassCount: 1,
+      extraAnnealingCount: 0,
+      extraPassCount: 0,
+      coilEntries: [],
+      quantity: 0,
+      rate: selectedParty.drawCharge,
+      rateOverride: false,
+      annealingCharge: selectedParty.annealingCharge,
+      drawCharge: selectedParty.drawCharge,
+      itemTotal: 0,
+      issuedChallanNo: '',
+      coilNumber: '',
+      coilReference: '',
+    };
+    setFormData({ ...formData, items: [...formData.items, newItem] });
+  };
+
+
   const removeItem = (index: number) => {
     const newItems = formData.items.filter((_, i) => i !== index);
     setFormData({ ...formData, items: newItems });
@@ -454,11 +509,13 @@ export default function OutwardChallanPage() {
     // Validate each item
     for (let i = 0; i < formData.items.length; i++) {
       const item = formData.items[i];
-      if (!item.finishSize) {
+      const isChargeOnlyItem = item.processType === 'Annealing' || item.processType === 'Draw';
+      
+      if (!isChargeOnlyItem && !item.finishSize) {
         setError(`Item ${i + 1}: Please select a finish size (FG)`);
         return;
       }
-      if (!item.originalSize) {
+      if (!isChargeOnlyItem && !item.originalSize) {
         setError(`Item ${i + 1}: Please select an original size (RM)`);
         return;
       }
@@ -1209,7 +1266,7 @@ export default function OutwardChallanPage() {
                                 <span className="text-[9px] text-slate-400 font-semibold w-4 flex-shrink-0">{ci + 1}.</span>
                                 <input
                                   type="text"
-                                  className="flex-1 px-1.5 py-0.5 text-xs border border-slate-200 rounded bg-white min-w-0"
+                                  className="w-[80px] px-1.5 py-0.5 text-xs border border-slate-200 rounded bg-white min-w-0"
                                   value={coil.coilNumber}
                                   onChange={(e) => {
                                     const newItems = [...formData.items];
@@ -1290,7 +1347,28 @@ export default function OutwardChallanPage() {
                 <Plus className="w-3.5 h-3.5" />
                 Add Item
               </button>
+              <button
+                type="button"
+                onClick={addAnnealingItem}
+                className="px-4 py-1.5 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 flex items-center gap-1.5 whitespace-nowrap"
+                disabled={!selectedParty}
+                title={selectedParty ? `Annealing Charge: ₹${selectedParty.annealingCharge}/unit` : 'Select a party first'}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Annealing {selectedParty && <span className="font-bold">(₹{selectedParty.annealingCharge})</span>}
+              </button>
+              <button
+                type="button"
+                onClick={addDrawItem}
+                className="px-4 py-1.5 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 flex items-center gap-1.5 whitespace-nowrap"
+                disabled={!selectedParty}
+                title={selectedParty ? `Draw Charge: ₹${selectedParty.drawCharge}/pass` : 'Select a party first'}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Draw {selectedParty && <span className="font-bold">(₹{selectedParty.drawCharge})</span>}
+              </button>
             </div>
+
 
             {/* Sticky Footer with Buttons */}
             <div className="sticky bottom-0 bg-white border-t border-slate-200 -mx-6 -mb-6 px-6 py-3 flex gap-3 mt-4">

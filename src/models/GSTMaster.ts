@@ -30,6 +30,12 @@ const GSTMasterSchema = new Schema<IGSTMaster>(
       max: [100, 'IGST percentage cannot exceed 100'],
       default: 0,
     },
+    tcsPercentage: {
+      type: Number,
+      min: [0, 'TCS percentage cannot be negative'],
+      max: [100, 'TCS percentage cannot exceed 100'],
+      default: 0,
+    },
     isActive: {
       type: Boolean,
       default: true,

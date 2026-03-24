@@ -12,6 +12,10 @@ const TaxInvoiceItemSchema = new Schema({
     ref: 'ItemMaster',
     required: [true, 'Original Size is required'],
   },
+  processType: {
+    type: String,
+    trim: true,
+  },
   annealingCount: {
     type: Number,
     required: true,
@@ -192,6 +196,10 @@ const TaxInvoiceSchema = new Schema<ITaxInvoice>(
       type: Number,
       default: 0,
     },
+    roundOff: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -247,13 +255,21 @@ TaxInvoiceSchema.pre('save', async function () {
   const tcsPercentage = this.tcsPercentage || 0;
   this.tcsAmount = ((this.assessableValue + this.gstAmount) * tcsPercentage) / 100;
   
-  // Calculate final total amount
-  this.totalAmount = this.assessableValue + this.gstAmount + this.tcsAmount;
+  // Calculate pre-round total
+  const preRoundTotal = this.assessableValue + this.gstAmount + this.tcsAmount;
+  
+  // Calculate round-off (to nearest rupee)
+  const roundedTotal = Math.round(preRoundTotal);
+  this.roundOff = roundedTotal - preRoundTotal;
+  
+  // Final total after round-off
+  this.totalAmount = roundedTotal;
   
   console.log('Final amounts:', {
     assessableValue: this.assessableValue,
     gstAmount: this.gstAmount,
     tcsAmount: this.tcsAmount,
+    roundOff: this.roundOff,
     totalAmount: this.totalAmount,
   });
 });

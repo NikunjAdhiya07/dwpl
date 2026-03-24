@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
-import { ShieldAlert, Trash2, UserPlus, Lock, User as UserIcon, Shield } from 'lucide-react';
+import { ShieldAlert, Trash2, UserPlus, Lock, User as UserIcon, Shield, CheckSquare } from 'lucide-react';
 
 interface User {
   _id: string;
@@ -11,7 +11,10 @@ interface User {
   role: string;
   isActive: boolean;
   createdAt: string;
+  allowedSections?: string[];
 }
+
+const AVAILABLE_SECTIONS = ['Dashboard', 'Masters', 'GRN', 'Outward Challan', 'Tax Invoice'];
 
 export default function ManageUsers() {
   const [users, setUsers] = useState<User[]>([]);
@@ -22,6 +25,7 @@ export default function ManageUsers() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('USER');
+  const [allowedSections, setAllowedSections] = useState<string[]>(AVAILABLE_SECTIONS);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchUsers = async () => {
@@ -54,7 +58,7 @@ export default function ManageUsers() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ name, password, role }),
+        body: JSON.stringify({ name, password, role, allowedSections: role === 'SUPER_ADMIN' ? AVAILABLE_SECTIONS : allowedSections }),
       });
       const data = await res.json();
       
@@ -63,6 +67,7 @@ export default function ManageUsers() {
         setName('');
         setPassword('');
         setRole('USER');
+        setAllowedSections(AVAILABLE_SECTIONS);
         fetchUsers();
       } else {
         setError(data.error || 'Failed to create user');
@@ -171,6 +176,31 @@ export default function ManageUsers() {
                 </div>
               </div>
 
+              {role === 'USER' && (
+                <div className="space-y-2 mt-4 pt-4 border-t border-slate-100">
+                  <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-slate-400" />
+                    Allowed Sections
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm pt-1">
+                    {AVAILABLE_SECTIONS.map((section) => (
+                      <label key={section} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all">
+                        <input
+                          type="checkbox"
+                          checked={allowedSections.includes(section)}
+                          onChange={(e) => {
+                            if (e.target.checked) setAllowedSections(prev => [...prev, section]);
+                            else setAllowedSections(prev => prev.filter(s => s !== section));
+                          }}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-slate-600 font-medium">{section}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -193,6 +223,7 @@ export default function ManageUsers() {
                   <tr>
                     <th className="px-4 py-3 font-semibold">User ID / Name</th>
                     <th className="px-4 py-3 font-semibold">Role</th>
+                    <th className="px-4 py-3 font-semibold hidden md:table-cell">Access</th>
                     <th className="px-4 py-3 justify-end flex font-semibold">Actions</th>
                   </tr>
                 </thead>
@@ -208,6 +239,22 @@ export default function ManageUsers() {
                         }`}>
                           {user.role}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        {user.role === 'SUPER_ADMIN' ? (
+                          <span className="text-xs text-slate-500 italic">All Sections</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {user.allowedSections?.map(sec => (
+                              <span key={sec} className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded border border-slate-200">
+                                {sec}
+                              </span>
+                            ))}
+                            {(!user.allowedSections || user.allowedSections.length === 0) && (
+                              <span className="text-xs text-red-500 italic">No Access</span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 flex justify-end">
                         <button

@@ -209,6 +209,7 @@ export async function POST(request: NextRequest) {
       annealingCharge: number;
       drawCharge: number;
       itemTotal: number;
+      processType?: string;
     }> = [];
     
     if (body.items && Array.isArray(body.items) && body.items.length > 0) {
@@ -221,10 +222,10 @@ export async function POST(request: NextRequest) {
         rate: item.rate,
         annealingCharge: item.annealingCharge,
         drawCharge: item.drawCharge,
-        itemTotal: item.itemTotal,
         issuedChallanNo: item.issuedChallanNo,
         coilNumber: item.coilNumber,
         coilReference: item.coilReference,
+        processType: item.processType,
       }));
     } else if (challan.items && challan.items.length > 0) {
       items = challan.items.map((item: any) => ({
@@ -240,6 +241,7 @@ export async function POST(request: NextRequest) {
         issuedChallanNo: item.issuedChallanNo,
         coilNumber: item.coilNumber,
         coilReference: item.coilReference,
+        processType: item.processType,
       }));
     } else if ((challan as any).finishSize) {
       // Legacy support for single item challans
@@ -252,7 +254,8 @@ export async function POST(request: NextRequest) {
         rate: (challan as any).rate,
         annealingCharge: (challan as any).annealingCharge,
         drawCharge: (challan as any).drawCharge,
-        itemTotal: (challan as any).totalAmount
+        itemTotal: (challan as any).totalAmount,
+        processType: (challan as any).processType
       }];
     }
 
@@ -340,6 +343,7 @@ export async function POST(request: NextRequest) {
       cgstPercentage: gstMaster.cgstPercentage,
       sgstPercentage: gstMaster.sgstPercentage,
       igstPercentage: gstMaster.igstPercentage,
+      tcsPercentage: gstMaster.tcsPercentage || 0,
       invoiceDate: body.invoiceDate || new Date(),
       
       // Transport Details from Challan

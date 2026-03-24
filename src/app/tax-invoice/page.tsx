@@ -6,7 +6,7 @@ import Card from '@/components/Card';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
-import { Plus, X, Receipt, FileText, Download, Trash2 } from 'lucide-react';
+import { Plus, X, Receipt, FileText, Download, Trash2, Truck } from 'lucide-react';
 import { exportToPDF, exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 import JobWorkInvoicePrintView from '@/components/JobWorkInvoicePrintView';
@@ -143,15 +143,26 @@ export default function TaxInvoicePage() {
   const [printInvoice, setPrintInvoice] = useState<TaxInvoice | null>(null);
   const [companyData, setCompanyData] = useState<any>(null);
   const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
+  const [showTransportModal, setShowTransportModal] = useState(false);
+  const [transportInvoice, setTransportInvoice] = useState<TaxInvoice | null>(null);
+  const [transportAmount, setTransportAmount] = useState<number>(0);
+  const [isUpdatingTransport, setIsUpdatingTransport] = useState(false);
   const [parties, setParties] = useState<any[]>([]);
   const [gstMasters, setGstMasters] = useState<any[]>([]);
   const [invoiceParty, setInvoiceParty] = useState(''); // auto-defaulted from billTo;
   const [selectedCgst, setSelectedCgst] = useState<number | null>(null);
   const [selectedSgst, setSelectedSgst] = useState<number | null>(null);
   const [selectedIgst, setSelectedIgst] = useState<number | null>(null);
+  const [selectedTcs, setSelectedTcs] = useState<number | null>(null);
+  const [currentUserName, setCurrentUserName] = useState('');
 
   useEffect(() => {
     fetchData();
+    // Fetch current user name for Prepared By
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(d => { if (d.success) setCurrentUserName(d.data.name); })
+      .catch(() => {});
   }, []);
 
   const fetchData = async () => {
@@ -300,10 +311,12 @@ export default function TaxInvoicePage() {
           setSelectedCgst(partyGst.cgstPercentage);
           setSelectedSgst(partyGst.sgstPercentage);
           setSelectedIgst(partyGst.igstPercentage);
+          setSelectedTcs(partyGst.tcsPercentage || 0);
         } else {
           setSelectedCgst(null);
           setSelectedSgst(null);
           setSelectedIgst(null);
+          setSelectedTcs(null);
         }
         
         // Find the party details from parties state to get current charges
@@ -312,6 +325,7 @@ export default function TaxInvoicePage() {
         const items = challan.items.map((item: any) => {
           const annealingCharge = partyRef?.annealingCharge ?? item.annealingCharge;
           const drawCharge = partyRef?.drawCharge ?? item.drawCharge;
+          const sappdRate = partyRef?.sappdRate ?? 0;
           
           // Process charge only = sum of processing rates
           const jobWorkRate = (annealingCharge * (item.annealingCount || 0)) + (drawCharge * (item.drawPassCount || 0));
@@ -321,6 +335,7 @@ export default function TaxInvoicePage() {
             ...item,
             annealingCharge,
             drawCharge,
+            sappdRate,
             rate: jobWorkRate,
             itemTotal,
           };
@@ -337,6 +352,7 @@ export default function TaxInvoicePage() {
     setSelectedCgst(null);
     setSelectedSgst(null);
     setSelectedIgst(null);
+    setSelectedTcs(null);
   };
 
   const handlePrint = (invoice: TaxInvoice) => {
@@ -378,7 +394,8 @@ export default function TaxInvoicePage() {
                 <JobWorkInvoicePrintView 
                   invoice={invoice as any} 
                   company={companyData}
-                  copyType={copyType} 
+                  copyType={copyType}
+                  preparedBy={currentUserName}
                 />
               </div>
             ))}
@@ -425,6 +442,39 @@ export default function TaxInvoicePage() {
     } catch (err: any) {
       console.error('Error deleting invoice:', err);
       setError(err.message);
+    }
+  };
+
+  const openTransportModal = (invoice: TaxInvoice) => {
+    setTransportInvoice(invoice);
+    setTransportAmount(invoice.transportCharges || 0);
+    setShowTransportModal(true);
+  };
+
+  const handleUpdateTransport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transportInvoice) return;
+    
+    setIsUpdatingTransport(true);
+    try {
+      const response = await fetch(`/api/tax-invoice/${transportInvoice._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transportCharges: transportAmount })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        await fetchData();
+        setShowTransportModal(false);
+        alert('Transport charges updated successfully!');
+      } else {
+        alert(data.error || 'Failed to update transport charges');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsUpdatingTransport(false);
     }
   };
 
@@ -580,9 +630,10 @@ export default function TaxInvoicePage() {
                       <tr className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         <th className="px-3 py-2">Size</th>
                         <th className="px-3 py-2">Qty</th>
+                        <th className="px-3 py-2 text-amber-700 bg-amber-50">SAPPD Rate (₹/kg)</th>
                         <th className="px-3 py-2">Annealing Charge</th>
                         <th className="px-3 py-2">Draw Charge</th>
-                        <th className="px-3 py-2 text-right">Rate</th>
+                        <th className="px-3 py-2 text-right">Job Work Rate</th>
                         <th className="px-3 py-2 text-right">Total</th>
                       </tr>
                     </thead>
@@ -595,6 +646,10 @@ export default function TaxInvoicePage() {
                           </td>
                           <td className="px-2 py-1.5 text-slate-600 font-medium text-xs">
                             {item.quantity.toFixed(2)}
+                          </td>
+                          {/* SAPPD Rate - read-only display */}
+                          <td className="px-3 py-2 bg-amber-50">
+                            <span className="text-xs font-semibold text-amber-700">₹{(item.sappdRate || 0).toFixed(2)}</span>
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex items-center gap-1">
@@ -751,6 +806,14 @@ export default function TaxInvoicePage() {
                     <td>
                       <div className="flex gap-2">
                         <button
+                          onClick={() => openTransportModal(invoice)}
+                          className="btn btn-outline text-xs py-1 px-3 flex items-center gap-1 text-slate-700"
+                          title="Add Transport"
+                        >
+                          <Truck className="w-3 h-3" />
+                          Transport
+                        </button>
+                        <button
                           onClick={() => handlePrint(invoice)}
                           className="btn btn-secondary text-xs py-1 px-3 flex items-center gap-1"
                         >
@@ -820,11 +883,67 @@ export default function TaxInvoicePage() {
                 <JobWorkInvoicePrintView 
                   invoice={printInvoice as any} 
                   company={companyData}
-                  copyType={copyType} 
+                  copyType={copyType}
+                  preparedBy={currentUserName}
                 />
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Transport Modal */}
+      {showTransportModal && transportInvoice && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <Card className="max-w-md w-full animate-scale-in relative border-slate-200 border-2 shadow-2xl">
+            <button
+              onClick={() => setShowTransportModal(false)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <Truck className="w-5 h-5 text-blue-600" />
+              Add Transport Charges
+            </h3>
+            <form onSubmit={handleUpdateTransport} className="space-y-4">
+              <div className="bg-slate-50 p-4 rounded-lg mb-4 text-sm break-all font-mono border border-slate-200 text-slate-700">
+                Invoice No.: <span className="font-semibold text-blue-600">{transportInvoice.invoiceNumber}</span>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-slate-700 ml-1">Transport Amount (₹)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium font-sans">₹</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={transportAmount}
+                    onChange={(e) => setTransportAmount(parseFloat(e.target.value) || 0)}
+                    className="w-full pl-8 pr-4 py-2 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-mono text-lg shadow-sm"
+                    placeholder="0.00"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isUpdatingTransport}
+                  className="w-full btn btn-primary py-2.5 text-sm uppercase tracking-wide disabled:opacity-50"
+                >
+                  {isUpdatingTransport ? 'Updating...' : 'Save Charges'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowTransportModal(false)}
+                  className="w-full btn btn-outline py-2.5 text-sm uppercase tracking-wide"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Card>
         </div>
       )}
     </div>

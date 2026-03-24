@@ -44,10 +44,21 @@ export default function Navbar() {
   const router = useRouter();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [allowedSections, setAllowedSections] = useState<string[]>([]);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
       setIsAdmin(document.cookie.includes('dwpl_role=SUPER_ADMIN'));
+      
+      const sectionsCookie = document.cookie.split('; ').find(row => row.startsWith('dwpl_sections='));
+      if (sectionsCookie) {
+        const sectionsMatch = sectionsCookie.split('=')[1];
+        if (sectionsMatch === 'ALL') {
+          setAllowedSections(['ALL']);
+        } else if (sectionsMatch) {
+          setAllowedSections(decodeURIComponent(sectionsMatch).split(','));
+        }
+      }
     }
   }, [pathname]);
 
@@ -87,7 +98,7 @@ export default function Navbar() {
 
             {/* Navigation Links */}
             <div className="hidden md:flex items-center gap-1">
-              {navigation.map((item) => {
+              {navigation.filter(item => allowedSections.includes('ALL') || allowedSections.includes(item.name)).map((item) => {
                 if (item.children) {
                   const isActive = item.children.some(child => pathname === child.href);
                   const isOpen = openDropdown === item.name;

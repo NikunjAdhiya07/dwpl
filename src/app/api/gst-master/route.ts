@@ -20,7 +20,13 @@ export async function POST(request: NextRequest) {
     await connectDB();
     const body = await request.json();
     
-    const gstRate = await GSTMaster.create(body);
+    // Perform an upsert based on the party ID
+    const gstRate = await GSTMaster.findOneAndUpdate(
+      { party: body.party },
+      body,
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+    
     return NextResponse.json(
       { success: true, data: gstRate },
       { status: 201 }

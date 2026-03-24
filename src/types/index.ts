@@ -52,6 +52,7 @@ export interface IGSTMaster extends Document {
   cgstPercentage: number;
   sgstPercentage: number;
   igstPercentage: number;
+  tcsPercentage?: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -185,6 +186,7 @@ export interface ITaxInvoice extends Document {
   tcsPercentage?: number; // TCS percentage (default: 0%)
   tcsAmount?: number; // TCS amount
   
+  roundOff?: number; // Round-off amount (to nearest rupee)
   totalAmount: number; // Final amount including all taxes
   invoiceDate: Date;
   createdAt: Date;

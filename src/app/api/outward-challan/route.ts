@@ -53,38 +53,42 @@ export async function POST(request: NextRequest) {
     
     // Validate all items and check stock
     for (const item of body.items) {
-      // Validate FG item
-      const fgItem = await ItemMaster.findById(item.finishSize);
-      if (!fgItem || fgItem.category !== 'FG') {
-        return NextResponse.json(
-          { success: false, error: `Invalid Finish Size item: ${item.finishSize}` },
-          { status: 400 }
-        );
-      }
+      const isChargeOnly = item.processType === 'Annealing' || item.processType === 'Draw';
       
-      // Validate RM item
-      const rmItem = await ItemMaster.findById(item.originalSize);
-      if (!rmItem || rmItem.category !== 'RM') {
-        return NextResponse.json(
-          { success: false, error: `Invalid Original Size item: ${item.originalSize}` },
-          { status: 400 }
-        );
-      }
-      
-      // Check RM stock availability
-      const rmStock = await Stock.findOne({ 
-        size: item.originalSize, 
-        category: 'RM' 
-      });
-      
-      if (!rmStock || rmStock.quantity < item.quantity) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: `Insufficient RM stock for ${rmItem.size}. Available: ${rmStock?.quantity || 0}, Required: ${item.quantity}` 
-          },
-          { status: 400 }
-        );
+      if (!isChargeOnly) {
+        // Validate FG item
+        const fgItem = await ItemMaster.findById(item.finishSize);
+        if (!fgItem || fgItem.category !== 'FG') {
+          return NextResponse.json(
+            { success: false, error: `Invalid Finish Size item: ${item.finishSize}` },
+            { status: 400 }
+          );
+        }
+        
+        // Validate RM item
+        const rmItem = await ItemMaster.findById(item.originalSize);
+        if (!rmItem || rmItem.category !== 'RM') {
+          return NextResponse.json(
+            { success: false, error: `Invalid Original Size item: ${item.originalSize}` },
+            { status: 400 }
+          );
+        }
+        
+        // Check RM stock availability
+        const rmStock = await Stock.findOne({ 
+          size: item.originalSize, 
+          category: 'RM' 
+        });
+        
+        if (!rmStock || rmStock.quantity < item.quantity) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: `Insufficient RM stock for ${rmItem.size}. Available: ${rmStock?.quantity || 0}, Required: ${item.quantity}` 
+            },
+            { status: 400 }
+          );
+        }
       }
     }
     
@@ -123,6 +127,9 @@ export async function POST(request: NextRequest) {
     
     // Update stock for each item
     for (const item of body.items) {
+      const isChargeOnly = item.processType === 'Annealing' || item.processType === 'Draw';
+      if (isChargeOnly) continue; // No stock changes for charge-only items
+      
       // Deduct RM stock
       const rmStock = await Stock.findOneAndUpdate(
         { size: item.originalSize, category: 'RM' },

@@ -24,3 +24,35 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const cookieStore = await cookies();
+    const role = cookieStore.get('dwpl_role')?.value;
+    
+    if (role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const resolvedParams = await params;
+    await connectDB();
+    
+    const user = await User.findById(resolvedParams.id);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+    
+    if (body.allowedSections !== undefined) {
+      user.allowedSections = body.allowedSections;
+    }
+    await user.save();
+    
+    return NextResponse.json({ success: true, data: user });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

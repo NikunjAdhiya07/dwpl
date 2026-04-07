@@ -2,18 +2,19 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  Users, 
-  Package, 
-  FileText, 
-  TruckIcon, 
+import {
+  Home,
+  Users,
+  Package,
+  FileText,
+  TruckIcon,
   Settings,
   ClipboardList,
   FileInput,
   Warehouse,
   Send,
-  Receipt
+  Receipt,
+  BarChart3,
 } from 'lucide-react';
 
 const navigation = [
@@ -27,6 +28,7 @@ const navigation = [
       { name: 'BOM & Routing', href: '/masters/bom', icon: ClipboardList },
       { name: 'GST Master', href: '/masters/gst', icon: FileText },
       { name: 'Transport Master', href: '/masters/transport', icon: TruckIcon },
+      { name: 'Reports', href: '/reports', icon: BarChart3 },
     ]
   },
   { name: 'GRN', href: '/grn', icon: FileInput },

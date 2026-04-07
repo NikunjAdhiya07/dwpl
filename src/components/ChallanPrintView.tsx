@@ -219,6 +219,8 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
                 <td className="border-r border-black px-2 py-3 text-center align-top uppercase">
                   <div className="text-[10px] font-semibold leading-tight">
                     {item.processType || item.processDetails || '-'}
+                    {item.annealingCount ? ` + ${item.annealingCount}A` : ''}
+                    {item.drawPassCount ? ` + ${item.drawPassCount}D` : ''}
                   </div>
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top">{item.issuedChallanNo || '-'}</td>

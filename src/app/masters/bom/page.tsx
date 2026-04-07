@@ -6,6 +6,7 @@ import Card from '@/components/Card';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import SearchBar from '@/components/SearchBar';
+import ItemSelector from '@/components/ItemSelector';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 
 interface BOM {
@@ -75,8 +76,8 @@ export default function BOMPage() {
       if (data.success) {
         // Filter active items by category
         const items = data.data.filter((item: ItemMaster) => item.isActive);
-        setRmItems(items.filter((item: ItemMaster) => item.category === 'RM'));
-        setFgItems(items.filter((item: ItemMaster) => item.category === 'FG'));
+        setRmItems(items.filter((item: ItemMaster) => item.category === 'RM').sort((a: any, b: any) => (parseFloat(a.size) || 0) - (parseFloat(b.size) || 0)));
+        setFgItems(items.filter((item: ItemMaster) => item.category === 'FG').sort((a: any, b: any) => (parseFloat(a.size) || 0) - (parseFloat(b.size) || 0)));
       }
     } catch (err: any) {
       console.error('Failed to fetch items:', err);
@@ -264,61 +265,57 @@ export default function BOMPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="label">
-                  {editingId ? 'Finish Size (FG) *' : 'Finish Size (FG) *'}
-                </label>
-                <select
-                  className="input"
+                <ItemSelector
+                  label={editingId ? 'Finish Size (FG) *' : 'Finish Size (FG) *'}
                   value={formData.fgSizes}
-                  onChange={(e) => setFormData({ ...formData, fgSizes: e.target.value })}
+                  onChange={(value) => setFormData({ ...formData, fgSizes: value })}
+                  items={fgItems.map(item => ({...item, _id: item.size}))}
+                  placeholder="Select FG Item"
                   required
-                >
-                  <option value="">Select FG Item</option>
-                  {fgItems.map((item) => (
-                    <option key={item._id} value={item.size}>
-                      {item.itemCode} - {item.size} ({item.grade})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-slate-500 mt-1">
-                  Select from Item Master (FG items only)
-                </p>
+                  renderSelected={(item) => (
+                    <span className="text-sm font-medium">{item.itemCode} - {item.size} ({item.grade})</span>
+                  )}
+                  renderOption={(item) => (
+                    <div className="text-sm font-medium">{item.itemCode} - {item.size} ({item.grade})</div>
+                  )}
+                  getSearchableText={(item) => `${item.itemCode} ${item.size} ${item.grade}`}
+                  helperText="Select from Item Master (FG items only)"
+                />
               </div>
 
               <div>
-                <label className="label">Original Size (RM) *</label>
+                <ItemSelector
+                  label="Original Size (RM) *"
+                  value={formData.rmSize}
+                  onChange={(value) => setFormData({ ...formData, rmSize: value })}
+                  items={rmItems.map(item => ({...item, _id: item.size}))}
+                  placeholder="Select RM Item"
+                  required
+                  renderSelected={(item) => (
+                    <span className="text-sm font-medium">{item.itemCode} - {item.size} ({item.grade})</span>
+                  )}
+                  renderOption={(item) => (
+                    <div className="text-sm font-medium">{item.itemCode} - {item.size} ({item.grade})</div>
+                  )}
+                  getSearchableText={(item) => `${item.itemCode} ${item.size} ${item.grade}`}
+                  helperText="Select from Item Master (RM items only). Multiple FG sizes can use the same RM."
+                />
+              </div>
+
+              <div>
+                <label className="label">Status *</label>
                 <select
                   className="input"
-                  value={formData.rmSize}
-                  onChange={(e) => setFormData({ ...formData, rmSize: e.target.value })}
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })
+                  }
                   required
                 >
-                  <option value="">Select RM Item</option>
-                  {rmItems.map((item) => (
-                    <option key={item._id} value={item.size}>
-                      {item.itemCode} - {item.size} ({item.grade})
-                    </option>
-                  ))}
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
                 </select>
-                <p className="text-xs text-slate-500 mt-1">
-                  Select from Item Master (RM items only). <span className="text-blue-600">Multiple FG sizes can use the same RM.</span>
-                </p>
               </div>
-            </div>
-
-            <div>
-              <label className="label">Status *</label>
-              <select
-                className="input"
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })
-                }
-                required
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
             </div>
 
             <div className="flex gap-3">

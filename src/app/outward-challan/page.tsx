@@ -246,8 +246,12 @@ export default function OutwardChallanPage() {
 
       if (challansData.success) setChallans(challansData.data);
       if (partiesData.success) setParties(partiesData.data);
-      if (fgData.success) setFgItems(fgData.data);
-      if (rmData.success) setRmItems(rmData.data);
+      if (fgData.success) {
+        setFgItems(fgData.data.sort((a: any, b: any) => (parseFloat(a.size) || 0) - (parseFloat(b.size) || 0)));
+      }
+      if (rmData.success) {
+        setRmItems(rmData.data.sort((a: any, b: any) => (parseFloat(a.size) || 0) - (parseFloat(b.size) || 0)));
+      }
       if (bomsData.success) setBoms(bomsData.data);
       if (transportsData.success) setTransports(transportsData.data);
       if (stocksData.success) {
@@ -1143,8 +1147,8 @@ export default function OutwardChallanPage() {
                                     const S = selectedParty.sappdRate || selectedParty.rate;
                                     const A = selectedParty.annealingCharge;
                                     const P = selectedParty.drawCharge;
-                                    const EA = newItems[index].extraAnnealingCount || 0;
-                                    const EP = newItems[index].extraPassCount || 0;
+                                    const EA = newItems[index].annealingCount || 0;
+                                    const EP = newItems[index].drawPassCount || 0;
                                     newItems[index].rate = S + (A * EA) + (P * EP);
                                     newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
                                   }

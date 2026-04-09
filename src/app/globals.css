@@ -389,6 +389,13 @@ button.input {
   .print-modal-container * {
     visibility: visible;
   }
+
+  /* Hide modal toolbar, buttons, and non-print elements */
+  .no-print,
+  .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
   
   .print-modal-container {
     position: absolute !important;

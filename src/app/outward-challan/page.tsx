@@ -645,13 +645,13 @@ export default function OutwardChallanPage() {
           </div>
         );
         
-        // Wait for render to complete
-        setTimeout(resolve, 500);
+        // Wait for React to fully paint the component tree
+        setTimeout(resolve, 1000);
       });
 
       // Generate PDF
       const filename = generatePDFFilename('Challan', challan.challanNumber, challan.challanDate);
-      await exportMultiPageToPDF('temp-challan-print', filename, { scale: 2 });
+      await exportMultiPageToPDF('temp-challan-print', filename, { orientation: 'portrait' });
 
       // Clean up
       root.unmount();

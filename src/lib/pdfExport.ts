@@ -15,6 +15,10 @@ export function generatePDFFilename(
 /**
  * Export a report by opening a new popup window and triggering window.print().
  * Uses the browser's native PDF renderer — zero CSS color parsing issues.
+ *
+ * FIX: Previously used a fixed 300ms timeout before print, which was not enough
+ * for the Tailwind CSS stylesheets to fully load in the popup window, causing
+ * blank/unstyled pages. Now uses proper load events + safety timeout.
  */
 export async function exportMultiPageToPDF(
   containerId: string,
@@ -28,15 +32,15 @@ export async function exportMultiPageToPDF(
   const container = document.getElementById(containerId);
   if (!container) throw new Error(`Element #${containerId} not found`);
 
-  const orientation = options?.orientation ?? 'landscape';
+  const orientation = options?.orientation ?? 'portrait';
 
-  // Collect all <link rel="stylesheet"> hrefs
+  // Collect all <link rel="stylesheet"> hrefs from current page
   const styleLinks: string[] = [];
   document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]').forEach((l) => {
     if (l.href) styleLinks.push(l.href);
   });
 
-  // Collect all inline <style> blocks (Next.js critical CSS)
+  // Collect all inline <style> blocks (Next.js critical CSS injection)
   const inlineStyles: string[] = [];
   document.querySelectorAll<HTMLStyleElement>('style').forEach((s) => {
     if (s.textContent) inlineStyles.push(s.textContent);
@@ -53,18 +57,66 @@ export async function exportMultiPageToPDF(
     html, body { margin: 0; padding: 0; background: white; }
     .print-page { page-break-after: always; break-after: page; }
     .print-page:last-child { page-break-after: avoid; break-after: avoid; }
+    /* Ensure all text and borders are black when printing */
+    @media print {
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
   </style>
 </head>
 <body>
   ${container.outerHTML}
   <script>
-    // Print once all images/fonts are ready
-    window.onload = function() {
+    (function() {
+      function doPrint() {
+        setTimeout(function() {
+          window.print();
+          setTimeout(function() { window.close(); }, 500);
+        }, 400);
+      }
+
+      // Wait for ALL external stylesheets to load before printing
+      var links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+      var total = links.length;
+
+      if (total === 0) {
+        // No external stylesheets — print after short delay
+        doPrint();
+        return;
+      }
+
+      var settled = 0;
+      var printed = false;
+
+      function onSettle() {
+        settled++;
+        if (settled >= total && !printed) {
+          printed = true;
+          doPrint();
+        }
+      }
+
+      links.forEach(function(link) {
+        try {
+          // Check if already loaded (cached stylesheet has sheet object)
+          if (link.sheet) {
+            onSettle();
+          } else {
+            link.addEventListener('load', onSettle);
+            link.addEventListener('error', onSettle); // Don't hang on failed loads
+          }
+        } catch (e) {
+          onSettle();
+        }
+      });
+
+      // Safety net: if stylesheets never fire events, print after 5 seconds
       setTimeout(function() {
-        window.print();
-        setTimeout(function() { window.close(); }, 500);
-      }, 300);
-    };
+        if (!printed) {
+          printed = true;
+          doPrint();
+        }
+      }, 5000);
+    })();
   <\/script>
 </body>
 </html>`;

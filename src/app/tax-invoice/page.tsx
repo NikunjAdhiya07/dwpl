@@ -402,13 +402,13 @@ export default function TaxInvoicePage() {
           </div>
         );
         
-        // Wait for render to complete
-        setTimeout(resolve, 500);
+        // Wait for React to fully paint the component tree
+        setTimeout(resolve, 1000);
       });
 
       // Generate PDF using multi-page export
       const filename = generatePDFFilename('Invoice', invoice.invoiceNumber, invoice.invoiceDate);
-      await exportMultiPageToPDF('temp-invoice-print', filename, { scale: 2 });
+      await exportMultiPageToPDF('temp-invoice-print', filename, { orientation: 'portrait' });
 
       // Clean up
       root.unmount();

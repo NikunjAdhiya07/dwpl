@@ -7,7 +7,7 @@ import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
 import { Plus, X, Receipt, FileText, Download, Trash2, Truck } from 'lucide-react';
-import { exportToPDF, exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
+import { exportHTMLToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 import JobWorkInvoicePrintView from '@/components/JobWorkInvoicePrintView';
 
@@ -366,14 +366,18 @@ export default function TaxInvoicePage() {
       return;
     }
     try {
-      // Create temporary hidden container
+      // Create temporary visible container
       const tempContainer = document.createElement('div');
       tempContainer.id = 'temp-invoice-print';
-      tempContainer.style.position = 'absolute';
-      tempContainer.style.left = '-9999px';
+      tempContainer.style.position = 'fixed';
       tempContainer.style.top = '0';
-      tempContainer.style.width = '210mm'; // A4 width
+      tempContainer.style.left = '0';
+      tempContainer.style.width = '100vw';
+      tempContainer.style.height = '100vh';
+      tempContainer.style.overflow = 'auto';
       tempContainer.style.background = 'white';
+      tempContainer.style.zIndex = '99999';
+      tempContainer.style.visibility = 'visible';
       document.body.appendChild(tempContainer);
 
       // Create a React root and render
@@ -383,16 +387,17 @@ export default function TaxInvoicePage() {
       // Render all three copies using the component
       await new Promise<void>((resolve) => {
         root.render(
-          <div style={{ background: 'white' }}>
+          <div style={{ background: 'white', width: '210mm', margin: '0 auto' }}>
             {['Original For Recipient', 'Duplicate For Transporter', 'Triplicate For Supplier'].map((copyType, copyIndex) => (
-              <div 
-                key={copyType} 
+              <div
+                key={copyType}
                 style={{
                   pageBreakAfter: copyIndex < 2 ? 'always' : 'auto',
+                  background: 'white',
                 }}
               >
-                <JobWorkInvoicePrintView 
-                  invoice={invoice as any} 
+                <JobWorkInvoicePrintView
+                  invoice={invoice as any}
                   company={companyData}
                   copyType={copyType}
                   preparedBy={currentUserName}
@@ -401,20 +406,21 @@ export default function TaxInvoicePage() {
             ))}
           </div>
         );
-        
-        // Wait for React to fully paint the component tree
-        setTimeout(resolve, 1000);
+
+        // Wait for render to complete
+        setTimeout(resolve, 1500);
       });
 
-      // Generate PDF using multi-page export
-      const filename = generatePDFFilename('Invoice', invoice.invoiceNumber, invoice.invoiceDate);
-      await exportMultiPageToPDF('temp-invoice-print', filename, { orientation: 'portrait' });
+      // Get the rendered content
+      const printContent = tempContainer.innerHTML;
 
-      // Clean up
+      // Remove the temporary container
       root.unmount();
-      if (document.body.contains(tempContainer)) {
-        document.body.removeChild(tempContainer);
-      }
+      document.body.removeChild(tempContainer);
+
+      // Generate PDF with the content
+      const filename = generatePDFFilename('Invoice', invoice.invoiceNumber, invoice.invoiceDate);
+      await exportHTMLToPDF(printContent, filename);
     } catch (error: any) {
       console.error('Failed to export PDF:', error);
       alert(`Failed to export PDF: ${error.message || 'Unknown error'}. Please check console for details.`);

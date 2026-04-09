@@ -139,14 +139,14 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
           <div className="flex-1 border-r border-black p-2 min-h-[120px]">
             <div className="mb-3">
               <p className="font-bold underline text-[10px] mb-1 uppercase">Bill To:</p>
-              <p className="font-bold text-[12px]">{invoice.billTo?.partyName || invoice.party.partyName}</p>
-              <p className="text-[11px] whitespace-pre-line">{invoice.billTo?.address || invoice.party.address}</p>
-              <p className="text-[11px] font-bold mt-1">GSTIN: {invoice.billTo?.gstNumber || invoice.party.gstNumber}</p>
+              <p className="font-bold text-[12px]">{invoice.billTo?.partyName || invoice.party?.partyName || ''}</p>
+              <p className="text-[11px] whitespace-pre-line">{invoice.billTo?.address || invoice.party?.address || ''}</p>
+              <p className="text-[11px] font-bold mt-1">GSTIN: {invoice.billTo?.gstNumber || invoice.party?.gstNumber || ''}</p>
             </div>
             <div>
               <p className="font-bold underline text-[10px] mb-1 uppercase">Ship To:</p>
-              <p className="font-bold text-[12px]">{invoice.shipTo?.partyName || invoice.party.partyName}</p>
-              <p className="text-[11px] whitespace-pre-line">{invoice.shipTo?.address || invoice.party.address}</p>
+              <p className="font-bold text-[12px]">{invoice.shipTo?.partyName || invoice.party?.partyName || ''}</p>
+              <p className="text-[11px] whitespace-pre-line">{invoice.shipTo?.address || invoice.party?.address || ''}</p>
             </div>
           </div>
 

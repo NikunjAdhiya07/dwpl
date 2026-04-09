@@ -125,14 +125,14 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
           <div className="flex-1 border-r border-black p-2 min-h-[120px]">
             <div className="mb-3">
               <p className="font-bold underline text-[10px] mb-1 uppercase">Bill To:</p>
-              <p className="font-bold text-[12px]">{challan.billTo?.partyName || challan.party.partyName}</p>
-              <p className="text-[11px] whitespace-pre-line">{challan.billTo?.address || challan.party.address}</p>
-              <p className="text-[11px] font-bold mt-1">GSTIN: {challan.billTo?.gstNumber || challan.party.gstNumber}</p>
+              <p className="font-bold text-[12px]">{challan.billTo?.partyName || challan.party?.partyName || ''}</p>
+              <p className="text-[11px] whitespace-pre-line">{challan.billTo?.address || challan.party?.address || ''}</p>
+              <p className="text-[11px] font-bold mt-1">GSTIN: {challan.billTo?.gstNumber || challan.party?.gstNumber || ''}</p>
             </div>
             <div>
               <p className="font-bold underline text-[10px] mb-1 uppercase">Ship To:</p>
-              <p className="font-bold text-[12px]">{challan.shipTo?.partyName || challan.party.partyName}</p>
-              <p className="text-[11px] whitespace-pre-line">{challan.shipTo?.address || challan.party.address}</p>
+              <p className="font-bold text-[12px]">{challan.shipTo?.partyName || challan.party?.partyName || ''}</p>
+              <p className="text-[11px] whitespace-pre-line">{challan.shipTo?.address || challan.party?.address || ''}</p>
             </div>
           </div>
 

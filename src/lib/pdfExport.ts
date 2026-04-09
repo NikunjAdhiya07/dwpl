@@ -1,3 +1,7 @@
+// Import will be dynamic to avoid SSR issues
+// @ts-ignore
+let html2pdf: any;
+
 /**
  * Generate a formatted filename for documents
  */
@@ -13,16 +17,12 @@ export function generatePDFFilename(
 }
 
 /**
- * Export a report by opening a new popup window and triggering window.print().
- * Uses the browser's native PDF renderer — zero CSS color parsing issues.
- *
- * FIX: Previously used a fixed 300ms timeout before print, which was not enough
- * for the Tailwind CSS stylesheets to fully load in the popup window, causing
- * blank/unstyled pages. Now uses proper load events + safety timeout.
+ * Export HTML element directly to PDF file.
+ * Uses html2pdf.js for reliable PDF generation with proper styling.
  */
 export async function exportMultiPageToPDF(
   containerId: string,
-  _filename: string,
+  filename: string,
   options?: {
     orientation?: 'portrait' | 'landscape';
     format?: 'a4' | 'letter';
@@ -33,102 +33,204 @@ export async function exportMultiPageToPDF(
   if (!container) throw new Error(`Element #${containerId} not found`);
 
   const orientation = options?.orientation ?? 'portrait';
-
-  // Collect all <link rel="stylesheet"> hrefs from current page
-  const styleLinks: string[] = [];
-  document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]').forEach((l) => {
-    if (l.href) styleLinks.push(l.href);
-  });
-
-  // Collect all inline <style> blocks (Next.js critical CSS injection)
-  const inlineStyles: string[] = [];
-  document.querySelectorAll<HTMLStyleElement>('style').forEach((s) => {
-    if (s.textContent) inlineStyles.push(s.textContent);
-  });
-
-  const printHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  ${styleLinks.map((href) => `<link rel="stylesheet" href="${href}" />`).join('\n  ')}
-  ${inlineStyles.map((css) => `<style>${css}</style>`).join('\n  ')}
-  <style>
-    @page { size: A4 ${orientation}; margin: 0; }
-    html, body { margin: 0; padding: 0; background: white; }
-    .print-page { page-break-after: always; break-after: page; }
-    .print-page:last-child { page-break-after: avoid; break-after: avoid; }
-    /* Ensure all text and borders are black when printing */
-    @media print {
-      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-  ${container.outerHTML}
-  <script>
-    (function() {
-      function doPrint() {
-        setTimeout(function() {
-          window.print();
-          setTimeout(function() { window.close(); }, 500);
-        }, 400);
-      }
-
-      // Wait for ALL external stylesheets to load before printing
-      var links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
-      var total = links.length;
-
-      if (total === 0) {
-        // No external stylesheets — print after short delay
-        doPrint();
-        return;
-      }
-
-      var settled = 0;
-      var printed = false;
-
-      function onSettle() {
-        settled++;
-        if (settled >= total && !printed) {
-          printed = true;
-          doPrint();
-        }
-      }
-
-      links.forEach(function(link) {
-        try {
-          // Check if already loaded (cached stylesheet has sheet object)
-          if (link.sheet) {
-            onSettle();
-          } else {
-            link.addEventListener('load', onSettle);
-            link.addEventListener('error', onSettle); // Don't hang on failed loads
-          }
-        } catch (e) {
-          onSettle();
-        }
-      });
-
-      // Safety net: if stylesheets never fire events, print after 5 seconds
-      setTimeout(function() {
-        if (!printed) {
-          printed = true;
-          doPrint();
-        }
-      }, 5000);
-    })();
-  <\/script>
-</body>
-</html>`;
-
-  const printWindow = window.open('', '_blank', 'width=900,height=700');
-  if (!printWindow) {
-    throw new Error('Popup blocked. Please allow popups for this site and try again.');
+  
+  // Dynamic import for browser-only library
+  if (!html2pdf) {
+    // @ts-ignore
+    const mod = await import('html2pdf.js');
+    html2pdf = mod.default || mod;
   }
 
-  printWindow.document.open();
-  printWindow.document.write(printHtml);
-  printWindow.document.close();
+  const element = container;
+  try {
+    await html2pdf()
+      .set({
+        margin: 0,
+        filename: `${filename}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          allowTaint: true, 
+          useCORS: true,
+          onclone: (clonedDoc: any) => {
+            // Aggressively scrub all unsupported color functions from ALL stylesheets
+            // html2canvas fails in its own CSS parser when it sees these modern functions
+            let cssText = '';
+            try {
+              // Get all rules from all stylesheets
+              Array.from(document.styleSheets).forEach((sheet: any) => {
+                try {
+                  Array.from(sheet.cssRules).forEach((rule: any) => {
+                    cssText += rule.cssText + '\n';
+                  });
+                } catch (e) {
+                  // Skip rules that might be cross-origin
+                }
+              });
+            } catch (e) {}
+
+            if (cssText) {
+              // Sanitize the CSS text to remove modern color functions that crash html2canvas
+              // Replacing with 'transparent' instead of 'black' avoids the black-bar issue
+              cssText = cssText
+                .replace(/(oklch|lab|oklab|color)\([^)]+\)/gi, 'transparent');
+
+              // Remove all existing styles and links
+              const existingStyles = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
+              existingStyles.forEach((el: any) => el.parentNode?.removeChild(el));
+
+              // Inject the sanitized styles PLUS a high-priority override for printing
+              const safeStyle = clonedDoc.createElement('style');
+              safeStyle.innerHTML = `
+                ${cssText}
+                
+                /* High-priority print overrides */
+                * {
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                  color-adjust: exact !important;
+                }
+                
+                /* Ensure all text is black and borders are visible */
+                body, div, p, span, td, th {
+                  color: #000000 !important;
+                  border-color: #000000 !important;
+                }
+                
+                /* Force backgrounds to be transparent/white unless specifically needed */
+                div, section, header, table, thead, tbody, tfoot, tr, th, td {
+                  background-color: transparent !important;
+                }
+                
+                .print-page, .print-page * {
+                  visibility: visible !important;
+                }
+                
+                .bg-white, body {
+                  background-color: #ffffff !important;
+                }
+              `;
+              clonedDoc.head.appendChild(safeStyle);
+            }
+          }
+        },
+        jsPDF: { orientation: orientation, unit: 'mm' as const, format: 'a4' },
+      })
+      .from(element)
+      .save();
+  } catch (error) {
+    console.error('PDF export failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Export raw HTML content to PDF file.
+ */
+export async function exportHTMLToPDF(
+  htmlContent: string,
+  filename: string,
+  options?: {
+    orientation?: 'portrait' | 'landscape';
+  }
+): Promise<void> {
+  const orientation = options?.orientation ?? 'portrait';
+
+  // Dynamic import for browser-only library
+  if (!html2pdf) {
+    // @ts-ignore
+    const mod = await import('html2pdf.js');
+    html2pdf = mod.default || mod;
+  }
+
+  // Create temporary element
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlContent;
+  tempDiv.style.background = 'white';
+  document.body.appendChild(tempDiv);
+
+  try {
+    await html2pdf()
+      .set({
+        margin: 0,
+        filename: `${filename}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          allowTaint: true, 
+          useCORS: true,
+          onclone: (clonedDoc: any) => {
+            // Aggressively scrub all unsupported color functions from ALL stylesheets
+            // html2canvas fails in its own CSS parser when it sees these modern functions
+            let cssText = '';
+            try {
+              // Get all rules from all stylesheets
+              Array.from(document.styleSheets).forEach((sheet: any) => {
+                try {
+                  Array.from(sheet.cssRules).forEach((rule: any) => {
+                    cssText += rule.cssText + '\n';
+                  });
+                } catch (e) {
+                  // Skip rules that might be cross-origin
+                }
+              });
+            } catch (e) {}
+
+            if (cssText) {
+              // Sanitize the CSS text to remove modern color functions that crash html2canvas
+              // Replacing with 'transparent' instead of 'black' avoids the black-bar issue
+              cssText = cssText
+                .replace(/(oklch|lab|oklab|color)\([^)]+\)/gi, 'transparent');
+
+              // Remove all existing styles and links
+              const existingStyles = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
+              existingStyles.forEach((el: any) => el.parentNode?.removeChild(el));
+
+              // Inject the sanitized styles PLUS a high-priority override for printing
+              const safeStyle = clonedDoc.createElement('style');
+              safeStyle.innerHTML = `
+                ${cssText}
+                
+                /* High-priority print overrides */
+                * {
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                  color-adjust: exact !important;
+                }
+                
+                /* Ensure all text is black and borders are visible */
+                body, div, p, span, td, th {
+                  color: #000000 !important;
+                  border-color: #000000 !important;
+                }
+                
+                /* Force backgrounds to be transparent/white unless specifically needed */
+                div, section, header, table, thead, tbody, tfoot, tr, th, td {
+                  background-color: transparent !important;
+                }
+                
+                .print-page, .print-page * {
+                  visibility: visible !important;
+                }
+                
+                .bg-white, body {
+                  background-color: #ffffff !important;
+                }
+              `;
+              clonedDoc.head.appendChild(safeStyle);
+            }
+          }
+        },
+        jsPDF: { orientation: orientation, unit: 'mm' as const, format: 'a4' },
+      })
+      .from(tempDiv)
+      .save();
+  } catch (error) {
+    console.error('PDF export failed:', error);
+    throw error;
+  } finally {
+    document.body.removeChild(tempDiv);
+  }
 }
 
 /**

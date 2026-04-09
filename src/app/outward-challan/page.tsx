@@ -8,7 +8,7 @@ import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
 import CoilNumberInput from '@/components/CoilNumberInput';
 import { Plus, X, Minus, Send, Trash2, Edit, Download, AlertCircle, MapPin, Truck, History, ChevronDown } from 'lucide-react';
-import { exportToPDF, exportMultiPageToPDF, generatePDFFilename } from '@/lib/pdfExport';
+import { exportHTMLToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 import ChallanPrintView from '@/components/ChallanPrintView';
 
@@ -614,29 +614,34 @@ export default function OutwardChallanPage() {
 
   const handlePDFExport = async (challan: OutwardChallan) => {
     try {
-      // Create temporary hidden container
+      // Create temporary visible container
       const tempContainer = document.createElement('div');
       tempContainer.id = 'temp-challan-print';
-      tempContainer.style.position = 'absolute';
-      tempContainer.style.left = '-9999px';
+      tempContainer.style.position = 'fixed';
       tempContainer.style.top = '0';
-      tempContainer.style.width = '210mm'; // A4 width
+      tempContainer.style.left = '0';
+      tempContainer.style.width = '100vw';
+      tempContainer.style.height = '100vh';
+      tempContainer.style.overflow = 'auto';
       tempContainer.style.background = 'white';
+      tempContainer.style.zIndex = '99999';
+      tempContainer.style.visibility = 'visible';
       document.body.appendChild(tempContainer);
 
       // Create a React root and render
       const { createRoot } = await import('react-dom/client');
       const root = createRoot(tempContainer);
 
-      // Render copies
+      // Render all three copies
       await new Promise<void>((resolve) => {
         root.render(
-          <div style={{ background: 'white' }}>
+          <div style={{ background: 'white', width: '210mm', margin: '0 auto' }}>
             {['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'].map((copyType, copyIndex) => (
-              <div 
-                key={copyType} 
+              <div
+                key={copyType}
                 style={{
                   pageBreakAfter: copyIndex < 2 ? 'always' : 'auto',
+                  background: 'white',
                 }}
               >
                 <ChallanPrintView challan={challan as any} company={companyData} copyType={copyType} />
@@ -644,20 +649,21 @@ export default function OutwardChallanPage() {
             ))}
           </div>
         );
-        
-        // Wait for React to fully paint the component tree
-        setTimeout(resolve, 1000);
+
+        // Wait for render to complete
+        setTimeout(resolve, 1500);
       });
 
-      // Generate PDF
-      const filename = generatePDFFilename('Challan', challan.challanNumber, challan.challanDate);
-      await exportMultiPageToPDF('temp-challan-print', filename, { orientation: 'portrait' });
+      // Get the rendered content
+      const printContent = tempContainer.innerHTML;
 
-      // Clean up
+      // Remove the temporary container
       root.unmount();
-      if (document.body.contains(tempContainer)) {
-        document.body.removeChild(tempContainer);
-      }
+      document.body.removeChild(tempContainer);
+
+      // Generate PDF with the content
+      const filename = generatePDFFilename('Challan', challan.challanNumber, challan.challanDate);
+      await exportHTMLToPDF(printContent, filename);
     } catch (error: any) {
       console.error('Failed to export PDF:', error);
       alert(`Failed to export PDF: ${error.message || 'Unknown error'}. Please check console for details.`);

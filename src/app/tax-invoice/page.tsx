@@ -274,7 +274,12 @@ export default function TaxInvoicePage() {
             ...item,
             finishSize: item.finishSize._id || item.finishSize,
             originalSize: item.originalSize._id || item.originalSize,
-          }))
+          })),
+          // Pass GST percentages so they get saved in the invoice
+          cgstPercentage: selectedCgst || 0,
+          sgstPercentage: selectedSgst || 0,
+          igstPercentage: selectedIgst || 0,
+          tcsPercentage: selectedTcs || 0,
         }),
       });
 

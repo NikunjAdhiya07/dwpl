@@ -305,28 +305,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get GST percentage from GST Master
-    // Normalize party ID - could be object with _id or direct ID string
-    let invoiceParty = (challan as any).billTo?._id || (challan as any).billTo || (challan.party as any)?._id || challan.party;
+    // Get GST percentage from request body (already selected by user) or from GST Master
+    let cgstPercentage = body.cgstPercentage ?? 0;
+    let sgstPercentage = body.sgstPercentage ?? 0;
+    let igstPercentage = body.igstPercentage ?? 0;
+    let tcsPercentage = body.tcsPercentage ?? 0;
 
-    // Ensure invoiceParty is a valid ObjectId string
-    const invoicePartyStr = typeof invoiceParty === 'object' ? (invoiceParty as any)?._id?.toString() || invoiceParty.toString() : invoiceParty?.toString();
+    // If GST percentages not provided in body, try to fetch from GST Master
+    if (cgstPercentage === 0 && sgstPercentage === 0 && igstPercentage === 0) {
+      // Normalize party ID - could be object with _id or direct ID string
+      let invoiceParty = (challan as any).billTo?._id || (challan as any).billTo || (challan.party as any)?._id || challan.party;
 
-    const gstMaster = await GSTMaster.findOne({ party: invoicePartyStr });
+      // Ensure invoiceParty is a valid ObjectId string
+      const invoicePartyStr = typeof invoiceParty === 'object' ? (invoiceParty as any)?._id?.toString() || invoiceParty.toString() : invoiceParty?.toString();
 
-    if (!gstMaster) {
-      // Log detailed error for debugging
-      console.error('GST Master not found for party:', {
-        invoiceParty,
-        invoicePartyStr,
-        billTo: (challan as any).billTo,
-        party: challan.party
-      });
+      const gstMaster = await GSTMaster.findOne({ party: invoicePartyStr });
 
-      return NextResponse.json(
-        { success: false, error: `GST setup not found for the selected Party (ID: ${invoicePartyStr}). Please configure it in Party GST Setup first.` },
-        { status: 400 }
-      );
+      if (gstMaster) {
+        cgstPercentage = gstMaster.cgstPercentage || 0;
+        sgstPercentage = gstMaster.sgstPercentage || 0;
+        igstPercentage = gstMaster.igstPercentage || 0;
+        tcsPercentage = gstMaster.tcsPercentage || 0;
+      }
     }
     
     // Generate invoice number
@@ -335,9 +335,10 @@ export async function POST(request: NextRequest) {
     console.log('Creating Tax Invoice with multi-items:', {
       invoiceNumber,
       itemCount: items.length,
-      cgstPercentage: gstMaster.cgstPercentage,
-      sgstPercentage: gstMaster.sgstPercentage,
-      igstPercentage: gstMaster.igstPercentage,
+      cgstPercentage: cgstPercentage,
+      sgstPercentage: sgstPercentage,
+      igstPercentage: igstPercentage,
+      tcsPercentage: tcsPercentage,
       challanBillTo: (challan as any).billTo,
       challanShipTo: (challan as any).shipTo,
       challanParty: challan.party,
@@ -351,12 +352,12 @@ export async function POST(request: NextRequest) {
       billTo: (challan as any).billTo?._id || (challan as any).billTo || (challan.party as any)?._id || challan.party,
       shipTo: (challan as any).shipTo?._id || (challan as any).shipTo || (challan.party as any)?._id || challan.party,
       items,
-      cgstPercentage: gstMaster.cgstPercentage,
-      sgstPercentage: gstMaster.sgstPercentage,
-      igstPercentage: gstMaster.igstPercentage,
-      tcsPercentage: gstMaster.tcsPercentage || 0,
+      cgstPercentage: cgstPercentage,
+      sgstPercentage: sgstPercentage,
+      igstPercentage: igstPercentage,
+      tcsPercentage: tcsPercentage,
       invoiceDate: body.invoiceDate || new Date(),
-      
+
       // Transport Details from Challan
       vehicleNumber: challan.vehicleNumber,
       transportName: challan.transportName,

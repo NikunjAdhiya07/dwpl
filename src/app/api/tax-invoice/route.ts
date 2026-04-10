@@ -306,14 +306,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Get GST percentage from GST Master
-    const invoiceParty = (challan as any).billTo?._id || (challan as any).billTo || (challan.party as any)?._id || challan.party;
-    
-    const gstMaster = await GSTMaster.findOne({ party: invoiceParty, isActive: true });
-    
+    // Normalize party ID - could be object with _id or direct ID string
+    let invoiceParty = (challan as any).billTo?._id || (challan as any).billTo || (challan.party as any)?._id || challan.party;
+
+    // Ensure invoiceParty is a valid ObjectId string
+    const invoicePartyStr = typeof invoiceParty === 'object' ? (invoiceParty as any)?._id?.toString() || invoiceParty.toString() : invoiceParty?.toString();
+
+    const gstMaster = await GSTMaster.findOne({ party: invoicePartyStr });
+
     if (!gstMaster) {
-      // Fallback to a default GST % or throw error
+      // Log detailed error for debugging
+      console.error('GST Master not found for party:', {
+        invoiceParty,
+        invoicePartyStr,
+        billTo: (challan as any).billTo,
+        party: challan.party
+      });
+
       return NextResponse.json(
-        { success: false, error: `GST setup not found for the selected Party. Please configure it in GST Master.` },
+        { success: false, error: `GST setup not found for the selected Party (ID: ${invoicePartyStr}). Please configure it in Party GST Setup first.` },
         { status: 400 }
       );
     }

@@ -296,6 +296,11 @@ export default function TaxInvoicePage() {
     setSelectedChallan(challanId);
     if (!challanId) {
       setInvoiceItems([]);
+      setInvoiceParty('');
+      setSelectedCgst(null);
+      setSelectedSgst(null);
+      setSelectedIgst(null);
+      setSelectedTcs(null);
       return;
     }
 
@@ -304,13 +309,19 @@ export default function TaxInvoicePage() {
         // Auto-default party to billTo if present, else party
         const defaultPartyId = challan.billTo?._id || challan.party?._id || '';
         setInvoiceParty(defaultPartyId);
-        
-        // Find GST matching the selected billTo party
-        const partyGst = gstMasters.find(g => (g.party?._id || g.party) === defaultPartyId);
+
+        // Find GST matching the selected billTo party - normalize both sides to string for comparison
+        const normalizedPartyId = typeof defaultPartyId === 'object' ? (defaultPartyId as any)?._id?.toString() : defaultPartyId?.toString() || '';
+
+        const partyGst = gstMasters.find(g => {
+          const gstPartyId = typeof g.party === 'object' ? (g.party as any)?._id?.toString() : (g.party || '').toString();
+          return gstPartyId === normalizedPartyId;
+        });
+
         if (partyGst) {
-          setSelectedCgst(partyGst.cgstPercentage);
-          setSelectedSgst(partyGst.sgstPercentage);
-          setSelectedIgst(partyGst.igstPercentage);
+          setSelectedCgst(partyGst.cgstPercentage || 0);
+          setSelectedSgst(partyGst.sgstPercentage || 0);
+          setSelectedIgst(partyGst.igstPercentage || 0);
           setSelectedTcs(partyGst.tcsPercentage || 0);
         } else {
           setSelectedCgst(null);

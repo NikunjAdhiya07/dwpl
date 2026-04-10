@@ -7,7 +7,6 @@ const GSTMasterSchema = new Schema<IGSTMaster>(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'PartyMaster',
       required: [true, 'Party is required'],
-      unique: true,
     },
     cgstPercentage: {
       type: Number,
@@ -46,6 +45,8 @@ const GSTMasterSchema = new Schema<IGSTMaster>(
   }
 );
 
-// Indexing is handled by unique: true in schema definition
+// Create a unique compound index on party field to ensure only one GST rate per party
+// This approach handles null values correctly during schema creation
+GSTMasterSchema.index({ party: 1 }, { unique: true });
 
 export const GSTMaster = mongoose.models.GSTMaster || mongoose.model<IGSTMaster>('GSTMaster', GSTMasterSchema);

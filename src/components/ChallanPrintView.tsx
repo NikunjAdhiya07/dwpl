@@ -200,7 +200,12 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
                       return (
                         <div className="text-[9px] leading-snug">
                           {entries.map((c, ci) => (
-                            <p key={ci} className="font-medium">{c.coilNumber}</p>
+                            <div key={ci} className="mb-1">
+                              <p className="font-medium">{c.coilNumber}</p>
+                              {c.coilWeight ? (
+                                <p className="text-[8px] text-gray-600">Wt: {(c.coilWeight || 0).toFixed(2)} kg</p>
+                              ) : null}
+                            </div>
                           ))}
                         </div>
                       );

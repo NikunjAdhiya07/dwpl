@@ -99,10 +99,11 @@ export interface IOutwardChallanItem {
   extraPassCount: number; // Extra pass count for rate calc
   coilEntries?: ICoilEntry[]; // Individual coils; sum of weights = quantity
   quantity: number;
-  rate: number;
+  materialCost: number; // Material cost per kg (₹/kg)
+  rate: number; // Total rate = jobWorkRate + materialCost
   annealingCharge: number; // auto-calculated from Party Master
   drawCharge: number; // auto-calculated from Party Master
-  itemTotal: number; // total for this item
+  itemTotal: number; // total for this item (quantity × rate)
   issuedChallanNo?: string; // Reference to incoming challan
   coilNumber?: string; // Legacy coil number
   coilReference?: string; // Coil reference/identifier

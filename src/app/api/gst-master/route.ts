@@ -19,19 +19,41 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
     const body = await request.json();
-    
-    // Perform an upsert based on the party ID
+
+    if (!body.party) {
+      return NextResponse.json(
+        { success: false, error: 'Party is required' },
+        { status: 400 }
+      );
+    }
+
+    // Upsert: update if party already exists, otherwise insert new
     const gstRate = await GSTMaster.findOneAndUpdate(
       { party: body.party },
-      body,
-      { new: true, upsert: true, setDefaultsOnInsert: true }
-    );
-    
+      {
+        $set: {
+          cgstPercentage: body.cgstPercentage,
+          sgstPercentage: body.sgstPercentage,
+          igstPercentage: body.igstPercentage,
+          tcsPercentage: body.tcsPercentage ?? 0,
+          isActive: body.isActive ?? true,
+        },
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+    ).populate('party');
+
     return NextResponse.json(
       { success: true, data: gstRate },
       { status: 201 }
     );
   } catch (error: any) {
+    // Surface E11000 duplicate key errors clearly
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { success: false, error: 'A GST rate already exists for this party. Use Edit to update it.' },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 400 }

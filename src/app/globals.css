@@ -421,19 +421,17 @@ button.input {
   }
   
   .print-page {
-    width: 210mm !important;
-    height: 297mm !important; /* Exact A4 height */
-    padding: 7mm !important; /* Balanced padding */
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 0 !important;
     margin: 0 !important;
     background: white !important;
     box-sizing: border-box !important;
     position: relative !important;
-    page-break-after: always !important;
-    page-break-inside: avoid !important;
-    overflow: visible !important; /* Changed to visible to show all borders */
+    overflow: visible !important;
     border: none !important;
   }
-  
+
   .print-page:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
@@ -462,7 +460,7 @@ button.input {
   /* Page setup */
   @page {
     size: A4;
-    margin: 0;
+    margin: 10mm 7mm;
   }
 }
 

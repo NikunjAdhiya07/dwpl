@@ -160,23 +160,28 @@ export async function PUT(
       );
     }
     
-    // Update the challan
-    const updatedChallan = await OutwardChallan.findByIdAndUpdate(
-      id,
-      {
-        party: body.party,
-        billTo: body.billTo || body.party,
-        shipTo: body.shipTo || body.party,
-        items: body.items,
-        challanDate: body.challanDate,
-        vehicleNumber: body.vehicleNumber,
-        transportName: body.transportName,
-        ownerName: body.ownerName,
-        dispatchedThrough: body.dispatchedThrough,
-        eWayBillNo: body.eWayBillNo,
-      },
-      { new: true }
-    )
+    // Update the challan using .save() so pre-save hook recalculates
+    // itemTotal (qty * rate) and totalAmount correctly after rate changes
+    existingChallan.party = body.party;
+    existingChallan.billTo = body.billTo || body.party;
+    existingChallan.shipTo = body.shipTo || body.party;
+    existingChallan.challanDate = body.challanDate;
+    existingChallan.vehicleNumber = body.vehicleNumber;
+    existingChallan.vehicles = body.vehicles || (body.vehicleNumber ? [{ vehicleNumber: body.vehicleNumber }] : []);
+    existingChallan.transportName = body.transportName;
+    existingChallan.ownerName = body.ownerName;
+    existingChallan.dispatchedThrough = body.dispatchedThrough;
+    existingChallan.eWayBillNo = body.eWayBillNo;
+
+    // Force-recalculate itemTotal from current rate before saving
+    existingChallan.items = body.items.map((item: any) => ({
+      ...item,
+      itemTotal: (item.quantity || 0) * (item.rate || 0),
+    }));
+
+    await existingChallan.save(); // triggers pre-save: recalculates totalAmount
+
+    const updatedChallan = await OutwardChallan.findById(existingChallan._id)
       .populate('party')
       .populate('billTo')
       .populate('shipTo')

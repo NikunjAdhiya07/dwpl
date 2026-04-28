@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
 import Loading from '@/components/Loading';
@@ -401,17 +401,12 @@ export default function TaxInvoicePage() {
       const root = createRoot(tempContainer);
 
       // Render all three copies using the component
+      const copies = ['Original For Recipient', 'Duplicate For Transporter', 'Triplicate For Supplier'];
       await new Promise<void>((resolve) => {
         root.render(
           <div style={{ background: 'white', width: '210mm', margin: '0 auto' }}>
-            {['Original For Recipient', 'Duplicate For Transporter', 'Triplicate For Supplier'].map((copyType, copyIndex) => (
-              <div
-                key={copyType}
-                style={{
-                  pageBreakAfter: copyIndex < 2 ? 'always' : 'auto',
-                  background: 'white',
-                }}
-              >
+            {copies.map((copyType) => (
+              <div key={copyType} style={{ width: '210mm', height: '296mm', overflow: 'hidden', boxSizing: 'border-box' }}>
                 <JobWorkInvoicePrintView
                   invoice={invoice as any}
                   company={companyData}

@@ -45,8 +45,9 @@ const GSTMasterSchema = new Schema<IGSTMaster>(
   }
 );
 
-// Create a unique compound index on party field to ensure only one GST rate per party
-// This approach handles null values correctly during schema creation
-GSTMasterSchema.index({ party: 1 }, { unique: true });
+// Unique index on party — sparse:true ensures null/missing party values don't collide
+// If you see E11000 on hsnCode_1 index, drop it manually:
+//   db.gstmasters.dropIndex('hsnCode_1')
+GSTMasterSchema.index({ party: 1 }, { unique: true, sparse: true });
 
 export const GSTMaster = mongoose.models.GSTMaster || mongoose.model<IGSTMaster>('GSTMaster', GSTMasterSchema);

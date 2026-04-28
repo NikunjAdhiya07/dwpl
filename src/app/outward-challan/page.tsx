@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
 import Loading from '@/components/Loading';
@@ -75,7 +75,8 @@ interface ChallanItem {
   extraPassCount: number;
   coilEntries: CoilEntry[];
   quantity: number;
-  rate: number;
+  materialCost: number; // ₹/kg — editable material cost
+  rate: number;         // auto = jobWorkRate + materialCost
   rateOverride: boolean;
   annealingCharge: number;
   drawCharge: number;
@@ -339,6 +340,7 @@ export default function OutwardChallanPage() {
       extraPassCount: 0,
       coilEntries: [],
       quantity: 0,
+      materialCost: 0,
       rate: selectedParty.sappdRate || selectedParty.rate,
       rateOverride: false,
       annealingCharge: selectedParty.annealingCharge,
@@ -401,7 +403,7 @@ export default function OutwardChallanPage() {
       }
     }
     
-    // Recalculate rate using formula: Base(processType) + (A × EA) + (P × EP)
+    // Recalculate rate: Total Rate = Job Work Rate + Material Cost
     const item = newItems[index];
     if (!item.rateOverride && selectedParty) {
       const rateMap: Record<string, number> = {
@@ -416,7 +418,8 @@ export default function OutwardChallanPage() {
       const P = selectedParty.drawCharge;
       const EA = item.annealingCount || 0;
       const EP = item.drawPassCount || 0;
-      item.rate = S + (A * EA) + (P * EP);
+      const jobWorkRate = S + (A * EA) + (P * EP);
+      item.rate = jobWorkRate + (item.materialCost || 0);
     }
     
     // Auto-compute quantity from coil entries if any exist
@@ -558,6 +561,7 @@ export default function OutwardChallanPage() {
         extraPassCount: item.extraPassCount || 0,
         coilEntries: item.coilEntries || [],
         quantity: item.quantity,
+        materialCost: (item as any).materialCost || 0,
         rate: item.rate,
         rateOverride: false,
         annealingCharge: item.annealingCharge,
@@ -633,17 +637,12 @@ export default function OutwardChallanPage() {
       const root = createRoot(tempContainer);
 
       // Render all three copies
+      const copies = ['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'];
       await new Promise<void>((resolve) => {
         root.render(
           <div style={{ background: 'white', width: '210mm', margin: '0 auto' }}>
-            {['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'].map((copyType, copyIndex) => (
-              <div
-                key={copyType}
-                style={{
-                  pageBreakAfter: copyIndex < 2 ? 'always' : 'auto',
-                  background: 'white',
-                }}
-              >
+            {copies.map((copyType) => (
+              <div key={copyType} style={{ width: '210mm', height: '296mm', overflow: 'hidden', boxSizing: 'border-box' }}>
                 <ChallanPrintView challan={challan as any} company={companyData} copyType={copyType} />
               </div>
             ))}
@@ -952,7 +951,8 @@ export default function OutwardChallanPage() {
                                 const P = selectedParty.drawCharge;
                                 const EA = newItems[index].annealingCount || 0;
                                 const EP = newItems[index].drawPassCount || 0;
-                                newItems[index].rate = baseRate + (A * EA) + (P * EP);
+                                const jobWorkRate = baseRate + (A * EA) + (P * EP);
+                                newItems[index].rate = jobWorkRate + (newItems[index].materialCost || 0);
                                 newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
                               }
                               setFormData({ ...formData, items: newItems });
@@ -1137,11 +1137,47 @@ export default function OutwardChallanPage() {
                           />
                         </div>
 
-                        {/* Rate - Auto-calculated */}
+                        {/* Material Cost (₹/kg) */}
+                        <div style={{ minWidth: '80px', flex: '1' }}>
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">Mat. Cost (₹/kg)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="w-full px-1 py-1.5 text-xs border border-orange-300 bg-orange-50 rounded focus:ring-1 focus:ring-orange-400"
+                            value={item.materialCost || 0}
+                            onChange={(e) => {
+                              const newItems = [...formData.items];
+                              const matCost = parseFloat(e.target.value) || 0;
+                              newItems[index].materialCost = matCost;
+                              if (!newItems[index].rateOverride && selectedParty) {
+                                const rateMap: Record<string, number> = {
+                                  SAPP: selectedParty.rate,
+                                  SAPPD: selectedParty.sappdRate || selectedParty.rate,
+                                  PPD: selectedParty.ppdFixedRate,
+                                  Draw: selectedParty.drawCharge,
+                                  Annealing: selectedParty.annealingCharge,
+                                };
+                                const S = rateMap[newItems[index].processType] ?? (selectedParty.sappdRate || selectedParty.rate);
+                                const A = selectedParty.annealingCharge;
+                                const P = selectedParty.drawCharge;
+                                const EA = newItems[index].annealingCount || 0;
+                                const EP = newItems[index].drawPassCount || 0;
+                                const jobWorkRate = S + (A * EA) + (P * EP);
+                                newItems[index].rate = jobWorkRate + matCost;
+                              }
+                              newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                              setFormData({ ...formData, items: newItems });
+                            }}
+                            min="0"
+                            placeholder="0"
+                          />
+                        </div>
+
+                        {/* Total Rate = Job Work Rate + Material Cost */}
                         <div style={{ minWidth: '90px', flex: '1.2' }}>
                           <div className="flex items-center gap-1 mb-0.5">
-                            <label className="text-[10px] font-medium text-slate-700 leading-none">Rate (₹)</label>
-                            <label className="flex items-center ml-auto cursor-pointer" title="Override rate">
+                            <label className="text-[10px] font-medium text-slate-700 leading-none">Rate (₹/kg)</label>
+                            <label className="flex items-center ml-auto cursor-pointer" title="Override total rate">
                               <input
                                 type="checkbox"
                                 className="w-2.5 h-2.5"
@@ -1150,12 +1186,20 @@ export default function OutwardChallanPage() {
                                   const newItems = [...formData.items];
                                   newItems[index] = { ...newItems[index], rateOverride: e.target.checked };
                                   if (!e.target.checked && selectedParty) {
-                                    const S = selectedParty.sappdRate || selectedParty.rate;
+                                    const rateMap: Record<string, number> = {
+                                      SAPP: selectedParty.rate,
+                                      SAPPD: selectedParty.sappdRate || selectedParty.rate,
+                                      PPD: selectedParty.ppdFixedRate,
+                                      Draw: selectedParty.drawCharge,
+                                      Annealing: selectedParty.annealingCharge,
+                                    };
+                                    const S = rateMap[newItems[index].processType] ?? (selectedParty.sappdRate || selectedParty.rate);
                                     const A = selectedParty.annealingCharge;
                                     const P = selectedParty.drawCharge;
                                     const EA = newItems[index].annealingCount || 0;
                                     const EP = newItems[index].drawPassCount || 0;
-                                    newItems[index].rate = S + (A * EA) + (P * EP);
+                                    const jobWorkRate = S + (A * EA) + (P * EP);
+                                    newItems[index].rate = jobWorkRate + (newItems[index].materialCost || 0);
                                     newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
                                   }
                                   setFormData({ ...formData, items: newItems });
@@ -1176,6 +1220,11 @@ export default function OutwardChallanPage() {
                             min="0"
                             readOnly={!item.rateOverride}
                             required
+                            title={
+                              item.rateOverride
+                                ? 'Manual override'
+                                : `Job Work: ₹${(item.rate - (item.materialCost || 0)).toFixed(2)} + Material: ₹${(item.materialCost || 0).toFixed(2)}`
+                            }
                           />
                         </div>
 

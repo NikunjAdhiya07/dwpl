@@ -91,12 +91,16 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
     state: 'Gujarat',
     stateCode: '24',
   };
-  // Ensure we have at least 15 rows for a professional look, filling with empty rows if needed
-  const minRows = 12;
-  const emptyRowsCount = Math.max(0, minRows - challan.items.length);
+  // Add enough empty rows to reach a minimum of 8, but never more than 15 total rows
+  const minRows = 8;
+  const maxRows = 15;
+  const emptyRowsCount = Math.min(
+    Math.max(0, minRows - challan.items.length),
+    Math.max(0, maxRows - challan.items.length)
+  );
 
   return (
-    <div className="print-page bg-white text-black font-sans p-[10mm] w-[210mm] min-h-[297mm] box-border mx-auto border border-gray-200">
+    <div className="print-page bg-white text-black font-sans p-[10mm] w-[210mm] box-border mx-auto border border-gray-200 flex flex-col">
       {/* Header Section */}
       <div className="flex justify-between items-start mb-6">
         <div className="w-[45%] text-[11px] leading-snug">
@@ -200,12 +204,9 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
                       return (
                         <div className="text-[9px] leading-snug">
                           {entries.map((c, ci) => (
-                            <div key={ci} className="mb-1">
-                              <p className="font-medium">{c.coilNumber}</p>
-                              {c.coilWeight ? (
-                                <p className="text-[8px] text-gray-600">Wt: {(c.coilWeight || 0).toFixed(2)} kg</p>
-                              ) : null}
-                            </div>
+                            <p key={ci} className="font-medium">
+                              {c.coilNumber}{c.coilWeight ? `–${(c.coilWeight || 0).toFixed(0)} kg` : ''}
+                            </p>
                           ))}
                         </div>
                       );
@@ -237,7 +238,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
             
             {/* Empty Rows */}
             {Array.from({ length: emptyRowsCount }).map((_, i) => (
-              <tr key={`empty-${i}`} className="border-b border-black h-[40px]">
+              <tr key={`empty-${i}`} className="border-b border-black h-[32px]">
                 <td className="border-r border-black px-1 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
@@ -287,7 +288,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
       </div>
 
       {/* Footer Section */}
-      <div className="mt-auto pt-10">
+      <div className="mt-3" style={{ breakInside: 'avoid', pageBreakInside: 'avoid', breakBefore: 'avoid' }}>
         <div className="flex justify-between items-end">
           <div className="w-1/3">
             <div className="border-t border-black pt-1 w-2/3 text-center text-[11px]">
@@ -301,19 +302,18 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
           </div>
           <div className="w-1/3 text-right">
             <div className="inline-block text-center text-[11px]">
-              <p className="mb-12 font-bold">Authorized Signature</p>
+              <p className="mb-6 font-bold">Authorized Signature</p>
               <div className="border-t border-black pt-1">
                 <p className="font-bold">(For {companyData.companyName})</p>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Terms and Conditions or Note if needed */}
-      <div className="mt-8 text-[9px] italic text-gray-500 text-center">
-        <p>This is a computer generated delivery challan and does not require a physical signature.</p>
-        <p>Subject to Surendranagar Jurisdiction.</p>
+        <div className="mt-4 text-[9px] italic text-gray-500 text-center">
+          <p>This is a computer generated delivery challan and does not require a physical signature.</p>
+          <p>Subject to Surendranagar Jurisdiction.</p>
+        </div>
       </div>
     </div>
   );

@@ -105,14 +105,17 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
     state: 'Gujarat',
     stateCode: '24',
   };
-  // Ensure we have at least 12 rows for a professional look
-  const minRows = 12;
-  const emptyRowsCount = Math.max(0, minRows - (invoice.items?.length ?? 0));
+  const minRows = 8;
+  const maxRows = 15;
+  const emptyRowsCount = Math.min(
+    Math.max(0, minRows - (invoice.items?.length ?? 0)),
+    Math.max(0, maxRows - (invoice.items?.length ?? 0))
+  );
 
   return (
-    <div className="print-page bg-white text-black font-sans p-[10mm] w-[210mm] min-h-[297mm] box-border mx-auto border border-gray-200">
+    <div className="print-page bg-white text-black font-sans p-[10mm] w-[210mm] box-border mx-auto border border-gray-200">
       {/* Header Section */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex justify-between items-start mb-3">
         <div className="w-[45%] text-[11px] leading-snug">
           <p className="font-bold text-[16px] mb-1">{companyData.companyName}</p>
           <p className="whitespace-pre-line text-gray-700">{companyData.address}</p>
@@ -222,7 +225,7 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
             
             {/* Empty Rows */}
             {Array.from({ length: emptyRowsCount }).map((_, i) => (
-              <tr key={`empty-${i}`} className="border-b border-black h-[40px]">
+              <tr key={`empty-${i}`} className="border-b border-black h-[32px]">
                 <td className="border-r border-black px-1 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
                 <td className="border-r border-black px-2 py-2"></td>
@@ -287,7 +290,7 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
       </div>
 
       {/* Footer Section */}
-      <div className="mt-auto pt-10">
+      <div className="mt-3">
         <div className="flex justify-between items-end">
           <div className="w-1/3">
             <div className="border-t border-black pt-1 w-2/3 text-center text-[11px]">
@@ -302,7 +305,7 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
           </div>
           <div className="w-1/3 text-right">
             <div className="inline-block text-center text-[11px]">
-              <p className="mb-12 font-bold">Authorized Signature</p>
+              <p className="mb-6 font-bold">Authorized Signature</p>
               <div className="border-t border-black pt-1">
                 <p className="font-bold">(For {companyData.companyName})</p>
               </div>
@@ -312,7 +315,7 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
       </div>
 
       {/* Terms and Conditions */}
-      <div className="mt-8 text-[9px] italic text-gray-500 text-center">
+      <div className="mt-4 text-[9px] italic text-gray-500 text-center">
         <p>This is a computer generated job work invoice and does not require a physical signature.</p>
         <p>Subject to Surendranagar Jurisdiction.</p>
       </div>

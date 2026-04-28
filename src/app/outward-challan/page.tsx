@@ -403,6 +403,23 @@ export default function OutwardChallanPage() {
       }
     }
     
+    // Auto-fetch material cost from GRN when issuedChallanNo or originalSize changes
+    if ((field === 'issuedChallanNo' || field === 'originalSize') && !newItems[index].rateOverride) {
+      const challanNo = newItems[index].issuedChallanNo;
+      const rmId = newItems[index].originalSize;
+      if (challanNo && rmId) {
+        const matchedGRN = grns.find(g => String(g.partyChallanNumber).trim() === String(challanNo).trim());
+        if (matchedGRN) {
+          const matchedGRNItem = matchedGRN.items.find(
+            (gi: any) => String(gi.rmSize._id || gi.rmSize) === String(rmId)
+          );
+          if (matchedGRNItem) {
+            newItems[index].materialCost = matchedGRNItem.rate;
+          }
+        }
+      }
+    }
+
     // Recalculate rate: Total Rate = Job Work Rate + Material Cost
     const item = newItems[index];
     if (!item.rateOverride && selectedParty) {
@@ -551,26 +568,40 @@ export default function OutwardChallanPage() {
       party: challan.party._id,
       billTo: challan.billTo?._id || '',
       shipTo: challan.shipTo?._id || '',
-      items: challan.items.map(item => ({
-        finishSize: item.finishSize._id,
-        originalSize: item.originalSize._id,
-        processType: (item.processType as any) || 'SAPPD',
-        annealingCount: item.annealingCount,
-        drawPassCount: item.drawPassCount,
-        extraAnnealingCount: item.extraAnnealingCount || 0,
-        extraPassCount: item.extraPassCount || 0,
-        coilEntries: item.coilEntries || [],
-        quantity: item.quantity,
-        materialCost: (item as any).materialCost || 0,
-        rate: item.rate,
-        rateOverride: false,
-        annealingCharge: item.annealingCharge,
-        drawCharge: item.drawCharge,
-        itemTotal: item.itemTotal,
-        issuedChallanNo: item.issuedChallanNo || '',
-        coilNumber: item.coilNumber || '',
-        coilReference: item.coilReference || '',
-      })),
+      items: challan.items.map(item => {
+        const rmId = item.originalSize._id;
+        const challanNo = item.issuedChallanNo || '';
+        let materialCost = (item as any).materialCost || 0;
+        if (!materialCost && challanNo) {
+          const matchedGRN = grns.find(g => String(g.partyChallanNumber).trim() === challanNo.trim());
+          if (matchedGRN) {
+            const matchedGRNItem = matchedGRN.items.find(
+              (gi: any) => String(gi.rmSize._id || gi.rmSize) === String(rmId)
+            );
+            if (matchedGRNItem) materialCost = matchedGRNItem.rate;
+          }
+        }
+        return {
+          finishSize: item.finishSize._id,
+          originalSize: rmId,
+          processType: (item.processType as any) || 'SAPPD',
+          annealingCount: item.annealingCount,
+          drawPassCount: item.drawPassCount,
+          extraAnnealingCount: item.extraAnnealingCount || 0,
+          extraPassCount: item.extraPassCount || 0,
+          coilEntries: item.coilEntries || [],
+          quantity: item.quantity,
+          materialCost,
+          rate: item.rate,
+          rateOverride: false,
+          annealingCharge: item.annealingCharge,
+          drawCharge: item.drawCharge,
+          itemTotal: item.itemTotal,
+          issuedChallanNo: challanNo,
+          coilNumber: item.coilNumber || '',
+          coilReference: item.coilReference || '',
+        };
+      }),
       challanDate: new Date(challan.challanDate).toISOString().split('T')[0],
       vehicles: challan.vehicles && challan.vehicles.length > 0
         ? challan.vehicles
@@ -1139,7 +1170,12 @@ export default function OutwardChallanPage() {
 
                         {/* Material Cost (₹/kg) */}
                         <div style={{ minWidth: '80px', flex: '1' }}>
-                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none">Mat. Cost (₹/kg)</label>
+                          <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none flex items-center gap-1">
+                            Mat. Cost (₹/kg)
+                            {item.issuedChallanNo && item.materialCost > 0 && (
+                              <span className="text-[8px] text-green-600 font-semibold">GRN</span>
+                            )}
+                          </label>
                           <input
                             type="number"
                             step="0.01"

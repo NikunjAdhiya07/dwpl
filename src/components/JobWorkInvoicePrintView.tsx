@@ -198,25 +198,23 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
               <tr key={index} className="border-b border-black last:border-b-0">
                 <td className="border-r border-black px-1 py-3 text-center align-top">{index + 1}</td>
                 <td className="border-r border-black px-2 py-3 align-top">
-                  <p className="font-bold">{item.finishSize.itemCode} - {item.finishSize.size}</p>
+                  <p className="font-bold text-[10px]">{item.finishSize.size || item.finishSize.itemCode}</p>
                 </td>
                 <td className="border-r border-black px-2 py-3 align-top">
-                  <p className="text-[9px]">{item.originalSize.itemCode} - {item.originalSize.size}</p>
+                  <p className="text-[10px]">{item.originalSize.size || item.originalSize.itemCode}</p>
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top">
                   <p className="font-semibold">{item.finishSize.grade}</p>
                 </td>
-                <td className="border-r border-black px-2 py-3 text-center align-top capitalize">
-                  <div className="text-[9px] leading-tight">
-                    <span className="font-bold">{item.processType || 'Job Work'}</span><br/>
-                    {item.annealingCount && item.annealingCount > 0 ? `A(${item.annealingCount})` : ''}
-                    {item.annealingCount && item.annealingCount > 0 && item.drawPassCount && item.drawPassCount > 0 ? ' ' : ''}
-                    {item.drawPassCount && item.drawPassCount > 0 ? `D(${item.drawPassCount})` : ''}
-                    {(!item.annealingCount && !item.drawPassCount) ? '' : ''}
+                <td className="border-r border-black px-2 py-3 text-center align-top uppercase">
+                  <div className="text-[10px] font-semibold leading-tight">
+                    {item.processType || '-'}
+                    {item.annealingCount ? ` + ${item.annealingCount}A` : ''}
+                    {item.drawPassCount ? ` + ${item.drawPassCount}D` : ''}
                   </div>
                 </td>
                 <td className="border-r border-black px-2 py-3 text-center align-top">{item.issuedChallanNo || '-'}</td>
-                <td className="border-r border-black px-2 py-3 text-center align-top">{item.finishSize.hsnCode}</td>
+                <td className="border-r border-black px-2 py-3 text-center align-top">998860</td>
                 <td className="border-r border-black px-2 py-3 text-center align-top font-bold">{item.quantity.toFixed(2)}</td>
                 <td className="border-r border-black px-2 py-3 text-center align-top">{item.rate.toFixed(2)}</td>
                 <td className="px-2 py-3 text-right align-top font-bold">{formatIndianCurrency(item.itemTotal)}</td>

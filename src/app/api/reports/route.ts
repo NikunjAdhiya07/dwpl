@@ -19,10 +19,20 @@ export async function GET(request: NextRequest) {
     // Build date filter
     const dateFilter: Record<string, any> = {};
     if (fromDate || toDate) {
-      dateFilter.$gte = fromDate ? new Date(fromDate) : new Date('2000-01-01');
-      dateFilter.$lte = toDate
-        ? new Date(new Date(toDate).setHours(23, 59, 59, 999))
-        : new Date();
+      if (fromDate) {
+        const from = new Date(fromDate);
+        from.setHours(0, 0, 0, 0);
+        dateFilter.$gte = from;
+      } else {
+        dateFilter.$gte = new Date('2000-01-01');
+      }
+      if (toDate) {
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+        dateFilter.$lte = to;
+      } else {
+        dateFilter.$lte = new Date();
+      }
     }
 
     // Fetch company info for header

@@ -436,3 +436,101 @@ export function exportGRNRegisterToPDF(reportData: any): void {
 
   doc.save(buildFilename('grn-register', filters.fromDate, filters.toDate));
 }
+
+// ─── Transporter Accounts ─────────────────────────────────────────────────────
+
+export function exportTransporterAccountsToPDF(reportData: any): void {
+  const { company, data, totals, filters } = reportData;
+
+  const fromStr = filters.fromDate ? fmtDate(filters.fromDate) : 'All Dates';
+  const toStr = filters.toDate ? fmtDate(filters.toDate) : 'All Dates';
+  const generatedAt = new Date().toLocaleString('en-IN');
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const marginLeft = 7;
+  const marginRight = 7;
+  const startY = 42;
+
+  const head = [[
+    'Sr.', 'Date', 'Invoice No.', 'Party Name',
+    'Transporter Name', 'Vehicle No.', 'Assessable Val.', 'Transport Chg.', 'Total Amount',
+  ]];
+
+  const body: any[][] = data.map((inv: any, idx: number) => {
+    const party = inv.party || {};
+    return [
+      idx + 1,
+      fmtDate(inv.invoiceDate),
+      inv.invoiceNumber || '',
+      party.partyName || '-',
+      inv.transportName || '-',
+      inv.vehicleNumber || '-',
+      fmt(inv.assessableValue),
+      fmt(inv.transportCharges),
+      fmt(inv.totalAmount),
+    ];
+  });
+
+  const foot: any[][] = [[
+    { content: 'GRAND TOTAL', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold' } },
+    { content: `${totals.count} Invoice${totals.count !== 1 ? 's' : ''}`, colSpan: 3, styles: { fontStyle: 'bold' } },
+    { content: fmt(totals.totalAssessableValue), styles: { halign: 'right', fontStyle: 'bold' } },
+    { content: fmt(totals.totalTransportCharges), styles: { halign: 'right', fontStyle: 'bold' } },
+    { content: fmt(totals.totalGrandTotal), styles: { halign: 'right', fontStyle: 'bold' } },
+  ]];
+
+  autoTable(doc, {
+    head,
+    body,
+    foot,
+    startY,
+    margin: { left: marginLeft, right: marginRight, top: startY, bottom: 14 },
+    styles: {
+      fontSize: 8,
+      cellPadding: 1.5,
+      lineWidth: 0.2,
+      lineColor: [0, 0, 0],
+      textColor: [0, 0, 0],
+      overflow: 'linebreak',
+    },
+    headStyles: {
+      fillColor: [230, 230, 230],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      fontSize: 7.5,
+      halign: 'center',
+    },
+    footStyles: {
+      fillColor: [210, 210, 210],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+    },
+    alternateRowStyles: { fillColor: [248, 248, 248] },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { halign: 'center', cellWidth: 22 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 55 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 30 },
+      6: { halign: 'right', cellWidth: 25 },
+      7: { halign: 'right', cellWidth: 25 },
+      8: { halign: 'right', cellWidth: 30, fontStyle: 'bold' },
+    },
+    showFoot: 'lastPage',
+    didDrawPage: () => {
+      let title = 'Transporter Accounts Report';
+      if (filters.transporterName) {
+        title += ` - ${filters.transporterName}`;
+      }
+      drawPageHeaderFooter(
+        doc, company, title,
+        fromStr, toStr, pageWidth, marginLeft, marginRight, generatedAt
+      );
+    },
+  });
+
+  doc.save(buildFilename('transporter-accounts', filters.fromDate, filters.toDate));
+}
+

@@ -343,8 +343,8 @@ export default function TaxInvoicePage() {
           const drawCharge = partyRef?.drawCharge ?? item.drawCharge;
           const sappdRate = partyRef?.sappdRate ?? 0;
           
-          // Process charge only = sum of processing rates
-          const jobWorkRate = (annealingCharge * (item.annealingCount || 0)) + (drawCharge * (item.drawPassCount || 0));
+          // Process charge only = sum of processing rates + sappdRate
+          const jobWorkRate = sappdRate + (annealingCharge * (item.annealingCount || 0)) + (drawCharge * (item.drawPassCount || 0));
           const itemTotal = item.quantity * jobWorkRate;
           
           return {
@@ -664,9 +664,28 @@ export default function TaxInvoicePage() {
                           <td className="px-2 py-1.5 text-slate-600 font-medium text-xs">
                             {item.quantity.toFixed(2)}
                           </td>
-                          {/* SAPPD Rate - read-only display */}
                           <td className="px-3 py-2 bg-amber-50">
-                            <span className="text-xs font-semibold text-amber-700">₹{(item.sappdRate || 0).toFixed(2)}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-amber-700">₹</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="w-20 p-1 text-sm border rounded focus:ring-1 focus:ring-amber-500 outline-none bg-white text-amber-900"
+                                value={item.sappdRate}
+                                onChange={(e) => {
+                                  const newVal = parseFloat(e.target.value) || 0;
+                                  const newItems = [...invoiceItems];
+                                  newItems[idx].sappdRate = newVal;
+                                  
+                                  // Recalculate rate and itemTotal
+                                  const jobWorkRate = newVal + (newItems[idx].annealingCharge * (newItems[idx].annealingCount || 0)) + (newItems[idx].drawCharge * (newItems[idx].drawPassCount || 0));
+                                  newItems[idx].rate = jobWorkRate;
+                                  newItems[idx].itemTotal = newItems[idx].quantity * jobWorkRate;
+                                  
+                                  setInvoiceItems(newItems);
+                                }}
+                              />
+                            </div>
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex items-center gap-1">
@@ -682,7 +701,7 @@ export default function TaxInvoicePage() {
                                   newItems[idx].annealingCharge = newVal;
                                   
                                   // Recalculate rate and itemTotal
-                                  const jobWorkRate = (newVal * (newItems[idx].annealingCount || 0)) + (newItems[idx].drawCharge * (newItems[idx].drawPassCount || 0));
+                                  const jobWorkRate = (newItems[idx].sappdRate || 0) + (newVal * (newItems[idx].annealingCount || 0)) + (newItems[idx].drawCharge * (newItems[idx].drawPassCount || 0));
                                   newItems[idx].rate = jobWorkRate;
                                   newItems[idx].itemTotal = newItems[idx].quantity * jobWorkRate;
                                   
@@ -705,7 +724,7 @@ export default function TaxInvoicePage() {
                                   newItems[idx].drawCharge = newVal;
                                   
                                   // Recalculate rate and itemTotal
-                                  const jobWorkRate = (newItems[idx].annealingCharge * (newItems[idx].annealingCount || 0)) + (newVal * (newItems[idx].drawPassCount || 0));
+                                  const jobWorkRate = (newItems[idx].sappdRate || 0) + (newItems[idx].annealingCharge * (newItems[idx].annealingCount || 0)) + (newVal * (newItems[idx].drawPassCount || 0));
                                   newItems[idx].rate = jobWorkRate;
                                   newItems[idx].itemTotal = newItems[idx].quantity * jobWorkRate;
                                   

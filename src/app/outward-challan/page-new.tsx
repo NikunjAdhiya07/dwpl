@@ -28,6 +28,7 @@ interface Transport {
   _id: string;
   vehicleNumber: string;
   ownerName: string;
+  transporterName: string;
   isActive: boolean;
 }
 
@@ -95,6 +96,7 @@ export default function OutwardChallanPage() {
         setFormData((prev) => ({
           ...prev,
           vehicleNumber: transport.vehicleNumber,
+          transportName: (transport as any).transporterName,
           ownerName: transport.ownerName,
         }));
       }
@@ -366,6 +368,17 @@ export default function OutwardChallanPage() {
                   <p className="text-xs text-slate-500 mt-1">
                     Select from Transport Master or enter manually below
                   </p>
+                </div>
+
+                <div>
+                  <label className="label">Transporter Name</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.transportName || ''}
+                    onChange={(e) => setFormData({ ...formData, transportName: e.target.value })}
+                    placeholder="e.g., ABC Transport"
+                  />
                 </div>
 
                 <div>

@@ -23,16 +23,18 @@ import {
   exportSalesRegisterToExcel,
   exportChallanRegisterToExcel,
   exportGRNRegisterToExcel,
+  exportTransporterAccountsToExcel,
 } from '@/lib/excelExport';
 
 import SalesRegisterPrintView from '@/components/reports/SalesRegisterPrintView';
 import ChallanRegisterPrintView from '@/components/reports/ChallanRegisterPrintView';
 import GRNRegisterPrintView from '@/components/reports/GRNRegisterPrintView';
+import TransporterAccountsPrintView from '@/components/reports/TransporterAccountsPrintView';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ReportType = 'sales-register' | 'challan-register' | 'grn-register';
+type ReportType = 'sales-register' | 'challan-register' | 'grn-register' | 'transporter-accounts';
 
 interface Party {
   _id: string;
@@ -44,6 +46,7 @@ interface Filters {
   toDate: string;
   party: string;
   voucherNumber: string;
+  transporterName: string;
 }
 
 const REPORT_OPTIONS: { value: ReportType; label: string; description: string }[] = [
@@ -62,6 +65,11 @@ const REPORT_OPTIONS: { value: ReportType; label: string; description: string }[
     label: 'GRN Register',
     description: 'Inward material receipts',
   },
+  {
+    value: 'transporter-accounts',
+    label: 'Transporter Accounts',
+    description: 'Transport charges and details from invoices',
+  },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -73,8 +81,10 @@ export default function ReportsPage() {
     toDate: '',
     party: '',
     voucherNumber: '',
+    transporterName: '',
   });
   const [parties, setParties] = useState<Party[]>([]);
+  const [transporters, setTransporters] = useState<any[]>([]);
   const [reportData, setReportData] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -87,6 +97,13 @@ export default function ReportsPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.success) setParties(d.data || []);
+      })
+      .catch(() => {});
+
+    fetch('/api/transport-master')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setTransporters(d.data || []);
       })
       .catch(() => {});
   }, []);
@@ -110,6 +127,7 @@ export default function ReportsPage() {
       if (filters.toDate) params.set('to', filters.toDate);
       if (filters.party) params.set('party', filters.party);
       if (filters.voucherNumber) params.set('voucher', filters.voucherNumber);
+      if (filters.transporterName) params.set('transporterName', filters.transporterName);
 
       const res = await fetch(`/api/reports?${params.toString()}`);
       const json = await res.json();
@@ -145,6 +163,8 @@ export default function ReportsPage() {
         exportSalesRegisterToPDF(reportData);
       } else if (selectedReport === 'challan-register') {
         exportChallanRegisterToPDF(reportData);
+      } else if (selectedReport === 'transporter-accounts') {
+        exportTransporterAccountsToPDF(reportData);
       } else {
         exportGRNRegisterToPDF(reportData);
       }
@@ -162,20 +182,22 @@ export default function ReportsPage() {
       exportSalesRegisterToExcel(reportData, filename);
     } else if (selectedReport === 'challan-register') {
       exportChallanRegisterToExcel(reportData, filename);
+    } else if (selectedReport === 'transporter-accounts') {
+      exportTransporterAccountsToExcel(reportData, filename);
     } else if (selectedReport === 'grn-register') {
       exportGRNRegisterToExcel(reportData, filename);
     }
   }
 
   function clearFilters() {
-    setFilters({ fromDate: '', toDate: '', party: '', voucherNumber: '' });
+    setFilters({ fromDate: '', toDate: '', party: '', voucherNumber: '', transporterName: '' });
     setReportData(null);
     setShowPreview(false);
     setError('');
   }
 
   const hasActiveFilters =
-    filters.fromDate || filters.toDate || filters.party || filters.voucherNumber;
+    filters.fromDate || filters.toDate || filters.party || filters.voucherNumber || filters.transporterName;
 
   return (
     <div className="animate-fade-in">
@@ -282,6 +304,27 @@ export default function ReportsPage() {
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
             </div>
           </div>
+
+          {selectedReport === 'transporter-accounts' && (
+            <div>
+              <label className="label">Transporter</label>
+              <div className="relative">
+                <select
+                  value={filters.transporterName}
+                  onChange={(e) => handleFilterChange('transporterName', e.target.value)}
+                  className="input appearance-none pr-7"
+                >
+                  <option value="">All Transporters</option>
+                  {transporters.map((t) => (
+                    <option key={t._id} value={t.transporterName}>
+                      {t.transporterName}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="label">Voucher / Doc. No.</label>
@@ -399,6 +442,9 @@ export default function ReportsPage() {
             {selectedReport === 'grn-register' && (
               <GRNRegisterPrintView reportData={reportData} />
             )}
+            {selectedReport === 'transporter-accounts' && (
+              <TransporterAccountsPrintView reportData={reportData} />
+            )}
           </div>
         </Card>
       )}
@@ -471,6 +517,17 @@ function ReportSummary({ reportData, reportType }: { reportData: any; reportType
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <StatCard label="Total GRNs" value={t.count} color="blue" />
         <StatCard label="Total Value" value={fmt(t.totalValue)} color="amber" />
+      </div>
+    );
+  }
+
+  if (reportType === 'transporter-accounts') {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Invoices" value={t.count} color="blue" />
+        <StatCard label="Assessable Val." value={fmt(t.totalAssessableValue)} color="purple" />
+        <StatCard label="Transport Charges" value={fmt(t.totalTransportCharges)} color="amber" />
+        <StatCard label="Grand Total" value={fmt(t.totalGrandTotal)} color="green" />
       </div>
     );
   }

@@ -194,3 +194,51 @@ export function exportGRNRegisterToExcel(reportData: any, filename: string): voi
 
   downloadCSV(rows.join('\n'), filename);
 }
+
+// ─── Transporter Accounts ──────────────────────────────────────────────────────
+
+export function exportTransporterAccountsToExcel(reportData: any, filename: string): void {
+  const { company, data, totals, filters } = reportData;
+  const rows: string[] = [];
+
+  rows.push(buildCSVRow([company?.companyName || 'DWPL']));
+  rows.push(buildCSVRow(['Transporter Accounts Report']));
+  const fromStr = filters.fromDate ? fmtDate(filters.fromDate) : 'All';
+  const toStr = filters.toDate ? fmtDate(filters.toDate) : 'All';
+  rows.push(buildCSVRow([`Period: ${fromStr} to ${toStr}`]));
+  if (filters.transporterName) {
+    rows.push(buildCSVRow([`Transporter: ${filters.transporterName}`]));
+  }
+  rows.push('');
+
+  rows.push(buildCSVRow([
+    'Sr.', 'Date', 'Invoice No.', 'Party Name', 'Transporter Name', 'Vehicle No.',
+    'Assessable Value', 'Transport Charges', 'Total Amount',
+  ]));
+
+  data.forEach((inv: any, idx: number) => {
+    const party = inv.party || {};
+    rows.push(buildCSVRow([
+      idx + 1,
+      fmtDate(inv.invoiceDate),
+      inv.invoiceNumber,
+      party.partyName || '',
+      inv.transportName || '',
+      inv.vehicleNumber || '',
+      fmt(inv.assessableValue),
+      fmt(inv.transportCharges),
+      fmt(inv.totalAmount),
+    ]));
+  });
+
+  rows.push('');
+  rows.push(buildCSVRow([
+    '', 'GRAND TOTAL', '', `${totals.count} invoices`, '', '',
+    fmt(totals.totalAssessableValue),
+    fmt(totals.totalTransportCharges),
+    fmt(totals.totalGrandTotal),
+  ]));
+
+  downloadCSV(rows.join('\n'), filename);
+}
+

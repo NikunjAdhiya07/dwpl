@@ -40,6 +40,10 @@ const TaxInvoiceItemSchema = new Schema({
     type: Number,
     required: true,
   },
+  sappdRate: {
+    type: Number,
+    default: 0,
+  },
   itemTotal: {
     type: Number,
     required: true,
@@ -213,7 +217,7 @@ TaxInvoiceSchema.pre('save', async function () {
   // Calculate item totals and base amount
   this.items.forEach(item => {
     // For job work invoice, rate is the sum of processing charges per unit
-    const rate = (item.annealingCharge * (item.annealingCount || 0)) + (item.drawCharge * (item.drawPassCount || 0));
+    const rate = (item.sappdRate || 0) + (item.annealingCharge * (item.annealingCount || 0)) + (item.drawCharge * (item.drawPassCount || 0));
     item.rate = rate; // Update the rate to reflect actual processing charges
     item.itemTotal = item.quantity * rate;
   });

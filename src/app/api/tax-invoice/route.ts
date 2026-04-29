@@ -222,6 +222,8 @@ export async function POST(request: NextRequest) {
         rate: item.rate,
         annealingCharge: item.annealingCharge,
         drawCharge: item.drawCharge,
+        sappdRate: item.sappdRate,
+        itemTotal: item.itemTotal,
         issuedChallanNo: item.issuedChallanNo,
         coilNumber: item.coilNumber,
         coilReference: item.coilReference,
@@ -237,6 +239,7 @@ export async function POST(request: NextRequest) {
         rate: item.rate,
         annealingCharge: item.annealingCharge,
         drawCharge: item.drawCharge,
+        sappdRate: item.sappdRate,
         itemTotal: item.itemTotal,
         issuedChallanNo: item.issuedChallanNo,
         coilNumber: item.coilNumber,
@@ -254,6 +257,7 @@ export async function POST(request: NextRequest) {
         rate: (challan as any).rate,
         annealingCharge: (challan as any).annealingCharge,
         drawCharge: (challan as any).drawCharge,
+        sappdRate: (challan as any).sappdRate,
         itemTotal: (challan as any).totalAmount,
         processType: (challan as any).processType
       }];

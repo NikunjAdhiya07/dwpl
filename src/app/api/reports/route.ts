@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import { TaxInvoice } from '@/models/TaxInvoice';
 import { GRN } from '@/models/GRN';
 import { OutwardChallan } from '@/models/OutwardChallan';
+import { TransportMaster } from '@/models/TransportMaster';
 import Company from '@/models/Company';
 
 export async function GET(request: NextRequest) {
@@ -15,6 +16,7 @@ export async function GET(request: NextRequest) {
     const toDate = searchParams.get('to');
     const partyId = searchParams.get('party');
     const voucherNumber = searchParams.get('voucher');
+    const transporterName = searchParams.get('transporterName');
 
     // Build date filter
     const dateFilter: Record<string, any> = {};
@@ -78,7 +80,7 @@ export async function GET(request: NextRequest) {
         success: true,
         reportType: 'sales-register',
         company,
-        filters: { fromDate, toDate, partyId, voucherNumber },
+        filters: { fromDate, toDate, partyId, voucherNumber, transporterName },
         data: invoices,
         totals: {
           totalBaseAmount,
@@ -113,7 +115,7 @@ export async function GET(request: NextRequest) {
         success: true,
         reportType: 'challan-register',
         company,
-        filters: { fromDate, toDate, partyId, voucherNumber },
+        filters: { fromDate, toDate, partyId, voucherNumber, transporterName },
         data: challans,
         totals: { totalAmount, count: challans.length },
       });
@@ -138,9 +140,72 @@ export async function GET(request: NextRequest) {
         success: true,
         reportType: 'grn-register',
         company,
-        filters: { fromDate, toDate, partyId, voucherNumber },
+        filters: { fromDate, toDate, partyId, voucherNumber, transporterName },
         data: grns,
         totals: { totalValue, count: grns.length },
+      });
+    }
+
+    if (reportType === 'transporter-accounts') {
+      const query: Record<string, any> = {};
+      if (Object.keys(dateFilter).length) query.invoiceDate = dateFilter;
+      if (partyId) query.party = partyId;
+      if (voucherNumber) query.invoiceNumber = { $regex: voucherNumber, $options: 'i' };
+
+      // Get invoices that match base filters
+      let invoices = await TaxInvoice.find(query)
+        .populate('party', 'partyName address gstNumber')
+        .sort({ invoiceDate: 1 })
+        .lean();
+
+      // Fallback for missing transportName
+      const transports = await TransportMaster.find().lean();
+      const transportMap = new Map();
+      transports.forEach((t: any) => {
+        if (t.vehicleNumber) {
+          transportMap.set(t.vehicleNumber.toLowerCase().trim(), t.transporterName);
+        }
+      });
+
+      // Compute totals and apply transporterName filter in memory
+      let totalTransportCharges = 0;
+      let totalAssessableValue = 0;
+      let totalGrandTotal = 0;
+      
+      const filteredInvoices: any[] = [];
+
+      for (const inv of invoices) {
+        if (!inv.transportName && inv.vehicleNumber) {
+          const vNum = inv.vehicleNumber.toLowerCase().trim();
+          if (transportMap.has(vNum)) {
+            inv.transportName = transportMap.get(vNum);
+          }
+        }
+        
+        // Apply transporterName filter if provided
+        if (transporterName && (!inv.transportName || inv.transportName.toLowerCase() !== transporterName.toLowerCase())) {
+          continue;
+        }
+        
+        filteredInvoices.push(inv);
+
+        totalTransportCharges += inv.transportCharges || 0;
+        totalAssessableValue += inv.assessableValue || 0;
+        totalGrandTotal += inv.totalAmount || 0;
+      }
+
+      return NextResponse.json({
+        success: true,
+        reportType: 'transporter-accounts',
+        company,
+        filters: { fromDate, toDate, partyId, voucherNumber, transporterName },
+        data: filteredInvoices,
+        totals: {
+          totalTransportCharges,
+          totalAssessableValue,
+          totalGrandTotal,
+          count: filteredInvoices.length,
+        },
       });
     }
 

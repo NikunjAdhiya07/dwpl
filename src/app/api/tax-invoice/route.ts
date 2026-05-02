@@ -208,7 +208,11 @@ export async function POST(request: NextRequest) {
       rate: number;
       annealingCharge: number;
       drawCharge: number;
+      sappdRate?: number;
       itemTotal: number;
+      issuedChallanNo?: string;
+      coilNumber?: string;
+      coilReference?: string;
       processType?: string;
     }> = [];
     

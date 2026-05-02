@@ -18,6 +18,7 @@ import {
   exportSalesRegisterToPDF,
   exportChallanRegisterToPDF,
   exportGRNRegisterToPDF,
+  exportTransporterAccountsToPDF,
 } from '@/lib/reportPdfExport';
 import {
   exportSalesRegisterToExcel,

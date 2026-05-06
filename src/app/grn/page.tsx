@@ -6,7 +6,7 @@ import Card from '@/components/Card';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
-import { Plus, X, FileText, Download, Trash2 } from 'lucide-react';
+import { Plus, X, FileText, Download, Trash2, Edit2 } from 'lucide-react';
 import { exportToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import CoilNumberInput from '@/components/CoilNumberInput';
 
@@ -80,6 +80,10 @@ export default function GRNPage() {
     { rmSize: '', quantity: '', rate: '', coilNumber: '', coilReference: '' }
   ]);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [editingGRN, setEditingGRN] = useState<GRN | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [grnToDelete, setGrnToDelete] = useState<GRN | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -179,19 +183,26 @@ export default function GRNPage() {
         rmSize: item.rmSize,
         quantity: parseFloat(item.quantity),
         rate: parseFloat(item.rate),
+        coilNumber: item.coilNumber,
+        coilReference: item.coilReference,
       }));
 
       const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
 
-      const response = await fetch('/api/grn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          items,
-          totalValue,
-        }),
-      });
+      let response;
+      if (editingGRN) {
+        response = await fetch(`/api/grn/${editingGRN._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...formData, items, totalValue }),
+        });
+      } else {
+        response = await fetch('/api/grn', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...formData, items, totalValue }),
+        });
+      }
 
       const data = await response.json();
 
@@ -199,7 +210,7 @@ export default function GRNPage() {
         await fetchData();
         resetForm();
         setShowConfirmation(false);
-        alert('GRN created successfully! RM stock has been updated.');
+        alert(editingGRN ? 'GRN updated successfully! Stock has been adjusted.' : 'GRN created successfully! RM stock has been updated.');
       } else {
         setError(data.error);
         setShowConfirmation(false);
@@ -207,6 +218,50 @@ export default function GRNPage() {
     } catch (err: any) {
       setError(err.message);
       setShowConfirmation(false);
+    }
+  };
+
+  const handleEdit = (grn: GRN) => {
+    setEditingGRN(grn);
+    setFormData({
+      sendingParty: grn.sendingParty._id,
+      partyChallanNumber: grn.partyChallanNumber,
+      grnDate: new Date(grn.grnDate).toISOString().split('T')[0],
+    });
+    setFormItems(grn.items.map(item => ({
+      rmSize: item.rmSize._id,
+      quantity: String(item.quantity),
+      rate: String(item.rate),
+      coilNumber: item.coilNumber || '',
+      coilReference: item.coilReference || '',
+    })));
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteClick = (grn: GRN) => {
+    setGrnToDelete(grn);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!grnToDelete) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/grn/${grnToDelete._id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        await fetchData();
+        setShowDeleteConfirm(false);
+        setGrnToDelete(null);
+        alert('GRN deleted successfully!');
+      } else {
+        setError(data.error || 'Failed to delete GRN');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -219,6 +274,7 @@ export default function GRNPage() {
     setFormItems([{ rmSize: '', quantity: '', rate: '', coilNumber: '', coilReference: '' }]);
     setShowForm(false);
     setShowConfirmation(false);
+    setEditingGRN(null);
   };
 
   const calculateItemTotal = (quantity: string, rate: string) => {
@@ -366,7 +422,7 @@ export default function GRNPage() {
         <Card className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
-              Create New GRN
+              {editingGRN ? `Edit GRN — ${editingGRN.partyChallanNumber}` : 'Create New GRN'}
             </h2>
             <button 
               onClick={resetForm} 
@@ -556,7 +612,7 @@ export default function GRNPage() {
                 type="submit" 
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
               >
-                Create GRN
+                {editingGRN ? 'Update GRN' : 'Create GRN'}
               </button>
               <button 
                 type="button" 
@@ -698,14 +754,29 @@ export default function GRNPage() {
                       ₹{grn.totalValue.toFixed(2)}
                     </td>
                     <td>
-                      <button
-                        onClick={() => handleDirectPDFExport(grn)}
-                        className="btn btn-primary flex items-center gap-2 text-sm"
-                        title="Export as PDF"
-                      >
-                        <Download className="w-4 h-4" />
-                        Export PDF
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleDirectPDFExport(grn)}
+                          className="btn btn-sm btn-primary"
+                          title="Export PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleEdit(grn)}
+                          className="btn btn-sm btn-secondary"
+                          title="Edit GRN"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(grn)}
+                          className="btn btn-sm btn-danger"
+                          title="Delete GRN"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -714,6 +785,38 @@ export default function GRNPage() {
           </table>
         </div>
       </Card>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && grnToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Confirm Delete</h3>
+            <p className="text-slate-600 mb-2">
+              Are you sure you want to delete GRN with challan number{' '}
+              <strong>{grnToDelete.partyChallanNumber}</strong>?
+            </p>
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-6">
+              ⚠️ This will permanently remove the GRN. Note: RM stock will NOT be automatically reversed — adjust stock manually if needed.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={confirmDelete}
+                className="btn btn-danger flex-1"
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setGrnToDelete(null); }}
+                className="btn btn-secondary flex-1"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import Card from '@/components/Card';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
-import { Plus, X, Receipt, FileText, Download, Trash2, Truck } from 'lucide-react';
+import { Plus, X, Receipt, FileText, Download, Trash2, Truck, Edit2 } from 'lucide-react';
 import { exportHTMLToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 import JobWorkInvoicePrintView from '@/components/JobWorkInvoicePrintView';
@@ -155,6 +155,14 @@ export default function TaxInvoicePage() {
   const [selectedIgst, setSelectedIgst] = useState<number | null>(null);
   const [selectedTcs, setSelectedTcs] = useState<number | null>(null);
   const [currentUserName, setCurrentUserName] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editInvoice, setEditInvoice] = useState<TaxInvoice | null>(null);
+  const [editInvoiceDate, setEditInvoiceDate] = useState('');
+  const [editPoNumber, setEditPoNumber] = useState('');
+  const [editPaymentTerm, setEditPaymentTerm] = useState('');
+  const [editSupplierCode, setEditSupplierCode] = useState('');
+  const [editIrnNumber, setEditIrnNumber] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -466,6 +474,47 @@ export default function TaxInvoicePage() {
     setTransportInvoice(invoice);
     setTransportAmount(invoice.transportCharges || 0);
     setShowTransportModal(true);
+  };
+
+  const openEditModal = (invoice: TaxInvoice) => {
+    setEditInvoice(invoice);
+    setEditInvoiceDate(new Date(invoice.invoiceDate).toISOString().split('T')[0]);
+    setEditPoNumber(invoice.poNumber || '');
+    setEditPaymentTerm(invoice.paymentTerm || '');
+    setEditSupplierCode(invoice.supplierCode || '');
+    setEditIrnNumber(invoice.irnNumber || '');
+    setShowEditModal(true);
+  };
+
+  const handleEditInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editInvoice) return;
+    setIsSavingEdit(true);
+    try {
+      const response = await fetch(`/api/tax-invoice/${editInvoice._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceDate: editInvoiceDate,
+          poNumber: editPoNumber,
+          paymentTerm: editPaymentTerm,
+          supplierCode: editSupplierCode,
+          irnNumber: editIrnNumber,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchData();
+        setShowEditModal(false);
+        alert('Invoice updated successfully!');
+      } else {
+        alert(data.error || 'Failed to update invoice');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   const handleUpdateTransport = async (e: React.FormEvent) => {
@@ -865,6 +914,14 @@ export default function TaxInvoicePage() {
                           PDF
                         </button>
                         <button
+                          onClick={() => openEditModal(invoice)}
+                          className="btn btn-outline text-xs py-1 px-3 flex items-center gap-1 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
+                          title="Edit Invoice"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          Edit
+                        </button>
+                        <button
                           onClick={() => handleDelete(invoice._id, invoice.invoiceNumber)}
                           className="btn btn-outline text-xs py-1 px-3 flex items-center gap-1 text-red-600 hover:bg-red-50 hover:border-red-300"
                           title="Delete Invoice"
@@ -973,6 +1030,93 @@ export default function TaxInvoicePage() {
                 <button
                   type="button"
                   onClick={() => setShowTransportModal(false)}
+                  className="w-full btn btn-outline py-2.5 text-sm uppercase tracking-wide"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Invoice Modal */}
+      {showEditModal && editInvoice && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <Card className="max-w-md w-full animate-scale-in relative border-slate-200 border-2 shadow-2xl">
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <Edit2 className="w-5 h-5 text-blue-600" />
+              Edit Invoice
+            </h3>
+            <p className="text-xs text-slate-500 mb-4 font-mono">{editInvoice.invoiceNumber}</p>
+            <form onSubmit={handleEditInvoice} className="space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Invoice Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={editInvoiceDate}
+                  onChange={(e) => setEditInvoiceDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">PO Number</label>
+                <input
+                  type="text"
+                  value={editPoNumber}
+                  onChange={(e) => setEditPoNumber(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="e.g. PO-12345"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Payment Term</label>
+                <input
+                  type="text"
+                  value={editPaymentTerm}
+                  onChange={(e) => setEditPaymentTerm(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="e.g. 30 days"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Supplier Code</label>
+                <input
+                  type="text"
+                  value={editSupplierCode}
+                  onChange={(e) => setEditSupplierCode(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="Supplier code"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">IRN Number</label>
+                <input
+                  type="text"
+                  value={editIrnNumber}
+                  onChange={(e) => setEditIrnNumber(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="IRN number"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="w-full btn btn-primary py-2.5 text-sm uppercase tracking-wide disabled:opacity-50"
+                >
+                  {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
                   className="w-full btn btn-outline py-2.5 text-sm uppercase tracking-wide"
                 >
                   Cancel

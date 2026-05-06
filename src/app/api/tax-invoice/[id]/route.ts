@@ -42,6 +42,13 @@ export async function PATCH(
       invoice.transportCharges = Number(body.transportCharges) || 0;
     }
 
+    // Update editable invoice fields
+    if (body.invoiceDate !== undefined) invoice.invoiceDate = body.invoiceDate;
+    if (body.poNumber !== undefined) invoice.poNumber = body.poNumber;
+    if (body.paymentTerm !== undefined) invoice.paymentTerm = body.paymentTerm;
+    if (body.supplierCode !== undefined) invoice.supplierCode = body.supplierCode;
+    if (body.irnNumber !== undefined) invoice.irnNumber = body.irnNumber;
+
     // Recalculate and save (pre-save hook will recalculate totals)
     await invoice.save();
 

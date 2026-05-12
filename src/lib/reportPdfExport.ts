@@ -453,31 +453,31 @@ export function exportTransporterAccountsToPDF(reportData: any): void {
   const startY = 42;
 
   const head = [[
-    'Sr.', 'Date', 'Invoice No.', 'Party Name',
-    'Transporter Name', 'Vehicle No.', 'Assessable Val.', 'Transport Chg.', 'Total Amount',
+    'Sr.', 'Challan Date', 'Challan No.', 'Party Name',
+    'Transporter Name', 'Vehicle No.', 'Challan Wt. (kg)', 'Assessable Val.', 'Transport Chg.',
   ]];
 
-  const body: any[][] = data.map((inv: any, idx: number) => {
-    const party = inv.party || {};
+  const body: any[][] = data.map((row: any, idx: number) => {
+    const party = row.party || {};
     return [
       idx + 1,
-      fmtDate(inv.invoiceDate),
-      inv.invoiceNumber || '',
+      fmtDate(row.challanDate),
+      row.challanNumber || '',
       party.partyName || '-',
-      inv.transportName || '-',
-      inv.vehicleNumber || '-',
-      fmt(inv.assessableValue),
-      fmt(inv.transportCharges),
-      fmt(inv.totalAmount),
+      row.transportName || '-',
+      row.vehicleNumber || '-',
+      fmt(row.challanWeight),
+      fmt(row.assessableValue),
+      fmt(row.transportCharges),
     ];
   });
 
   const foot: any[][] = [[
     { content: 'GRAND TOTAL', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold' } },
-    { content: `${totals.count} Invoice${totals.count !== 1 ? 's' : ''}`, colSpan: 3, styles: { fontStyle: 'bold' } },
+    { content: `${totals.count} Challan${totals.count !== 1 ? 's' : ''}`, colSpan: 3, styles: { fontStyle: 'bold' } },
+    { content: fmt(totals.totalChallanWeight), styles: { halign: 'right', fontStyle: 'bold' } },
     { content: fmt(totals.totalAssessableValue), styles: { halign: 'right', fontStyle: 'bold' } },
     { content: fmt(totals.totalTransportCharges), styles: { halign: 'right', fontStyle: 'bold' } },
-    { content: fmt(totals.totalGrandTotal), styles: { halign: 'right', fontStyle: 'bold' } },
   ]];
 
   autoTable(doc, {

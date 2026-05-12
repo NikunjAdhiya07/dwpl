@@ -525,10 +525,10 @@ function ReportSummary({ reportData, reportType }: { reportData: any; reportType
   if (reportType === 'transporter-accounts') {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Invoices" value={t.count} color="blue" />
+        <StatCard label="Challans" value={t.count} color="blue" />
+        <StatCard label="Total Weight" value={t.totalChallanWeight?.toFixed(2) + ' kg'} color="green" />
         <StatCard label="Assessable Val." value={fmt(t.totalAssessableValue)} color="purple" />
         <StatCard label="Transport Charges" value={fmt(t.totalTransportCharges)} color="amber" />
-        <StatCard label="Grand Total" value={fmt(t.totalGrandTotal)} color="green" />
       </div>
     );
   }

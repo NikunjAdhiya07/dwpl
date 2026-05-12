@@ -194,6 +194,7 @@ export default function OutwardChallanPage() {
   const [challanToDelete, setChallanToDelete] = useState<OutwardChallan | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [expandedChallanId, setExpandedChallanId] = useState<string | null>(null);
+  const [selectedOwnerName, setSelectedOwnerName] = useState<string>('');
   
   const [formData, setFormData] = useState<ChallanForm>({
     party: '',
@@ -272,7 +273,7 @@ export default function OutwardChallanPage() {
           
           // Log all stock IDs for reference
           console.log('  All stock item IDs:', stocksData.data.map((s: any) => 
-            typeof s.size === 'object' ? s.size._id : s.size
+            (s.size && typeof s.size === 'object') ? s.size._id : s.size
           ));
         }
       }
@@ -450,16 +451,30 @@ export default function OutwardChallanPage() {
     setFormData({ ...formData, items: newItems });
   };
 
-  const handleTransportSelect = (transportId: string) => {
-    const transport = transports.find((t) => t._id === transportId);
-    if (transport) {
+  // Unique owners derived from transports list
+  const uniqueOwners = Array.from(
+    new Map(transports.map((t) => [t.ownerName, t])).values()
+  );
+
+  const handleOwnerSelect = (ownerName: string) => {
+    setSelectedOwnerName(ownerName);
+    const match = transports.find((t) => t.ownerName === ownerName);
+    if (match) {
       setFormData({
         ...formData,
-        vehicles: [{ vehicleNumber: transport.vehicleNumber }],
-        transportName: transport.transporterName,
-        ownerName: transport.ownerName,
+        transportName: match.transporterName,
+        ownerName: match.ownerName,
+        vehicles: [{ vehicleNumber: '' }], // reset vehicle selection
       });
+    } else {
+      setSelectedOwnerName('');
     }
+  };
+
+  const handleVehicleSelect = (vehicleNumber: string) => {
+    const nv = [...formData.vehicles];
+    nv[0] = { vehicleNumber };
+    setFormData({ ...formData, vehicles: nv });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -850,7 +865,7 @@ export default function OutwardChallanPage() {
               </div>
             </details>
 
-            {/* Transport Details – Single Horizontal Row */}
+            {/* Transport Details – Owner-first, then Vehicle dropdown */}
             <div className="border border-slate-200 rounded bg-slate-50">
               <div className="px-3 py-1.5 border-b border-slate-200 flex items-center gap-1">
                 <Truck className="w-3 h-3 text-slate-500" />
@@ -858,81 +873,83 @@ export default function OutwardChallanPage() {
               </div>
               <div className="px-3 py-2">
                 <div className="flex flex-wrap items-end gap-2">
-                  {/* Select Transport */}
-                  <div className="flex-1 min-w-[130px] max-w-[180px]">
-                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">Quick Select</label>
+
+                  {/* Step 1: Select Owner/Transporter */}
+                  <div className="flex-1 min-w-[140px] max-w-[200px]">
+                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">Owner / Transporter</label>
                     <select
                       className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
-                      onChange={(e) => handleTransportSelect(e.target.value)}
-                      value=""
+                      value={selectedOwnerName}
+                      onChange={(e) => handleOwnerSelect(e.target.value)}
                     >
-                      <option value="">-- Select Transport --</option>
-                      {transports.map((transport) => (
-                        <option key={transport._id} value={transport._id}>
-                          {transport.vehicleNumber} – {transport.transporterName}
+                      <option value="">-- Select Owner --</option>
+                      {uniqueOwners.map((t) => (
+                        <option key={t.ownerName} value={t.ownerName}>
+                          {t.ownerName}{t.transporterName ? ` (${t.transporterName})` : ''}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* Transporter */}
-                  <div className="flex-1 min-w-[110px] max-w-[160px]">
-                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">Transporter</label>
-                    <input
-                      type="text"
-                      className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
-                      value={formData.transportName || ''}
-                      onChange={(e) => setFormData({ ...formData, transportName: e.target.value })}
-                      placeholder="Transporter name"
-                    />
-                  </div>
-
-                  {/* Owner Name */}
-                  <div className="flex-1 min-w-[110px] max-w-[160px]">
-                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">Owner Name</label>
-                    <input
-                      type="text"
-                      className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
-                      value={formData.ownerName || ''}
-                      onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
-                      placeholder="Owner name"
-                    />
-                  </div>
-
-                  {/* Vehicle Numbers – inline chips */}
-                  <div className="flex-1 min-w-[200px]">
+                  {/* Step 2: Vehicle dropdown – filtered by selected owner */}
+                  <div className="flex-1 min-w-[140px] max-w-[220px]">
                     <label className="block text-[10px] font-medium text-slate-600 mb-0.5">
                       Vehicle No. <span className="text-red-500">*</span>
                     </label>
                     <div className="flex flex-wrap items-center gap-1">
-                      {formData.vehicles.map((v, vi) => (
-                        <div key={vi} className="flex items-center gap-0.5 bg-white border border-slate-300 rounded px-1.5 py-0.5">
-                          <input
-                            type="text"
-                            className="text-xs outline-none w-[90px] bg-transparent"
-                            value={v.vehicleNumber}
-                            onChange={(e) => {
-                              const nv = [...formData.vehicles];
-                              nv[vi] = { vehicleNumber: e.target.value };
-                              setFormData({ ...formData, vehicles: nv });
-                            }}
-                            placeholder="GJ01AB1234"
-                            required={vi === 0}
-                          />
-                          {formData.vehicles.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setFormData({ ...formData, vehicles: formData.vehicles.filter((_, i) => i !== vi) })
-                              }
-                              className="text-red-400 hover:text-red-600 ml-0.5"
-                              title="Remove vehicle"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                      {formData.vehicles.map((v, vi) => {
+                        const ownerVehicles = transports.filter(
+                          (t) => t.ownerName === (selectedOwnerName || formData.ownerName)
+                        );
+                        return (
+                          <div key={vi} className="flex items-center gap-0.5">
+                            {ownerVehicles.length > 0 ? (
+                              <select
+                                className="px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white min-w-[110px]"
+                                value={v.vehicleNumber}
+                                onChange={(e) => {
+                                  const nv = [...formData.vehicles];
+                                  nv[vi] = { vehicleNumber: e.target.value };
+                                  setFormData({ ...formData, vehicles: nv });
+                                }}
+                                required={vi === 0}
+                              >
+                                <option value="">-- Select Vehicle --</option>
+                                {ownerVehicles.map((t) => (
+                                  <option key={t._id} value={t.vehicleNumber}>
+                                    {t.vehicleNumber}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type="text"
+                                className="px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white w-[110px] uppercase"
+                                value={v.vehicleNumber}
+                                onChange={(e) => {
+                                  const nv = [...formData.vehicles];
+                                  nv[vi] = { vehicleNumber: e.target.value.toUpperCase() };
+                                  setFormData({ ...formData, vehicles: nv });
+                                }}
+                                placeholder="GJ01AB1234"
+                                required={vi === 0}
+                              />
+                            )}
+                            {formData.vehicles.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setFormData({ ...formData, vehicles: formData.vehicles.filter((_, i) => i !== vi) })
+                                }
+                                className="text-red-400 hover:text-red-600"
+                                title="Remove vehicle"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                       <button
                         type="button"
                         onClick={() =>
@@ -945,6 +962,31 @@ export default function OutwardChallanPage() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Transporter (auto-filled, editable) */}
+                  <div className="flex-1 min-w-[110px] max-w-[160px]">
+                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">Transporter</label>
+                    <input
+                      type="text"
+                      className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+                      value={formData.transportName || ''}
+                      onChange={(e) => setFormData({ ...formData, transportName: e.target.value })}
+                      placeholder="Transporter name"
+                    />
+                  </div>
+
+                  {/* Owner Name (auto-filled, editable) */}
+                  <div className="flex-1 min-w-[110px] max-w-[160px]">
+                    <label className="block text-[10px] font-medium text-slate-600 mb-0.5">Owner Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+                      value={formData.ownerName || ''}
+                      onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                      placeholder="Owner name"
+                    />
+                  </div>
+
                 </div>
               </div>
             </div>

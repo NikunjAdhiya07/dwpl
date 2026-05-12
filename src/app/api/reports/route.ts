@@ -148,50 +148,88 @@ export async function GET(request: NextRequest) {
 
     if (reportType === 'transporter-accounts') {
       const query: Record<string, any> = {};
-      if (Object.keys(dateFilter).length) query.invoiceDate = dateFilter;
+      if (Object.keys(dateFilter).length) query.challanDate = dateFilter;
       if (partyId) query.party = partyId;
-      if (voucherNumber) query.invoiceNumber = { $regex: voucherNumber, $options: 'i' };
+      if (voucherNumber) query.challanNumber = { $regex: voucherNumber, $options: 'i' };
 
-      // Get invoices that match base filters
-      let invoices = await TaxInvoice.find(query)
+      // Fetch challans (challan-based report)
+      const challans = await OutwardChallan.find(query)
         .populate('party', 'partyName address gstNumber')
-        .sort({ invoiceDate: 1 })
+        .sort({ challanDate: 1 })
         .lean();
 
-      // Fallback for missing transportName
+      // Get all invoices linked to these challans for assessable value & transport charges
+      const challanIds = challans.map((c: any) => c._id);
+      const linkedInvoices = await TaxInvoice.find({ outwardChallan: { $in: challanIds } })
+        .select('outwardChallan assessableValue transportCharges')
+        .lean();
+      const invoiceMap = new Map<string, any>();
+      for (const inv of linkedInvoices) {
+        const cid = inv.outwardChallan?.toString();
+        if (cid) invoiceMap.set(cid, inv);
+      }
+
+      // Fallback transporter name lookup
       const transports = await TransportMaster.find().lean();
-      const transportMap = new Map();
+      const transportMap = new Map<string, string>();
       transports.forEach((t: any) => {
         if (t.vehicleNumber) {
           transportMap.set(t.vehicleNumber.toLowerCase().trim(), t.transporterName);
         }
       });
 
-      // Compute totals and apply transporterName filter in memory
       let totalTransportCharges = 0;
       let totalAssessableValue = 0;
-      let totalGrandTotal = 0;
-      
-      const filteredInvoices: any[] = [];
+      let totalChallanWeight = 0;
 
-      for (const inv of invoices) {
-        if (!inv.transportName && inv.vehicleNumber) {
-          const vNum = inv.vehicleNumber.toLowerCase().trim();
-          if (transportMap.has(vNum)) {
-            inv.transportName = transportMap.get(vNum);
-          }
+      const filteredRows: any[] = [];
+
+      for (const challan of challans as any[]) {
+        // Resolve transport name from vehicle if missing
+        let transportName = challan.transportName;
+        const vehicleNumber =
+          (challan.vehicles && challan.vehicles.length > 0
+            ? challan.vehicles[0]?.vehicleNumber
+            : challan.vehicleNumber) || '';
+
+        if (!transportName && vehicleNumber) {
+          transportName = transportMap.get(vehicleNumber.toLowerCase().trim()) || '';
         }
-        
-        // Apply transporterName filter if provided
-        if (transporterName && (!inv.transportName || inv.transportName.toLowerCase() !== transporterName.toLowerCase())) {
+
+        // Apply transporter name filter
+        if (
+          transporterName &&
+          (!transportName || transportName.toLowerCase() !== transporterName.toLowerCase())
+        ) {
           continue;
         }
-        
-        filteredInvoices.push(inv);
 
-        totalTransportCharges += inv.transportCharges || 0;
-        totalAssessableValue += inv.assessableValue || 0;
-        totalGrandTotal += inv.totalAmount || 0;
+        // Challan weight = sum of all item quantities
+        const challanWeight = (challan.items || []).reduce(
+          (sum: number, item: any) => sum + (item.quantity || 0),
+          0
+        );
+
+        // Get linked invoice data
+        const linkedInv = invoiceMap.get(String(challan._id));
+        const assessableValue = linkedInv?.assessableValue || 0;
+        const transportCharges = linkedInv?.transportCharges || 0;
+
+        totalChallanWeight += challanWeight;
+        totalAssessableValue += assessableValue;
+        totalTransportCharges += transportCharges;
+
+        filteredRows.push({
+          _id: challan._id,
+          challanDate: challan.challanDate,
+          challanNumber: challan.challanNumber,
+          party: challan.party,
+          transportName,
+          vehicleNumber,
+          challanWeight,
+          assessableValue,
+          transportCharges,
+        });
       }
 
       return NextResponse.json({
@@ -199,12 +237,12 @@ export async function GET(request: NextRequest) {
         reportType: 'transporter-accounts',
         company,
         filters: { fromDate, toDate, partyId, voucherNumber, transporterName },
-        data: filteredInvoices,
+        data: filteredRows,
         totals: {
           totalTransportCharges,
           totalAssessableValue,
-          totalGrandTotal,
-          count: filteredInvoices.length,
+          totalChallanWeight,
+          count: filteredRows.length,
         },
       });
     }

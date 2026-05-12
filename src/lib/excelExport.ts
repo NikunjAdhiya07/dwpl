@@ -202,7 +202,7 @@ export function exportTransporterAccountsToExcel(reportData: any, filename: stri
   const rows: string[] = [];
 
   rows.push(buildCSVRow([company?.companyName || 'DWPL']));
-  rows.push(buildCSVRow(['Transporter Accounts Report']));
+  rows.push(buildCSVRow(['Transporter Accounts Report (Challan-Based)']));
   const fromStr = filters.fromDate ? fmtDate(filters.fromDate) : 'All';
   const toStr = filters.toDate ? fmtDate(filters.toDate) : 'All';
   rows.push(buildCSVRow([`Period: ${fromStr} to ${toStr}`]));
@@ -212,31 +212,31 @@ export function exportTransporterAccountsToExcel(reportData: any, filename: stri
   rows.push('');
 
   rows.push(buildCSVRow([
-    'Sr.', 'Date', 'Invoice No.', 'Party Name', 'Transporter Name', 'Vehicle No.',
-    'Assessable Value', 'Transport Charges', 'Total Amount',
+    'Sr.', 'Challan Date', 'Challan No.', 'Party Name', 'Transporter Name', 'Vehicle No.',
+    'Challan Weight (kg)', 'Assessable Value', 'Transport Charges',
   ]));
 
-  data.forEach((inv: any, idx: number) => {
-    const party = inv.party || {};
+  data.forEach((row: any, idx: number) => {
+    const party = row.party || {};
     rows.push(buildCSVRow([
       idx + 1,
-      fmtDate(inv.invoiceDate),
-      inv.invoiceNumber,
+      fmtDate(row.challanDate),
+      row.challanNumber || '',
       party.partyName || '',
-      inv.transportName || '',
-      inv.vehicleNumber || '',
-      fmt(inv.assessableValue),
-      fmt(inv.transportCharges),
-      fmt(inv.totalAmount),
+      row.transportName || '',
+      row.vehicleNumber || '',
+      fmt(row.challanWeight),
+      fmt(row.assessableValue),
+      fmt(row.transportCharges),
     ]));
   });
 
   rows.push('');
   rows.push(buildCSVRow([
-    '', 'GRAND TOTAL', '', `${totals.count} invoices`, '', '',
+    '', 'GRAND TOTAL', '', `${totals.count} challans`, '', '',
+    fmt(totals.totalChallanWeight),
     fmt(totals.totalAssessableValue),
     fmt(totals.totalTransportCharges),
-    fmt(totals.totalGrandTotal),
   ]));
 
   downloadCSV(rows.join('\n'), filename);

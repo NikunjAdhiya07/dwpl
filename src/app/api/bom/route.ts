@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { BOM } from '@/models/BOM';
 import { ItemMaster } from '@/models/ItemMaster';
@@ -29,18 +30,24 @@ export async function POST(request: NextRequest) {
     // Check if autoCreateFG flag is set (from frontend)
     const autoCreateFG = body.autoCreateFG !== false; // Default to true
     
-    // Check RM size exists
-    const rmItem = await ItemMaster.findOne({ size: body.rmSize, category: 'RM' });
+    // Check RM size exists (can be _id or size string)
+    const rmQuery = mongoose.isValidObjectId(body.rmSize) 
+      ? { _id: body.rmSize } 
+      : { size: body.rmSize, category: 'RM' };
+    const rmItem = await ItemMaster.findOne(rmQuery);
     
     if (!rmItem) {
       return NextResponse.json(
-        { success: false, error: `RM size "${body.rmSize}" not found in Item Master. Please add it first.` },
+        { success: false, error: `RM item "${body.rmSize}" not found in Item Master. Please add it first.` },
         { status: 400 }
       );
     }
     
-    // Check if FG size exists
-    let fgItem = await ItemMaster.findOne({ size: body.fgSize, category: 'FG' });
+    // Check if FG size exists (can be _id or size string)
+    const fgQuery = mongoose.isValidObjectId(body.fgSize)
+      ? { _id: body.fgSize }
+      : { size: body.fgSize, category: 'FG' };
+    let fgItem = await ItemMaster.findOne(fgQuery);
     
     if (!fgItem) {
       if (autoCreateFG) {

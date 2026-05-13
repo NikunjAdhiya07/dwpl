@@ -217,12 +217,25 @@ export default function BOMPage() {
     setShowForm(false);
   };
 
+  // Helper to display correct name instead of ID
+  const getDisplayString = (sizeOrId: string, category: 'FG' | 'RM') => {
+    const items = category === 'FG' ? fgItems : rmItems;
+    // Find by either _id or size for backward compatibility
+    const item = items.find(i => String(i._id) === sizeOrId || i.size === sizeOrId);
+    if (item) {
+      return `${item.itemCode} - ${item.size} (${item.grade})`;
+    }
+    return sizeOrId;
+  };
+
   // Filter BOMs based on search query
   const filteredBoms = boms.filter((bom) => {
     const query = searchQuery.toLowerCase();
+    const fgDisplay = getDisplayString(bom.fgSize, 'FG').toLowerCase();
+    const rmDisplay = getDisplayString(bom.rmSize, 'RM').toLowerCase();
     return (
-      bom.fgSize.toLowerCase().includes(query) ||
-      bom.rmSize.toLowerCase().includes(query)
+      fgDisplay.includes(query) ||
+      rmDisplay.includes(query)
     );
   });
 
@@ -269,7 +282,7 @@ export default function BOMPage() {
                   label={editingId ? 'Finish Size (FG) *' : 'Finish Size (FG) *'}
                   value={formData.fgSizes}
                   onChange={(value) => setFormData({ ...formData, fgSizes: value })}
-                  items={fgItems.map(item => ({...item, _id: item.size}))}
+                  items={fgItems}
                   placeholder="Select FG Item"
                   required
                   renderSelected={(item) => (
@@ -288,7 +301,7 @@ export default function BOMPage() {
                   label="Original Size (RM) *"
                   value={formData.rmSize}
                   onChange={(value) => setFormData({ ...formData, rmSize: value })}
-                  items={rmItems.map(item => ({...item, _id: item.size}))}
+                  items={rmItems}
                   placeholder="Select RM Item"
                   required
                   renderSelected={(item) => (
@@ -360,8 +373,8 @@ export default function BOMPage() {
               ) : (
                 filteredBoms.map((bom) => (
                   <tr key={bom._id}>
-                    <td className="font-medium">{bom.fgSize}</td>
-                    <td className="font-medium">{bom.rmSize}</td>
+                    <td className="font-medium">{getDisplayString(bom.fgSize, 'FG')}</td>
+                    <td className="font-medium">{getDisplayString(bom.rmSize, 'RM')}</td>
                     <td>
                       <span
                         className={`badge ${

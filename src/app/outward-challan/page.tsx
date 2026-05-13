@@ -373,11 +373,11 @@ export default function OutwardChallanPage() {
       // Find the FG item object to get its size string
       const fgItem = fgItems.find(item => item._id === value);
       if (fgItem) {
-        // Find BOM entry where fgSize matches FG item's size
-        const bom = boms.find((b) => b.fgSize === fgItem.size);
+        // Find BOM entry where fgSize matches FG item's size or _id
+        const bom = boms.find((b) => b.fgSize === fgItem.size || String(b.fgSize) === String(fgItem._id));
         if (bom) {
-          // Find RM item object where size matches BOM's rmSize
-          const rmItem = rmItems.find(item => item.size === bom.rmSize);
+          // Find RM item object where size or _id matches BOM's rmSize
+          const rmItem = rmItems.find(item => item.size === bom.rmSize || String(item._id) === String(bom.rmSize));
           if (rmItem) {
             newItems[index].originalSize = rmItem._id;
             console.log(`✅ Auto-filled RM: ${rmItem.size} based on FG: ${fgItem.size}`);
@@ -391,11 +391,11 @@ export default function OutwardChallanPage() {
       // Find the RM item object to get its size string
       const rmItem = rmItems.find(item => item._id === value);
       if (rmItem) {
-        // Find FIRST BOM entry where rmSize matches RM item's size
-        const bom = boms.find((b) => b.rmSize === rmItem.size);
+        // Find FIRST BOM entry where rmSize matches RM item's size or _id
+        const bom = boms.find((b) => b.rmSize === rmItem.size || String(b.rmSize) === String(rmItem._id));
         if (bom) {
-          // Find FG item object where size matches BOM's fgSize
-          const fgItem = fgItems.find(item => item.size === bom.fgSize);
+          // Find FG item object where size or _id matches BOM's fgSize
+          const fgItem = fgItems.find(item => item.size === bom.fgSize || String(item._id) === String(bom.fgSize));
           if (fgItem) {
             newItems[index].finishSize = fgItem._id;
             console.log(`✅ Auto-filled FG: ${fgItem.size} based on RM: ${rmItem.size}`);

@@ -21,6 +21,11 @@ interface OutwardChallanItem {
     _id: string;
     size: string;
   };
+  processType: string;
+  annealingCount: number;
+  drawPassCount: number;
+  annealingCharge: number;
+  drawCharge: number;
   quantity: number;
   rate: number;
   itemTotal: number;
@@ -345,21 +350,29 @@ export default function TaxInvoicePage() {
         
         // Find the party details from parties state to get current charges
         const partyRef = parties.find(p => p._id === defaultPartyId || p._id === (challan.party._id || challan.party));
-        
+
         const items = challan.items.map((item: any) => {
           const annealingCharge = partyRef?.annealingCharge ?? item.annealingCharge;
           const drawCharge = partyRef?.drawCharge ?? item.drawCharge;
-          const sappdRate = partyRef?.sappdRate ?? 0;
-          
-          // Process charge only = sum of processing rates + sappdRate
-          const jobWorkRate = sappdRate + (annealingCharge * (item.annealingCount || 0)) + (drawCharge * (item.drawPassCount || 0));
+
+          // Pick base rate based on process type (same logic as Outward Challan)
+          const rateMap: Record<string, number> = {
+            SAPP: partyRef?.rate ?? 0,
+            SAPPD: partyRef?.sappdRate ?? partyRef?.rate ?? 0,
+            PPD: partyRef?.ppdFixedRate ?? 0,
+            Draw: partyRef?.drawCharge ?? 0,
+            Annealing: partyRef?.annealingCharge ?? 0,
+          };
+          const baseRate = rateMap[item.processType] ?? (partyRef?.sappdRate ?? 0);
+
+          const jobWorkRate = baseRate + (annealingCharge * (item.annealingCount || 0)) + (drawCharge * (item.drawPassCount || 0));
           const itemTotal = item.quantity * jobWorkRate;
-          
+
           return {
             ...item,
             annealingCharge,
             drawCharge,
-            sappdRate,
+            sappdRate: baseRate,
             rate: jobWorkRate,
             itemTotal,
           };

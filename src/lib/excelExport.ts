@@ -168,12 +168,19 @@ export function exportGRNRegisterToExcel(reportData: any, filename: string): voi
 
   rows.push(buildCSVRow([
     'Sr.', 'Party Challan No.', 'GRN Date', 'Sending Party', 'GSTIN',
-    'No. of Items', 'Total Qty (Kg)', 'Total Value',
+    'Items', 'Total Qty (Kg)', 'Total Value', 'Item Sizes',
   ]));
 
   data.forEach((grn: any, idx: number) => {
     const party = grn.sendingParty || {};
     const totalQty = (grn.items || []).reduce((s: number, i: any) => s + (i.quantity || 0), 0);
+    const sizes = (grn.items || []).map((i: any) => {
+      const rm = i.rmSize;
+      if (!rm) return null;
+      if (typeof rm === 'object') return `${rm.size || ''}${rm.grade ? ` (${rm.grade})` : ''}`.trim();
+      return rm;
+    }).filter(Boolean).join(', ');
+    
     rows.push(buildCSVRow([
       idx + 1,
       grn.partyChallanNumber,
@@ -183,13 +190,14 @@ export function exportGRNRegisterToExcel(reportData: any, filename: string): voi
       (grn.items || []).length,
       fmt(totalQty),
       fmt(grn.totalValue),
+      sizes,
     ]));
   });
 
   rows.push('');
   rows.push(buildCSVRow([
     '', 'GRAND TOTAL', '', `${totals.count} GRNs`, '',
-    '', '', fmt(totals.totalValue),
+    '', '', fmt(totals.totalValue), '',
   ]));
 
   downloadCSV(rows.join('\n'), filename);

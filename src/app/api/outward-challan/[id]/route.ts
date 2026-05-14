@@ -4,6 +4,7 @@ import { OutwardChallan } from '@/models/OutwardChallan';
 import { PartyMaster } from '@/models/PartyMaster';
 import { ItemMaster } from '@/models/ItemMaster';
 import { Stock } from '@/models/Stock';
+import { TaxInvoice } from '@/models/TaxInvoice';
 
 export async function GET(
   request: NextRequest,
@@ -47,14 +48,26 @@ export async function DELETE(
     const challan = await OutwardChallan.findById(id)
       .populate('items.finishSize')
       .populate('items.originalSize');
-    
+
     if (!challan) {
       return NextResponse.json(
         { success: false, error: 'Outward Challan not found' },
         { status: 404 }
       );
     }
-    
+
+    // Block deletion if an invoice has already been generated for this challan
+    const linkedInvoice = await TaxInvoice.findOne({ outwardChallan: id }).select('invoiceNumber');
+    if (linkedInvoice) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cannot delete challan ${challan.challanNumber}: Invoice ${linkedInvoice.invoiceNumber} has already been generated for it. Delete the invoice first.`,
+        },
+        { status: 400 }
+      );
+    }
+
     console.log('Deleting challan:', challan.challanNumber);
     
     // Reverse stock changes for each item:
@@ -109,14 +122,26 @@ export async function PUT(
     
     // Find the existing challan to get old values
     const existingChallan = await OutwardChallan.findById(id);
-    
+
     if (!existingChallan) {
       return NextResponse.json(
         { success: false, error: 'Outward Challan not found' },
         { status: 404 }
       );
     }
-    
+
+    // Block edits if an invoice has already been generated for this challan
+    const linkedInvoice = await TaxInvoice.findOne({ outwardChallan: id }).select('invoiceNumber');
+    if (linkedInvoice) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cannot edit challan ${existingChallan.challanNumber}: Invoice ${linkedInvoice.invoiceNumber} has already been generated for it. Delete the invoice first to edit the challan.`,
+        },
+        { status: 400 }
+      );
+    }
+
     console.log('Updating challan:', existingChallan.challanNumber);
     
     // Reverse stock changes for old items
@@ -166,8 +191,8 @@ export async function PUT(
     existingChallan.billTo = body.billTo || body.party;
     existingChallan.shipTo = body.shipTo || body.party;
     existingChallan.challanDate = body.challanDate;
-    existingChallan.vehicleNumber = body.vehicleNumber;
     existingChallan.vehicles = body.vehicles || (body.vehicleNumber ? [{ vehicleNumber: body.vehicleNumber }] : []);
+    existingChallan.vehicleNumber = body.vehicleNumber || (body.vehicles?.[0]?.vehicleNumber || '');
     existingChallan.transportName = body.transportName;
     existingChallan.ownerName = body.ownerName;
     existingChallan.dispatchedThrough = body.dispatchedThrough;

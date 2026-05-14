@@ -54,6 +54,7 @@ interface OutwardChallan {
   items: ChallanItem[];
   totalAmount: number;
   vehicleNumber?: string;
+  vehicles?: { vehicleNumber: string }[];
   transportName?: string;
   eWayBillNo?: string;
 }
@@ -73,13 +74,20 @@ interface ChallanPrintViewProps {
   challan: OutwardChallan;
   company?: Company;
   copyType?: string;
+  preparedBy?: string;
 }
 
-const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({ 
+const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
   challan,
   company,
-  copyType = 'Original' 
+  copyType = 'Original',
+  preparedBy = '',
 }) => {
+  const printedVehicle =
+    challan.vehicleNumber ||
+    (challan.vehicles && challan.vehicles.length > 0
+      ? challan.vehicles.map(v => v.vehicleNumber).filter(Boolean).join(', ')
+      : '');
   // Default company data if not provided
   const companyData: Company = company || {
     companyName: 'Drawell Wires Pvt. Ltd.',
@@ -137,6 +145,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
               <p className="font-bold underline text-[10px] mb-1 uppercase">Ship To:</p>
               <p className="font-bold text-[12px]">{challan.shipTo?.partyName || challan.party?.partyName || ''}</p>
               <p className="text-[11px] whitespace-pre-line">{challan.shipTo?.address || challan.party?.address || ''}</p>
+              <p className="text-[11px] font-bold mt-1">GSTIN: {challan.shipTo?.gstNumber || challan.party?.gstNumber || ''}</p>
             </div>
           </div>
 
@@ -150,7 +159,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
               <div>{new Date(challan.challanDate).toLocaleDateString('en-IN')}</div>
               
               <div className="font-bold">Vehicle No:</div>
-              <div>{challan.vehicleNumber || '-'}</div>
+              <div>{printedVehicle || '-'}</div>
               
               <div className="font-bold">Transporter:</div>
               <div>{challan.transportName || '-'}</div>
@@ -293,6 +302,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
           <div className="w-1/3">
             <div className="border-t border-black pt-1 w-2/3 text-center text-[11px]">
               <p className="font-bold">Prepared By:</p>
+              {preparedBy && <p className="text-[10px] text-gray-700 mt-0.5">{preparedBy}</p>}
             </div>
           </div>
           <div className="w-1/3">

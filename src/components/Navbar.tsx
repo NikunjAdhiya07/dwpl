@@ -32,13 +32,13 @@ const navigation = [
       { name: 'BOM & Routing', href: '/masters/bom', icon: ClipboardList },
       { name: 'GST Master', href: '/masters/gst', icon: FileText },
       { name: 'Transport Master', href: '/masters/transport', icon: TruckIcon },
-      { name: 'Reports', href: '/reports', icon: BarChart3 },
     ]
   },
   { name: 'GRN', href: '/grn', icon: FileInput },
   // { name: 'Stock', href: '/stock', icon: Warehouse }, // Hidden - can be re-enabled later
   { name: 'Outward Challan', href: '/outward-challan', icon: Send },
   { name: 'Tax Invoice', href: '/tax-invoice', icon: Receipt },
+  { name: 'Reports', href: '/reports', icon: BarChart3 },
 ];
 
 export default function Navbar() {

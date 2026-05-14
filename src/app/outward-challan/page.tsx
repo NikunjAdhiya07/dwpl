@@ -195,6 +195,8 @@ export default function OutwardChallanPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [expandedChallanId, setExpandedChallanId] = useState<string | null>(null);
   const [selectedOwnerName, setSelectedOwnerName] = useState<string>('');
+  const [currentUserName, setCurrentUserName] = useState('');
+  const [invoicedChallanIds, setInvoicedChallanIds] = useState<Set<string>>(new Set());
   
   const [formData, setFormData] = useState<ChallanForm>({
     party: '',
@@ -211,6 +213,10 @@ export default function OutwardChallanPage() {
 
   useEffect(() => {
     fetchData();
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(d => { if (d.success) setCurrentUserName(d.data.name); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -222,7 +228,7 @@ export default function OutwardChallanPage() {
 
   const fetchData = async () => {
     try {
-      const [challansRes, partiesRes, fgRes, rmRes, bomsRes, transportsRes, stocksRes, grnsRes, companyRes] = await Promise.all([
+      const [challansRes, partiesRes, fgRes, rmRes, bomsRes, transportsRes, stocksRes, grnsRes, companyRes, invoicesRes] = await Promise.all([
         fetch('/api/outward-challan'),
         fetch('/api/party-master'),
         fetch('/api/item-master?category=FG'),
@@ -232,9 +238,10 @@ export default function OutwardChallanPage() {
         fetch('/api/stock?category=RM'),
         fetch('/api/grn'),
         fetch('/api/company'),
+        fetch('/api/tax-invoice'),
       ]);
 
-      const [challansData, partiesData, fgData, rmData, bomsData, transportsData, stocksData, grnsData, companyDataResponse] = await Promise.all([
+      const [challansData, partiesData, fgData, rmData, bomsData, transportsData, stocksData, grnsData, companyDataResponse, invoicesData] = await Promise.all([
         challansRes.json(),
         partiesRes.json(),
         fgRes.json(),
@@ -244,7 +251,18 @@ export default function OutwardChallanPage() {
         stocksRes.json(),
         grnsRes.json(),
         companyRes.json(),
+        invoicesRes.json(),
       ]);
+
+      if (invoicesData.success) {
+        const lockedIds = new Set<string>(
+          (invoicesData.data as any[])
+            .map(inv => (typeof inv.outwardChallan === 'string' ? inv.outwardChallan : inv.outwardChallan?._id))
+            .filter(Boolean)
+            .map(String)
+        );
+        setInvoicedChallanIds(lockedIds);
+      }
 
       if (challansData.success) setChallans(challansData.data);
       if (partiesData.success) setParties(partiesData.data);
@@ -578,6 +596,10 @@ export default function OutwardChallanPage() {
   };
 
   const handleEdit = (challan: OutwardChallan) => {
+    if (invoicedChallanIds.has(challan._id)) {
+      alert(`Challan ${challan.challanNumber} is locked because an invoice has already been generated for it. Delete the invoice first to edit the challan.`);
+      return;
+    }
     setEditingChallan(challan);
     setFormData({
       party: challan.party._id,
@@ -632,6 +654,10 @@ export default function OutwardChallanPage() {
   };
 
   const handleDeleteClick = (challan: OutwardChallan) => {
+    if (invoicedChallanIds.has(challan._id)) {
+      alert(`Challan ${challan.challanNumber} is locked because an invoice has already been generated for it. Delete the invoice first to delete the challan.`);
+      return;
+    }
     setChallanToDelete(challan);
     setShowDeleteConfirm(true);
   };
@@ -689,7 +715,7 @@ export default function OutwardChallanPage() {
           <div style={{ background: 'white', width: '210mm', margin: '0 auto' }}>
             {copies.map((copyType) => (
               <div key={copyType} style={{ width: '210mm', height: '296mm', overflow: 'hidden', boxSizing: 'border-box' }}>
-                <ChallanPrintView challan={challan as any} company={companyData} copyType={copyType} />
+                <ChallanPrintView challan={challan as any} company={companyData} copyType={copyType} preparedBy={currentUserName} />
               </div>
             ))}
           </div>
@@ -1471,6 +1497,7 @@ export default function OutwardChallanPage() {
           <div className="space-y-2">
             {challans.map((challan) => {
               const isExpanded = expandedChallanId === challan._id;
+              const isLocked = invoicedChallanIds.has(challan._id);
               return (
                 <div key={challan._id} className="border border-slate-200 rounded-lg overflow-hidden">
                   {/* Header Row */}
@@ -1484,7 +1511,14 @@ export default function OutwardChallanPage() {
                       }`}
                     />
                     <div className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-2 items-center">
-                      <span className="font-bold text-sm text-blue-700">{challan.challanNumber}</span>
+                      <span className="font-bold text-sm text-blue-700 flex items-center gap-1.5">
+                        {challan.challanNumber}
+                        {isLocked && (
+                          <span className="text-[9px] font-semibold uppercase bg-amber-100 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded">
+                            Invoiced
+                          </span>
+                        )}
+                      </span>
                       <span className="text-sm text-slate-600">
                         {new Date(challan.challanDate).toLocaleDateString('en-IN')}
                       </span>
@@ -1505,15 +1539,17 @@ export default function OutwardChallanPage() {
                       </button>
                       <button
                         onClick={() => handleEdit(challan)}
-                        className="btn btn-sm btn-secondary"
-                        title="Edit"
+                        className="btn btn-sm btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isLocked ? 'Locked: invoice already generated' : 'Edit'}
+                        disabled={isLocked}
                       >
                         <Edit className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDeleteClick(challan)}
-                        className="btn btn-sm btn-danger"
-                        title="Delete"
+                        className="btn btn-sm btn-danger disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isLocked ? 'Locked: invoice already generated' : 'Delete'}
+                        disabled={isLocked}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

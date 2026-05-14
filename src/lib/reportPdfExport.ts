@@ -365,7 +365,12 @@ export function exportGRNRegisterToPDF(reportData: any): void {
     const totalQty = (grn.items || []).reduce(
       (s: number, i: any) => s + (i.quantity || 0), 0
     );
-    const sizes = (grn.items || []).map((i: any) => i.rmSize).filter(Boolean).join(', ');
+    const sizes = (grn.items || []).map((i: any) => {
+      const rm = i.rmSize;
+      if (!rm) return null;
+      if (typeof rm === 'object') return `${rm.size || ''}${rm.grade ? ` (${rm.grade})` : ''}`.trim();
+      return rm;
+    }).filter(Boolean).join(', ');
     return [
       idx + 1,
       grn.partyChallanNumber || '',

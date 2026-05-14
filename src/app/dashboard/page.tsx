@@ -5,10 +5,10 @@ import Link from 'next/link';
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
 import Loading from '@/components/Loading';
-import { 
-  Package, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  Package,
+  TrendingUp,
+  TrendingDown,
   FileText,
   Users,
   Warehouse,
@@ -46,10 +46,67 @@ interface RecentActivity {
   amount?: number;
 }
 
+// Map each dashboard link to a permission section name
+const LINK_SECTION_MAP: Record<string, string> = {
+  '/masters/party': 'Masters',
+  '/masters/item': 'Masters',
+  '/masters/bom': 'Masters',
+  '/masters/gst': 'Masters',
+  '/masters/transport': 'Masters',
+  '/outward-challan': 'Outward Challan',
+  '/tax-invoice': 'Tax Invoice',
+  '/grn': 'GRN',
+  '/reports': 'Reports',
+};
+
+function useAllowedSections(): string[] {
+  const [sections, setSections] = useState<string[]>([]);
+
+  useEffect(() => {
+    const raw = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('dwpl_sections='))
+      ?.split('=')[1];
+
+    if (!raw) return;
+
+    const decoded = decodeURIComponent(raw);
+    if (decoded === 'ALL') {
+      setSections(['ALL']);
+    } else {
+      setSections(decoded.split(',').map(s => s.trim()).filter(Boolean));
+    }
+  }, []);
+
+  return sections;
+}
+
+function canAccess(sections: string[], link: string): boolean {
+  if (sections.includes('ALL')) return true;
+  const required = LINK_SECTION_MAP[link];
+  if (!required) return true; // no restriction defined
+  return sections.includes(required);
+}
+
+interface MaybeLinkProps {
+  href: string;
+  allowed: boolean;
+  className?: string;
+  children: React.ReactNode;
+}
+
+function MaybeLink({ href, allowed, className, children }: MaybeLinkProps) {
+  if (allowed) {
+    return <Link href={href} className={className}>{children}</Link>;
+  }
+  return <div className={className} title="You don't have permission to access this section">{children}</div>;
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const allowedSections = useAllowedSections();
 
   useEffect(() => {
     fetchDashboardStats();
@@ -59,10 +116,9 @@ export default function Dashboard() {
     try {
       const response = await fetch('/api/dashboard');
       const result = await response.json();
-      
+
       if (result.success) {
         setStats(result.data);
-        // Mock recent activities - you can fetch this from API later
         setRecentActivities([
           { type: 'invoice', number: 'INV0006', party: 'Tata Steel Ltd', date: '2 hours ago', amount: 45000 },
           { type: 'challan', number: 'OC-0012', party: 'JSW Steel', date: '5 hours ago' },
@@ -197,21 +253,29 @@ export default function Dashboard() {
     }
   };
 
+  const getActivityLink = (type: string) => {
+    switch (type) {
+      case 'invoice': return '/tax-invoice';
+      case 'challan': return '/outward-challan';
+      case 'grn': return '/grn';
+      default: return '/dashboard';
+    }
+  };
+
   return (
     <div className="animate-fade-in space-y-6 relative max-w-7xl mx-auto">
-      
+
       {/* Decorative subtle background elements */}
       <div className="fixed top-20 left-10 w-64 h-64 bg-indigo-200 rounded-full mix-blend-multiply filter blur-[90px] opacity-30 pointer-events-none -z-10"></div>
       <div className="fixed bottom-20 right-10 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-[90px] opacity-30 pointer-events-none -z-10"></div>
-      
-      {/* 1. Stunning Hero Section (Reduced Size) */}
+
+      {/* 1. Stunning Hero Section */}
       <div className="relative overflow-hidden rounded-3xl p-6 lg:p-8 text-white shadow-xl shadow-indigo-600/10">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-700 via-purple-700 to-indigo-900"></div>
-        {/* Abstract glowing shapes inside header */}
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/20 rounded-full blur-[60px]"></div>
         <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-fuchsia-500/30 rounded-full blur-[60px]"></div>
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-        
+
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-4 font-medium text-xs text-indigo-50">
@@ -238,17 +302,19 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 2. Upgraded Stats Grid (Reduced Size) */}
+      {/* 2. Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat) => (
-          <Link key={stat.title} href={stat.link}>
-            <div className={`cursor-pointer overflow-hidden group relative p-5 rounded-3xl bg-white ring-1 ring-inset ${stat.ringColor} shadow-lg shadow-slate-200/40 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 block`}>
+        {statCards.map((stat) => {
+          const allowed = canAccess(allowedSections, stat.link);
+          return (
+            <MaybeLink key={stat.title} href={stat.link} allowed={allowed}>
+              <div className={`overflow-hidden group relative p-5 rounded-3xl bg-white ring-1 ring-inset ${stat.ringColor} shadow-lg shadow-slate-200/40 transition-all duration-300 ${allowed ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1' : 'cursor-not-allowed opacity-75'} block`}>
                 <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-slate-50 opacity-100 z-0"></div>
-                
+
                 <div className="absolute -bottom-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-all duration-700 transform group-hover:scale-110 group-hover:-rotate-12 z-0">
                    <stat.icon className="w-24 h-24" />
                 </div>
-                
+
                 <div className="relative z-10 flex flex-col h-full">
                   <div className="flex items-start justify-between mb-5">
                     <div className={`${stat.iconBg} p-2.5 rounded-xl shadow-md transform group-hover:-translate-y-0.5 group-hover:scale-105 transition-all duration-300 ring-2 ring-white`}>
@@ -259,9 +325,9 @@ export default function Dashboard() {
                       {stat.trend}
                     </div>
                   </div>
-                  
+
                   <div className="mt-auto">
-                    <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-1 group-hover:text-blue-600 transition-colors">
+                    <h3 className={`text-2xl font-black text-slate-800 tracking-tight mb-1 transition-colors ${allowed ? 'group-hover:text-blue-600' : ''}`}>
                       {stat.value}
                     </h3>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -269,12 +335,13 @@ export default function Dashboard() {
                     </p>
                   </div>
                 </div>
-            </div>
-          </Link>
-        ))}
+              </div>
+            </MaybeLink>
+          );
+        })}
       </div>
 
-      {/* 3. Sexy Quick Actions Grid (Reduced Size) */}
+      {/* 3. Quick Actions Grid */}
       <div>
         <div className="flex items-center gap-2.5 mb-5 px-1">
           <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
@@ -283,31 +350,35 @@ export default function Dashboard() {
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {quickActions.map((action) => (
-            <Link key={action.title} href={action.link} className="block group">
-              <div className={`relative p-5 rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-lg ${action.shadowColor} hover:shadow-xl h-[150px] flex flex-col justify-end`}>
-                <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-90 transition-opacity duration-300 group-hover:opacity-100`}></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                
-                {/* Flowing animated abstract blob */}
-                <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 group-hover:scale-125 transition-all duration-700 ease-in-out"></div>
-                
-                <div className="relative z-10 flex flex-col h-full">
-                  <div className="bg-white/20 backdrop-blur-md p-3 rounded-xl w-fit mb-3 shadow-inner ring-1 ring-white/30 transform group-hover:scale-105 transition-transform duration-300 ease-out">
-                    <action.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="mt-auto transform transition-transform duration-300 translate-y-1.5 group-hover:translate-y-0">
-                    <h3 className="font-extrabold text-lg text-white tracking-tight mb-0.5">{action.title}</h3>
-                    <p className="text-white/80 font-medium text-[11px] leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">{action.description}</p>
+          {quickActions.map((action) => {
+            const allowed = canAccess(allowedSections, action.link);
+            return (
+              <MaybeLink key={action.title} href={action.link} allowed={allowed} className="block group">
+                <div className={`relative p-5 rounded-3xl overflow-hidden transition-all duration-300 shadow-lg ${action.shadowColor} h-[150px] flex flex-col justify-end ${allowed ? 'cursor-pointer hover:-translate-y-1 hover:shadow-xl' : 'cursor-not-allowed opacity-75'}`}>
+                  <div className={`absolute inset-0 bg-gradient-to-br ${action.color} ${allowed ? 'opacity-90 group-hover:opacity-100' : 'opacity-70'} transition-opacity duration-300`}></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+
+                  <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 group-hover:scale-125 transition-all duration-700 ease-in-out"></div>
+
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="bg-white/20 backdrop-blur-md p-3 rounded-xl w-fit mb-3 shadow-inner ring-1 ring-white/30 transform group-hover:scale-105 transition-transform duration-300 ease-out">
+                      <action.icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="mt-auto transform transition-transform duration-300 translate-y-1.5 group-hover:translate-y-0">
+                      <h3 className="font-extrabold text-lg text-white tracking-tight mb-0.5">{action.title}</h3>
+                      <p className="text-white/80 font-medium text-[11px] leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">
+                        {allowed ? action.description : 'No access to this module'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </MaybeLink>
+            );
+          })}
         </div>
       </div>
 
-      {/* Two Column Layout for Activity and Masters (Reduced Size) */}
+      {/* Two Column Layout for Activity and Masters */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Activity Window */}
         <div className="lg:col-span-2">
@@ -328,40 +399,44 @@ export default function Dashboard() {
             <div className="space-y-3">
               {recentActivities.map((activity, index) => {
                 const Icon = getActivityIcon(activity.type);
+                const activityLink = getActivityLink(activity.type);
+                const allowed = canAccess(allowedSections, activityLink);
                 return (
-                  <div key={index} className="flex items-center justify-between p-3.5 rounded-xl bg-white hover:bg-slate-50 transition-all duration-200 cursor-pointer border border-slate-100 hover:border-indigo-100 hover:shadow-md hover:shadow-indigo-500/5 transform hover:-translate-y-0.5">
-                    <div className="flex items-center space-x-4">
-                      <div className={`p-3 rounded-xl ${getActivityColor(activity.type)} shadow-sm`}>
-                        <Icon className="w-4 h-4" />
+                  <MaybeLink key={index} href={activityLink} allowed={allowed}>
+                    <div className={`flex items-center justify-between p-3.5 rounded-xl bg-white transition-all duration-200 border border-slate-100 ${allowed ? 'hover:bg-slate-50 cursor-pointer hover:border-indigo-100 hover:shadow-md hover:shadow-indigo-500/5 transform hover:-translate-y-0.5' : 'cursor-not-allowed opacity-75'}`}>
+                      <div className="flex items-center space-x-4">
+                        <div className={`p-3 rounded-xl ${getActivityColor(activity.type)} shadow-sm`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-sm mb-0.5 tracking-tight">
+                            {activity.number}
+                          </p>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {activity.party}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-extrabold text-slate-900 text-sm mb-0.5 tracking-tight group-hover:text-indigo-600">
-                          {activity.number}
-                        </p>
-                        <p className="text-xs font-semibold text-slate-500">
-                          {activity.party}
-                        </p>
+                      <div className="text-right flex flex-col items-end gap-1.5">
+                        {activity.amount && (
+                          <p className="font-extrabold text-slate-900 text-sm">
+                            ₹{activity.amount.toLocaleString('en-IN')}
+                          </p>
+                        )}
+                        <div className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full inline-flex items-center uppercase tracking-wider">
+                          <Clock className="w-3 h-3 mr-1 opacity-70" />
+                          {activity.date}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right flex flex-col items-end gap-1.5">
-                      {activity.amount && (
-                        <p className="font-extrabold text-slate-900 text-sm">
-                          ₹{activity.amount.toLocaleString('en-IN')}
-                        </p>
-                      )}
-                      <div className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full inline-flex items-center uppercase tracking-wider">
-                        <Clock className="w-3 h-3 mr-1 opacity-70" />
-                        {activity.date}
-                      </div>
-                    </div>
-                  </div>
+                  </MaybeLink>
                 );
               })}
             </div>
           </div>
         </div>
 
-        {/* Master Data Links Panel (Reduced Size) */}
+        {/* Master Data Links Panel */}
         <div>
           <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200/60 p-6 rounded-3xl shadow-lg shadow-slate-200/30 h-full">
             <div className="flex items-center gap-2.5 mb-6">
@@ -373,29 +448,32 @@ export default function Dashboard() {
               </h2>
             </div>
             <div className="space-y-3">
-              {masterLinks.map((master) => (
-                <Link key={master.title} href={master.link}>
-                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-white hover:bg-white/60 transition-all cursor-pointer group border border-slate-100 hover:border-blue-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg group-hover:bg-blue-600 group-hover:border-blue-600 transition-colors duration-200 shadow-sm">
-                        <master.icon className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors duration-200" />
+              {masterLinks.map((master) => {
+                const allowed = canAccess(allowedSections, master.link);
+                return (
+                  <MaybeLink key={master.title} href={master.link} allowed={allowed}>
+                    <div className={`flex items-center justify-between p-3.5 rounded-xl bg-white transition-all border border-slate-100 shadow-sm ${allowed ? 'hover:bg-white/60 cursor-pointer group hover:border-blue-200 hover:shadow-md transform hover:-translate-y-0.5' : 'cursor-not-allowed opacity-75'}`}>
+                      <div className="flex items-center space-x-3">
+                        <div className={`bg-slate-50 border border-slate-100 p-2.5 rounded-lg shadow-sm transition-colors duration-200 ${allowed ? 'group-hover:bg-blue-600 group-hover:border-blue-600' : ''}`}>
+                          <master.icon className={`w-4 h-4 text-slate-500 transition-colors duration-200 ${allowed ? 'group-hover:text-white' : ''}`} />
+                        </div>
+                        <span className={`text-sm font-bold text-slate-700 transition-colors ${allowed ? 'group-hover:text-blue-900' : ''}`}>
+                          {master.title}
+                        </span>
                       </div>
-                      <span className="text-sm font-bold text-slate-700 group-hover:text-blue-900 transition-colors">
-                        {master.title}
+                      <span className={`text-xs font-black px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 transition-colors ${allowed ? 'group-hover:bg-blue-100 group-hover:text-blue-700 group-hover:border-blue-200' : ''}`}>
+                        {master.count}
                       </span>
                     </div>
-                    <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors border border-slate-200 group-hover:border-blue-200">
-                      {master.count}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+                  </MaybeLink>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Premium System Status Footer (Reduced Size) */}
+      {/* Premium System Status Footer */}
       <div className="bg-white/80 backdrop-blur-xl border border-white p-4 lg:p-5 rounded-3xl shadow-lg shadow-indigo-500/5 mt-6">
         <div className="flex flex-wrap items-center justify-between gap-4 px-2">
           <div className="flex items-center space-x-4">
@@ -410,7 +488,7 @@ export default function Dashboard() {
               <p className="font-extrabold text-slate-800 text-sm">Operational</p>
             </div>
           </div>
-          
+
           <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
 
           <div className="flex items-center space-x-4">

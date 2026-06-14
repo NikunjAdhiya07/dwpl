@@ -7,9 +7,15 @@ import { ItemMaster } from '@/models/ItemMaster';
 import { GSTMaster } from '@/models/GSTMaster';
 import { generateSequentialNumber } from '@/lib/utils';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectDB();
+
+    const sortParam = new URL(request.url).searchParams.get('sort');
+    const sortOption =
+      sortParam === 'createdDate'
+        ? { createdAt: -1 as const }
+        : { invoiceNumber: 1 as const };
     
     console.log('Fetching tax invoices...');
     
@@ -131,7 +137,7 @@ export async function GET() {
         .populate('outwardChallan')
         .populate('items.finishSize')
         .populate('items.originalSize')
-        .sort({ invoiceDate: -1 })
+        .sort(sortOption)
         .lean();
       
       console.log(`Successfully fetched ${invoices.length} valid invoice(s)`);

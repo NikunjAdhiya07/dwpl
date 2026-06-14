@@ -6,9 +6,10 @@ import Card from '@/components/Card';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
-import { Plus, X, FileText, Download, Trash2, Edit2 } from 'lucide-react';
+import { Plus, X, FileText, Download, Trash2, Edit2, Eye } from 'lucide-react';
 import { exportToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import CoilNumberInput from '@/components/CoilNumberInput';
+import GRNPrintView from '@/components/GRNPrintView';
 
 interface Party {
   _id: string;
@@ -84,6 +85,7 @@ export default function GRNPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [grnToDelete, setGrnToDelete] = useState<GRN | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewGRN, setViewGRN] = useState<GRN | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -756,6 +758,13 @@ export default function GRNPage() {
                     <td>
                       <div className="flex items-center gap-1.5">
                         <button
+                          onClick={() => setViewGRN(grn)}
+                          className="btn btn-sm btn-outline"
+                          title="View GRN"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => handleDirectPDFExport(grn)}
                           className="btn btn-sm btn-primary"
                           title="Export PDF"
@@ -785,6 +794,11 @@ export default function GRNPage() {
           </table>
         </div>
       </Card>
+
+      {/* View Modal */}
+      {viewGRN && (
+        <GRNPrintView grn={viewGRN as any} onClose={() => setViewGRN(null)} />
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && grnToDelete && (

@@ -197,7 +197,7 @@ export function exportGRNRegisterToExcel(reportData: any, filename: string): voi
   rows.push('');
   rows.push(buildCSVRow([
     '', 'GRAND TOTAL', '', `${totals.count} GRNs`, '',
-    '', '', fmt(totals.totalValue), '',
+    '', fmt(totals.totalQty), fmt(totals.totalValue), '',
   ]));
 
   downloadCSV(rows.join('\n'), filename);

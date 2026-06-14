@@ -134,7 +134,11 @@ export async function GET(request: NextRequest) {
         .lean();
 
       let totalValue = 0;
-      for (const g of grns) totalValue += g.totalValue || 0;
+      let totalQty = 0;
+      for (const g of grns) {
+        totalValue += g.totalValue || 0;
+        for (const item of g.items || []) totalQty += item.quantity || 0;
+      }
 
       return NextResponse.json({
         success: true,
@@ -142,7 +146,7 @@ export async function GET(request: NextRequest) {
         company,
         filters: { fromDate, toDate, partyId, voucherNumber, transporterName },
         data: grns,
-        totals: { totalValue, count: grns.length },
+        totals: { totalValue, totalQty, count: grns.length },
       });
     }
 

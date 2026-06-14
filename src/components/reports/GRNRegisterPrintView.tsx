@@ -142,7 +142,7 @@ export default function GRNRegisterPrintView({ reportData }: GRNRegisterProps) {
                   <td colSpan={3} className="border border-black px-1 py-1" style={{ fontSize: '8px' }}>
                     {totals.count} GRN{totals.count !== 1 ? 's' : ''}
                   </td>
-                  <td className="border border-black px-1 py-1" />
+                  <td className="border border-black px-1 py-1 text-right font-bold">{fmt(totals.totalQty)}</td>
                   <td className="border border-black px-1 py-1 text-right font-bold">{fmt(totals.totalValue)}</td>
                   <td className="border border-black px-1 py-1" />
                 </tr>

@@ -7,7 +7,7 @@ import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
 import CoilNumberInput from '@/components/CoilNumberInput';
-import { Plus, X, Minus, Send, Trash2, Edit, Download, AlertCircle, MapPin, Truck, History, ChevronDown } from 'lucide-react';
+import { Plus, X, Minus, Send, Trash2, Edit, Download, AlertCircle, MapPin, Truck, History, ChevronDown, Eye } from 'lucide-react';
 import { exportHTMLToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 import ChallanPrintView from '@/components/ChallanPrintView';
@@ -197,6 +197,7 @@ export default function OutwardChallanPage() {
   const [selectedOwnerName, setSelectedOwnerName] = useState<string>('');
   const [currentUserName, setCurrentUserName] = useState('');
   const [invoicedChallanIds, setInvoicedChallanIds] = useState<Set<string>>(new Set());
+  const [viewChallan, setViewChallan] = useState<OutwardChallan | null>(null);
   
   const [formData, setFormData] = useState<ChallanForm>({
     party: '',
@@ -1531,6 +1532,13 @@ export default function OutwardChallanPage() {
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button
+                        onClick={() => setViewChallan(challan)}
+                        className="btn btn-sm btn-outline"
+                        title="View Challan"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
                         onClick={() => handlePDFExport(challan)}
                         className="btn btn-sm btn-primary"
                         title="Export PDF"
@@ -1689,6 +1697,51 @@ export default function OutwardChallanPage() {
               </button>
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* View Challan Modal */}
+      {viewChallan && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-[100] p-4 overflow-y-auto pt-10 no-print">
+          <div className="bg-zinc-100 rounded-xl max-w-[230mm] w-full relative">
+            <div className="flex items-center justify-between p-4 bg-white border-b sticky top-0 z-10 rounded-t-xl no-print">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900">Outward Challan Preview</h3>
+                  <p className="text-xs text-slate-500">Challan: {viewChallan.challanNumber}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handlePDFExport(viewChallan)}
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PDF
+                </button>
+                <button
+                  onClick={() => setViewChallan(null)}
+                  className="btn btn-outline p-2"
+                  aria-label="Close preview"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            {['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'].map((copyType) => (
+              <div key={copyType} className="print-page page-break">
+                <ChallanPrintView
+                  challan={viewChallan as any}
+                  company={companyData}
+                  copyType={copyType}
+                  preparedBy={currentUserName}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

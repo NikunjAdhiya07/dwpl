@@ -387,7 +387,7 @@ export function exportGRNRegisterToPDF(reportData: any): void {
   const foot: any[][] = [[
     { content: 'GRAND TOTAL', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold' } },
     { content: `${totals.count} GRN${totals.count !== 1 ? 's' : ''}`, colSpan: 3, styles: { fontStyle: 'bold' } },
-    '',
+    { content: fmt(totals.totalQty), styles: { halign: 'right', fontStyle: 'bold' } },
     { content: fmt(totals.totalValue), styles: { halign: 'right', fontStyle: 'bold' } },
     '',
   ]];

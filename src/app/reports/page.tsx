@@ -517,6 +517,7 @@ function ReportSummary({ reportData, reportType }: { reportData: any; reportType
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <StatCard label="Total GRNs" value={t.count} color="blue" />
+        <StatCard label="Total Qty (Kg)" value={Number(t.totalQty || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} color="green" />
         <StatCard label="Total Value" value={fmt(t.totalValue)} color="amber" />
       </div>
     );

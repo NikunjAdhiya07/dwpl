@@ -111,6 +111,10 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
     Math.max(0, minRows - (invoice.items?.length ?? 0)),
     Math.max(0, maxRows - (invoice.items?.length ?? 0))
   );
+  const invoiceTotal =
+    invoice.baseAmount ??
+    invoice.items?.reduce((sum, item) => sum + (item.itemTotal || 0), 0) ??
+    0;
 
   return (
     <div className="print-page bg-white text-black font-sans p-[10mm] w-[210mm] box-border mx-auto border border-gray-200">
@@ -237,14 +241,14 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
               </tr>
             ))}
             
-            {/* Total Quantity Row */}
+            {/* Total Quantity & Invoice Total Row */}
             <tr className="border-b-0 bg-gray-50 font-bold">
               <td colSpan={7} className="border-r border-black px-2 py-2 text-right">Total Qty :</td>
               <td className="border-r border-black px-2 py-2 text-center text-[11px] text-black">
                 {invoice.items?.reduce((sum, item) => sum + (item.quantity || 0), 0).toFixed(2)}
               </td>
-              <td className="border-r border-black px-2 py-2"></td>
-              <td className="px-2 py-2 text-right"></td>
+              <td className="border-r border-black px-2 py-2 text-right text-[10px]">Invoice Total :</td>
+              <td className="px-2 py-2 text-right text-[11px]">{formatIndianCurrency(invoiceTotal)}</td>
             </tr>
           </tbody>
         </table>
@@ -259,6 +263,11 @@ const JobWorkInvoicePrintView: React.FC<JobWorkInvoicePrintViewProps> = ({
           </div>
           <div className="w-[40%] text-[9px]">
             <div className="grid grid-cols-[1fr_90px] divide-x divide-black border-collapse h-full">
+              <span className="p-1 px-2 border-b border-black font-bold flex items-center">Invoice Total :</span>
+              <span className="p-1 px-2 border-b border-black text-right font-bold flex items-center justify-end">
+                {formatIndianCurrency(invoiceTotal)}
+              </span>
+
               <span className="p-1 px-2 border-b border-black flex items-center">Transport Charges</span>
               <span className="p-1 px-2 border-b border-black text-right flex items-center justify-end">{formatIndianCurrency(invoice.transportCharges || 0)}</span>
               

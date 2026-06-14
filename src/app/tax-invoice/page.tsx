@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ItemSelector from '@/components/ItemSelector';
-import { Plus, X, Receipt, FileText, Download, Trash2, Truck, Edit2 } from 'lucide-react';
+import { Plus, X, Receipt, FileText, Download, Trash2, Truck, Edit2, Eye, ArrowUpDown } from 'lucide-react';
 import { exportHTMLToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 import JobWorkInvoicePrintView from '@/components/JobWorkInvoicePrintView';
@@ -136,8 +136,27 @@ interface TaxInvoice {
   createdAt: string;
 }
 
+type InvoiceSortOption = 'order' | 'createdDate';
+
+function parseInvoiceSequence(invoiceNumber: string): number {
+  return parseInt(invoiceNumber.replace(/\D/g, ''), 10) || 0;
+}
+
+function sortInvoices(invoices: TaxInvoice[], sortBy: InvoiceSortOption): TaxInvoice[] {
+  return [...invoices].sort((a, b) => {
+    if (sortBy === 'createdDate') {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    const seqA = parseInvoiceSequence(a.invoiceNumber);
+    const seqB = parseInvoiceSequence(b.invoiceNumber);
+    if (seqA !== seqB) return seqA - seqB;
+    return a.invoiceNumber.localeCompare(b.invoiceNumber);
+  });
+}
+
 export default function TaxInvoicePage() {
   const [invoices, setInvoices] = useState<TaxInvoice[]>([]);
+  const [sortBy, setSortBy] = useState<InvoiceSortOption>('order');
   const [challans, setChallans] = useState<OutwardChallan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -168,6 +187,8 @@ export default function TaxInvoicePage() {
   const [editSupplierCode, setEditSupplierCode] = useState('');
   const [editIrnNumber, setEditIrnNumber] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const sortedInvoices = useMemo(() => sortInvoices(invoices, sortBy), [invoices, sortBy]);
 
   useEffect(() => {
     fetchData();
@@ -825,6 +846,35 @@ export default function TaxInvoicePage() {
       )}
 
       <Card>
+        <div className="flex items-center gap-3 mb-4">
+          <ArrowUpDown className="w-5 h-5 text-slate-600" />
+          <span className="text-sm font-medium text-slate-700">Sort By:</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSortBy('order')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                sortBy === 'order'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+              }`}
+            >
+              Ascending Order
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortBy('createdDate')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                sortBy === 'createdDate'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+              }`}
+            >
+              Created Date
+            </button>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="table">
             <thead>
@@ -842,15 +892,15 @@ export default function TaxInvoicePage() {
               </tr>
             </thead>
             <tbody>
-              {invoices.length === 0 ? (
+              {sortedInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-8 text-slate-500">
+                  <td colSpan={10} className="text-center py-8 text-slate-500">
                     <Receipt className="w-12 h-12 mx-auto mb-2 text-slate-400" />
                     <p>No invoices found. Create an outward challan first, then generate invoice.</p>
                   </td>
                 </tr>
               ) : (
-                invoices.map((invoice) => (
+                sortedInvoices.map((invoice) => (
                   <tr key={invoice._id}>
                     <td className="font-mono font-semibold text-blue-600">
                       {invoice.invoiceNumber}
@@ -914,9 +964,10 @@ export default function TaxInvoicePage() {
                         <button
                           onClick={() => handlePrint(invoice)}
                           className="btn btn-secondary text-xs py-1 px-3 flex items-center gap-1"
+                          title="View Invoice"
                         >
-                          <Receipt className="w-3 h-3" />
-                          Print
+                          <Eye className="w-3 h-3" />
+                          View
                         </button>
                         <button
                           onClick={() => handleDirectPDFExport(invoice)}
@@ -959,24 +1010,32 @@ export default function TaxInvoicePage() {
             <div className="flex items-center justify-between p-4 bg-white border-b sticky top-0 z-10 rounded-t-xl no-print">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Receipt className="w-5 h-5 text-blue-600" />
+                  <Eye className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900">Delivery Challan Preview</h3>
-                  <p className="text-xs text-slate-500">Challan: {printInvoice.invoiceNumber}</p>
+                  <h3 className="font-bold text-slate-900">Tax Invoice Preview</h3>
+                  <p className="text-xs text-slate-500">Invoice: {printInvoice.invoiceNumber}</p>
                 </div>
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => window.print()}
-                  className="btn btn-primary flex items-center gap-2 px-6"
+                  onClick={() => handleDirectPDFExport(printInvoice)}
+                  className="btn btn-primary flex items-center gap-2"
                 >
                   <Download className="w-4 h-4" />
-                  Print Now
+                  Download PDF
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="btn btn-outline flex items-center gap-2"
+                >
+                  <Receipt className="w-4 h-4" />
+                  Print
                 </button>
                 <button
                   onClick={() => setShowPrintModal(false)}
                   className="btn btn-outline p-2"
+                  aria-label="Close preview"
                 >
                   <X className="w-5 h-5" />
                 </button>

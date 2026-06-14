@@ -12,10 +12,8 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     const sortParam = new URL(request.url).searchParams.get('sort');
-    const sortOption =
-      sortParam === 'createdDate'
-        ? { createdAt: -1 as const }
-        : { invoiceNumber: 1 as const };
+    const sortOption: Record<string, 1 | -1> =
+      sortParam === 'createdDate' ? { createdAt: -1 } : { invoiceNumber: 1 };
     
     console.log('Fetching tax invoices...');
     

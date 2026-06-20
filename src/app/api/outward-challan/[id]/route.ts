@@ -5,6 +5,8 @@ import { PartyMaster } from '@/models/PartyMaster';
 import { ItemMaster } from '@/models/ItemMaster';
 import { Stock } from '@/models/Stock';
 import { TaxInvoice } from '@/models/TaxInvoice';
+import { BOM } from '@/models/BOM';
+import { isValidFgRmPair, normalizeChallanItemFromCoils } from '@/lib/challanBomUtils';
 
 export async function GET(
   request: NextRequest,
@@ -143,6 +145,41 @@ export async function PUT(
     }
 
     console.log('Updating challan:', existingChallan.challanNumber);
+
+    if (!body.items || body.items.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'At least one item is required' },
+        { status: 400 }
+      );
+    }
+
+    const [activeBoms, fgMasterItems, rmMasterItems] = await Promise.all([
+      BOM.find({ status: 'Active' }),
+      ItemMaster.find({ category: 'FG' }),
+      ItemMaster.find({ category: 'RM' }),
+    ]);
+
+    const normalizedItems = body.items.map(normalizeChallanItemFromCoils);
+
+    for (let i = 0; i < normalizedItems.length; i++) {
+      const item = normalizedItems[i];
+      const isChargeOnly = item.processType === 'Annealing' || item.processType === 'Draw';
+      if (isChargeOnly) continue;
+
+      const bomValidation = isValidFgRmPair(
+        activeBoms,
+        fgMasterItems,
+        rmMasterItems,
+        item.finishSize,
+        item.originalSize
+      );
+      if (!bomValidation.valid) {
+        return NextResponse.json(
+          { success: false, error: `Item ${i + 1}: ${bomValidation.error}` },
+          { status: 400 }
+        );
+      }
+    }
     
     // Reverse stock changes for old items
     for (const oldItem of existingChallan.items) {
@@ -162,7 +199,7 @@ export async function PUT(
     }
     
     // Apply stock changes for new items
-    for (const newItem of body.items) {
+    for (const newItem of normalizedItems) {
       // Deduct RM stock
       await Stock.findOneAndUpdate(
         { size: newItem.originalSize, category: 'RM' },
@@ -198,11 +235,7 @@ export async function PUT(
     existingChallan.dispatchedThrough = body.dispatchedThrough;
     existingChallan.eWayBillNo = body.eWayBillNo;
 
-    // Force-recalculate itemTotal from current rate before saving
-    existingChallan.items = body.items.map((item: any) => ({
-      ...item,
-      itemTotal: (item.quantity || 0) * (item.rate || 0),
-    }));
+    existingChallan.items = normalizedItems;
 
     await existingChallan.save(); // triggers pre-save: recalculates totalAmount
 

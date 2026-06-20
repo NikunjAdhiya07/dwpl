@@ -4,6 +4,8 @@ import { OutwardChallan } from '@/models/OutwardChallan';
 import { PartyMaster } from '@/models/PartyMaster';
 import { ItemMaster } from '@/models/ItemMaster';
 import { Stock } from '@/models/Stock';
+import { BOM } from '@/models/BOM';
+import { isValidFgRmPair, normalizeChallanItemFromCoils } from '@/lib/challanBomUtils';
 
 export async function GET() {
   try {
@@ -52,7 +54,16 @@ export async function POST(request: NextRequest) {
     }
     
     // Validate all items and check stock
-    for (const item of body.items) {
+    const [activeBoms, fgMasterItems, rmMasterItems] = await Promise.all([
+      BOM.find({ status: 'Active' }),
+      ItemMaster.find({ category: 'FG' }),
+      ItemMaster.find({ category: 'RM' }),
+    ]);
+
+    const normalizedItems = body.items.map(normalizeChallanItemFromCoils);
+
+    for (let i = 0; i < normalizedItems.length; i++) {
+      const item = normalizedItems[i];
       const isChargeOnly = item.processType === 'Annealing' || item.processType === 'Draw';
       
       if (!isChargeOnly) {
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest) {
         const fgItem = await ItemMaster.findById(item.finishSize);
         if (!fgItem || fgItem.category !== 'FG') {
           return NextResponse.json(
-            { success: false, error: `Invalid Finish Size item: ${item.finishSize}` },
+            { success: false, error: `Item ${i + 1}: Invalid Finish Size item` },
             { status: 400 }
           );
         }
@@ -69,7 +80,21 @@ export async function POST(request: NextRequest) {
         const rmItem = await ItemMaster.findById(item.originalSize);
         if (!rmItem || rmItem.category !== 'RM') {
           return NextResponse.json(
-            { success: false, error: `Invalid Original Size item: ${item.originalSize}` },
+            { success: false, error: `Item ${i + 1}: Invalid Original Size item` },
+            { status: 400 }
+          );
+        }
+
+        const bomValidation = isValidFgRmPair(
+          activeBoms,
+          fgMasterItems,
+          rmMasterItems,
+          item.finishSize,
+          item.originalSize
+        );
+        if (!bomValidation.valid) {
+          return NextResponse.json(
+            { success: false, error: `Item ${i + 1}: ${bomValidation.error}` },
             { status: 400 }
           );
         }
@@ -112,7 +137,7 @@ export async function POST(request: NextRequest) {
       party: body.party,
       billTo: body.billTo || body.party, // Default to party if not specified
       shipTo: body.shipTo || body.party, // Default to party if not specified
-      items: body.items,
+      items: normalizedItems,
       challanDate: body.challanDate,
       // Support multiple vehicles
       vehicles: body.vehicles || (body.vehicleNumber ? [{ vehicleNumber: body.vehicleNumber }] : []),
@@ -126,7 +151,7 @@ export async function POST(request: NextRequest) {
     console.log('Challan created:', challan.challanNumber);
     
     // Update stock for each item
-    for (const item of body.items) {
+    for (const item of normalizedItems) {
       const isChargeOnly = item.processType === 'Annealing' || item.processType === 'Draw';
       if (isChargeOnly) continue; // No stock changes for charge-only items
       

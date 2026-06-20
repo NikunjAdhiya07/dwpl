@@ -11,6 +11,16 @@ import { Plus, X, Minus, Send, Trash2, Edit, Download, AlertCircle, MapPin, Truc
 import { exportHTMLToPDF, generatePDFFilename } from '@/lib/pdfExport';
 import { numberToIndianWords, formatIndianCurrency } from '@/lib/numberToWords';
 import ChallanPrintView from '@/components/ChallanPrintView';
+import {
+  getAllowedFgItemsForRm,
+  getAllowedRmItemsForFg,
+  getCoilTotalFromEntries,
+  getOrphanCoilWeight,
+  isValidFgRmPair,
+  normalizeChallanItemFromCoils,
+  pickDefaultFgForRm,
+  pickDefaultRmForFg,
+} from '@/lib/challanBomUtils';
 
 interface Party {
   _id: string;
@@ -45,11 +55,6 @@ interface BOM {
   _id: string;
   fgSize: string;
   rmSize: string;
-  grade: string;
-  annealingMin: number;
-  annealingMax: number;
-  drawPassMin: number;
-  drawPassMax: number;
   status?: 'Active' | 'Inactive';
 }
 
@@ -344,6 +349,66 @@ export default function OutwardChallanPage() {
     return stock ? stock.quantity : 0;
   };
 
+  const resolveFgItem = (itemId: string, index: number) => {
+    if (!itemId) return null;
+    const fromMaster = fgItems.find((i) => String(i._id) === String(itemId));
+    if (fromMaster) return fromMaster;
+    const fromChallan = editingChallan?.items[index]?.finishSize;
+    if (fromChallan && String(fromChallan._id) === String(itemId)) return fromChallan;
+    return null;
+  };
+
+  const resolveRmItem = (itemId: string, index: number) => {
+    if (!itemId) return null;
+    const fromMaster = rmItems.find((i) => String(i._id) === String(itemId));
+    if (fromMaster) return fromMaster;
+    const fromChallan = editingChallan?.items[index]?.originalSize;
+    if (fromChallan && String(fromChallan._id) === String(itemId)) return fromChallan;
+    return null;
+  };
+
+  const getFgOptionsForLineItem = (item: ChallanItem, index: number): Item[] => {
+    let options = fgItems;
+    if (item.originalSize && !item.finishSize) {
+      options = getAllowedFgItemsForRm(boms, fgItems, rmItems, item.originalSize) as Item[];
+    }
+    const current = resolveFgItem(item.finishSize, index);
+    if (current && !options.some((i) => String(i._id) === String(current._id))) {
+      return [...options, current as Item];
+    }
+    return options;
+  };
+
+  const getRmOptionsForLineItem = (item: ChallanItem, index: number): Item[] => {
+    if (!item.finishSize) return [];
+    const options = getAllowedRmItemsForFg(boms, fgItems, rmItems, item.finishSize) as Item[];
+    const current = resolveRmItem(item.originalSize, index);
+    if (current && !options.some((i) => String(i._id) === String(current._id))) {
+      return [...options, current as Item];
+    }
+    return options;
+  };
+
+  const getCoilTotal = (coilEntries: CoilEntry[]) => getCoilTotalFromEntries(coilEntries);
+
+  const syncItemFromCoils = (item: ChallanItem): ChallanItem =>
+    normalizeChallanItemFromCoils(item) as ChallanItem;
+
+  const getRmSelectorHelperText = (item: ChallanItem, index: number): string | undefined => {
+    if (!item.finishSize) return 'Select FG first to see mapped RM options';
+    const fg = resolveFgItem(item.finishSize, index);
+    if (!fg) return undefined;
+    const allowed = getAllowedRmItemsForFg(boms, fgItems, rmItems, item.finishSize);
+    if (allowed.length === 0) {
+      return `No BOM mapping for FG ${fg.size} (${fg.grade})`;
+    }
+    const rm = resolveRmItem(item.originalSize, index);
+    if (rm) {
+      return `Grade: ${rm.grade} · Stock: ${getStockForItem(item.originalSize).toFixed(2)} · ${allowed.length} mapped RM option(s)`;
+    }
+    return `FG Grade: ${fg.grade} · ${allowed.length} mapped RM option(s)`;
+  };
+
   const addItem = () => {
     if (!selectedParty) {
       setError('Please select a party first');
@@ -358,7 +423,7 @@ export default function OutwardChallanPage() {
       drawPassCount: 0,
       extraAnnealingCount: 0,
       extraPassCount: 0,
-      coilEntries: [],
+      coilEntries: [{ coilNumber: '', coilWeight: 0 }],
       quantity: 0,
       materialCost: 0,
       rate: selectedParty.sappdRate || selectedParty.rate,
@@ -384,45 +449,62 @@ export default function OutwardChallanPage() {
   };
 
   const updateItem = (index: number, field: keyof ChallanItem, value: any) => {
+    if (field === 'quantity') return;
+
     const newItems = [...formData.items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    
-    // If finishSize (FG) is selected, automatically fetch originalSize (RM) from BOM
-    if (field === 'finishSize' && value) {
-      // Find the FG item object to get its size string
-      const fgItem = fgItems.find(item => item._id === value);
-      if (fgItem) {
-        // Find BOM entry where fgSize matches FG item's size or _id
-        const bom = boms.find((b) => b.fgSize === fgItem.size || String(b.fgSize) === String(fgItem._id));
-        if (bom) {
-          // Find RM item object where size or _id matches BOM's rmSize
-          const rmItem = rmItems.find(item => item.size === bom.rmSize || String(item._id) === String(bom.rmSize));
-          if (rmItem) {
-            newItems[index].originalSize = rmItem._id;
-            console.log(`✅ Auto-filled RM: ${rmItem.size} based on FG: ${fgItem.size}`);
-          }
+    const previous = { ...newItems[index] };
+
+    if (field === 'originalSize' && value) {
+      const fgId = newItems[index].finishSize;
+      if (fgId) {
+        const validation = isValidFgRmPair(boms, fgItems, rmItems, fgId, value);
+        if (!validation.valid) {
+          setError(`Item ${index + 1}: ${validation.error}`);
+          return;
+        }
+      } else {
+        const allowedFg = getAllowedFgItemsForRm(boms, fgItems, rmItems, value);
+        if (allowedFg.length === 0) {
+          setError(`Item ${index + 1}: No BOM mapping found for the selected RM`);
+          return;
         }
       }
     }
 
-    // If originalSize (RM) is selected, automatically fetch finishSize (FG) from BOM
-    if (field === 'originalSize' && value) {
-      // Find the RM item object to get its size string
-      const rmItem = rmItems.find(item => item._id === value);
-      if (rmItem) {
-        // Find FIRST BOM entry where rmSize matches RM item's size or _id
-        const bom = boms.find((b) => b.rmSize === rmItem.size || String(b.rmSize) === String(rmItem._id));
-        if (bom) {
-          // Find FG item object where size or _id matches BOM's fgSize
-          const fgItem = fgItems.find(item => item.size === bom.fgSize || String(item._id) === String(bom.fgSize));
-          if (fgItem) {
-            newItems[index].finishSize = fgItem._id;
-            console.log(`✅ Auto-filled FG: ${fgItem.size} based on RM: ${rmItem.size}`);
+    newItems[index] = { ...newItems[index], [field]: value };
+
+    if (field === 'finishSize') {
+      if (value) {
+        const allowedRm = getAllowedRmItemsForFg(boms, fgItems, rmItems, value);
+        const currentRmValid = previous.originalSize
+          ? allowedRm.some((rm) => String(rm._id) === String(previous.originalSize))
+          : false;
+
+        if (!currentRmValid) {
+          newItems[index].originalSize = '';
+          newItems[index].issuedChallanNo = '';
+          const defaultRm = pickDefaultRmForFg(boms, fgItems, rmItems, value);
+          if (defaultRm) {
+            newItems[index].originalSize = defaultRm._id;
           }
         }
+      } else {
+        newItems[index].originalSize = '';
+        newItems[index].issuedChallanNo = '';
       }
     }
-    
+
+    if (field === 'originalSize' && value && !newItems[index].finishSize) {
+      const defaultFg = pickDefaultFgForRm(boms, fgItems, rmItems, value);
+      if (defaultFg) {
+        newItems[index].finishSize = defaultFg._id;
+      }
+    }
+
+    if (field === 'originalSize' && !value) {
+      // Keep FG; user can re-select RM from filtered list
+    }
+
     // Auto-fetch material cost from GRN when issuedChallanNo or originalSize changes
     if ((field === 'issuedChallanNo' || field === 'originalSize') && !newItems[index].rateOverride) {
       const challanNo = newItems[index].issuedChallanNo;
@@ -459,14 +541,10 @@ export default function OutwardChallanPage() {
       item.rate = jobWorkRate + (item.materialCost || 0);
     }
     
-    // Auto-compute quantity from coil entries if any exist
-    if (item.coilEntries && item.coilEntries.length > 0) {
-      const coilTotal = item.coilEntries.reduce((sum, c) => sum + (c.coilWeight || 0), 0);
-      if (coilTotal > 0) item.quantity = coilTotal;
-    }
-    
-    item.itemTotal = item.quantity * item.rate;
-    
+    // Quantity is always derived from coil weights (manual entry disabled)
+    newItems[index] = syncItemFromCoils(newItems[index]);
+
+    setError('');
     setFormData({ ...formData, items: newItems });
   };
 
@@ -523,8 +601,23 @@ export default function OutwardChallanPage() {
         setError(`Item ${i + 1}: Please select an original size (RM)`);
         return;
       }
-      if (item.quantity <= 0) {
-        setError(`Item ${i + 1}: Please enter a valid quantity greater than 0`);
+      if (!isChargeOnlyItem && item.finishSize && item.originalSize) {
+        const validation = isValidFgRmPair(boms, fgItems, rmItems, item.finishSize, item.originalSize);
+        if (!validation.valid) {
+          setError(`Item ${i + 1}: ${validation.error}`);
+          return;
+        }
+      }
+      const coilTotal = getCoilTotal(item.coilEntries || []);
+      if (coilTotal <= 0) {
+        setError(`Item ${i + 1}: Please add coil weight — quantity is calculated automatically from coil total`);
+        return;
+      }
+      const orphanWeight = getOrphanCoilWeight(item.coilEntries || []);
+      if (orphanWeight > 0) {
+        setError(
+          `Item ${i + 1}: ${orphanWeight.toFixed(2)} kg has no coil number — enter the coil number or clear the weight`
+        );
         return;
       }
       if (item.rate < 0) {
@@ -536,6 +629,7 @@ export default function OutwardChallanPage() {
     try {
       const challanData = {
         ...formData,
+        items: formData.items.map((item) => normalizeChallanItemFromCoils(item)),
       };
       
       console.log('Submitting challan data:', challanData);
@@ -627,8 +721,10 @@ export default function OutwardChallanPage() {
           drawPassCount: item.drawPassCount,
           extraAnnealingCount: item.extraAnnealingCount || 0,
           extraPassCount: item.extraPassCount || 0,
-          coilEntries: item.coilEntries || [],
-          quantity: item.quantity,
+          coilEntries: item.coilEntries?.length
+            ? item.coilEntries
+            : [{ coilNumber: '', coilWeight: 0 }],
+          quantity: getCoilTotal(item.coilEntries || []),
           materialCost,
           rate: item.rate,
           rateOverride: false,
@@ -709,15 +805,20 @@ export default function OutwardChallanPage() {
       const { createRoot } = await import('react-dom/client');
       const root = createRoot(tempContainer);
 
-      // Render all three copies
+      // Render all three copies (each copy may span multiple pages)
       const copies = ['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'];
       await new Promise<void>((resolve) => {
         root.render(
           <div style={{ background: 'white', width: '210mm', margin: '0 auto' }}>
-            {copies.map((copyType) => (
-              <div key={copyType} style={{ width: '210mm', height: '296mm', overflow: 'hidden', boxSizing: 'border-box' }}>
-                <ChallanPrintView challan={challan as any} company={companyData} copyType={copyType} preparedBy={currentUserName} />
-              </div>
+            {copies.map((copyType, copyIdx) => (
+              <ChallanPrintView
+                key={copyType}
+                challan={challan as any}
+                company={companyData}
+                copyType={copyType}
+                preparedBy={currentUserName}
+                isLastCopy={copyIdx === copies.length - 1}
+              />
             ))}
           </div>
         );
@@ -1025,11 +1126,31 @@ export default function OutwardChallanPage() {
               </div>
 
               <div className="divide-y divide-slate-200">
-                {formData.items.map((item, index) => (
+                {formData.items.map((item, index) => {
+                  const fgItem = resolveFgItem(item.finishSize, index);
+                  const rmItem = resolveRmItem(item.originalSize, index);
+
+                  return (
                     <div key={index} className="p-3 bg-white hover:bg-slate-50">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-semibold text-slate-700">#{index + 1}</span>
+                          {fgItem && (
+                            <span
+                              className="text-[9px] bg-blue-100 text-blue-800 border border-blue-200 px-1.5 py-0.5 rounded font-bold"
+                              title={`FG: ${fgItem.itemCode} – ${fgItem.size}`}
+                            >
+                              FG Grade: {fgItem.grade}
+                            </span>
+                          )}
+                          {rmItem && (
+                            <span
+                              className="text-[9px] bg-green-100 text-green-800 border border-green-200 px-1.5 py-0.5 rounded font-bold"
+                              title={`RM: ${rmItem.itemCode} – ${rmItem.size}`}
+                            >
+                              RM Grade: {rmItem.grade}
+                            </span>
+                          )}
                           {/* Process Type Dropdown */}
                           <select
                             className="text-xs border border-blue-300 bg-blue-50 text-blue-800 rounded px-1.5 py-0.5 font-semibold focus:ring-1 focus:ring-blue-500"
@@ -1053,7 +1174,7 @@ export default function OutwardChallanPage() {
                                 const EP = newItems[index].drawPassCount || 0;
                                 const jobWorkRate = baseRate + (A * EA) + (P * EP);
                                 newItems[index].rate = jobWorkRate + (newItems[index].materialCost || 0);
-                                newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                                newItems[index] = syncItemFromCoils(newItems[index]);
                               }
                               setFormData({ ...formData, items: newItems });
                             }}
@@ -1095,25 +1216,37 @@ export default function OutwardChallanPage() {
                             label="FG *"
                             value={item.finishSize}
                             onChange={(value) => updateItem(index, 'finishSize', value)}
-                            items={fgItems}
+                            items={getFgOptionsForLineItem(item, index)}
                             placeholder="Select FG"
                             required
-                            renderSelected={(fgItem) => (
-                              <span className="text-[10px] font-medium truncate" style={{ color: 'var(--foreground)' }}>
-                                {fgItem.size}
-                              </span>
-                            )}
-                            renderOption={(fgItem) => (
-                              <div className="flex items-center gap-1">
-                                <span className="font-mono text-[9px] bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
-                                  {fgItem.itemCode}
+                            helperText={
+                              item.originalSize && !item.finishSize
+                                ? 'Showing FG sizes mapped to selected RM (same grade)'
+                                : fgItem
+                                  ? `Grade: ${fgItem.grade}`
+                                  : undefined
+                            }
+                            renderSelected={(selectedFg) => (
+                              <div className="flex flex-col leading-tight min-w-0">
+                                <span className="text-[10px] font-semibold truncate">
+                                  {selectedFg.itemCode} – {selectedFg.size}
                                 </span>
-                                <span className="text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
-                                  {fgItem.size} – {fgItem.grade}
+                                <span className="text-[9px] font-bold text-blue-700">
+                                  Grade: {selectedFg.grade}
                                 </span>
                               </div>
                             )}
-                            getSearchableText={(fgItem) => `${fgItem.itemCode} ${fgItem.size} ${fgItem.grade}`}
+                            renderOption={(fgOption) => (
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-[9px] bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
+                                  {fgOption.itemCode}
+                                </span>
+                                <span className="text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
+                                  {fgOption.size} – {fgOption.grade}
+                                </span>
+                              </div>
+                            )}
+                            getSearchableText={(fgOption) => `${fgOption.itemCode} ${fgOption.size} ${fgOption.grade}`}
                           />
                         </div>
 
@@ -1123,30 +1256,37 @@ export default function OutwardChallanPage() {
                             label="RM *"
                             value={item.originalSize}
                             onChange={(value) => updateItem(index, 'originalSize', value)}
-                            items={rmItems}
-                            placeholder="Select RM"
+                            items={getRmOptionsForLineItem(item, index)}
+                            placeholder={item.finishSize ? 'Select mapped RM' : 'Select FG first'}
                             required
-                            helperText={
-                              item.originalSize
-                                ? `Stock: ${getStockForItem(item.originalSize).toFixed(2)}`
-                                : undefined
+                            disabled={!item.finishSize}
+                            helperText={getRmSelectorHelperText(item, index)}
+                            showError={
+                              !!item.finishSize &&
+                              getAllowedRmItemsForFg(boms, fgItems, rmItems, item.finishSize).length === 0
                             }
-                            renderSelected={(rmItem) => (
-                              <span className="text-[10px] font-medium truncate" style={{ color: 'var(--foreground)' }}>
-                                {rmItem.size}
-                              </span>
-                            )}
-                            renderOption={(rmItem) => (
-                              <div className="flex items-center gap-1">
-                                <span className="font-mono text-[9px] bg-green-100 text-green-800 px-1 py-0.5 rounded">
-                                  {rmItem.itemCode}
+                            error="No valid RM mapping for this FG grade"
+                            renderSelected={(selectedRm) => (
+                              <div className="flex flex-col leading-tight min-w-0">
+                                <span className="text-[10px] font-semibold truncate">
+                                  {selectedRm.itemCode} – {selectedRm.size}
                                 </span>
-                                <span className="text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
-                                  {rmItem.size} – {rmItem.grade}
+                                <span className="text-[9px] font-bold text-green-700">
+                                  Grade: {selectedRm.grade}
                                 </span>
                               </div>
                             )}
-                            getSearchableText={(rmItem) => `${rmItem.itemCode} ${rmItem.size} ${rmItem.grade}`}
+                            renderOption={(rmOption) => (
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-[9px] bg-green-100 text-green-800 px-1 py-0.5 rounded">
+                                  {rmOption.itemCode}
+                                </span>
+                                <span className="text-[10px] font-medium" style={{ color: 'var(--foreground)' }}>
+                                  {rmOption.size} – {rmOption.grade}
+                                </span>
+                              </div>
+                            )}
+                            getSearchableText={(rmOption) => `${rmOption.itemCode} ${rmOption.size} ${rmOption.grade}`}
                           />
                         </div>
 
@@ -1213,26 +1353,20 @@ export default function OutwardChallanPage() {
                           />
                         </div>
 
-                        {/* Quantity – auto-filled from coil sum */}
+                        {/* Quantity – auto-filled from coil total only */}
                         <div style={{ minWidth: '72px', flex: '1' }}>
                           <label className="block text-[10px] font-medium text-slate-700 mb-0.5 leading-none flex items-center gap-1">
                             Qty (kg) *
-                            {item.coilEntries.length > 0 && <span className="text-[9px] text-green-600">🔒</span>}
+                            <span className="text-[9px] text-green-600">🔒 Auto</span>
                           </label>
                           <input
                             type="number"
                             step="0.01"
-                            className={`w-full px-1 py-1.5 text-xs border rounded focus:ring-1 focus:ring-blue-500 ${
-                              item.coilEntries.length > 0 ? 'bg-green-50 border-green-300' : 'border-slate-300'
-                            }`}
-                            value={item.quantity}
-                            onChange={(e) => {
-                              if (item.coilEntries.length === 0) {
-                                updateItem(index, 'quantity', parseFloat(e.target.value) || 0);
-                              }
-                            }}
-                            readOnly={item.coilEntries.length > 0}
-                            min="0.01"
+                            className="w-full px-1 py-1.5 text-xs border rounded bg-green-50 border-green-300 focus:ring-1 focus:ring-green-500 cursor-not-allowed"
+                            value={getCoilTotal(item.coilEntries || [])}
+                            readOnly
+                            tabIndex={-1}
+                            title="Quantity is calculated automatically from coil weights"
                             required
                           />
                         </div>
@@ -1270,7 +1404,7 @@ export default function OutwardChallanPage() {
                                 const jobWorkRate = S + (A * EA) + (P * EP);
                                 newItems[index].rate = jobWorkRate + matCost;
                               }
-                              newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                              newItems[index] = syncItemFromCoils(newItems[index]);
                               setFormData({ ...formData, items: newItems });
                             }}
                             min="0"
@@ -1305,8 +1439,8 @@ export default function OutwardChallanPage() {
                                     const EP = newItems[index].drawPassCount || 0;
                                     const jobWorkRate = S + (A * EA) + (P * EP);
                                     newItems[index].rate = jobWorkRate + (newItems[index].materialCost || 0);
-                                    newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
                                   }
+                                  newItems[index] = syncItemFromCoils(newItems[index]);
                                   setFormData({ ...formData, items: newItems });
                                 }}
                               />
@@ -1359,9 +1493,7 @@ export default function OutwardChallanPage() {
                               const newItems = [...formData.items];
                               const newCoils = [...(newItems[index].coilEntries || []), { coilNumber: '', coilWeight: 0 }];
                               newItems[index].coilEntries = newCoils;
-                              const total = newCoils.reduce((s, c) => s + (c.coilWeight || 0), 0);
-                              if (total > 0) newItems[index].quantity = total;
-                              newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                              newItems[index] = syncItemFromCoils(newItems[index]);
                               setFormData({ ...formData, items: newItems });
                             }}
                             className="text-[10px] text-blue-600 border border-blue-300 bg-blue-50 rounded px-2 py-0.5 flex items-center gap-0.5 hover:bg-blue-100"
@@ -1383,6 +1515,7 @@ export default function OutwardChallanPage() {
                                     const newCoils = [...newItems[index].coilEntries];
                                     newCoils[ci] = { ...newCoils[ci], coilNumber: e.target.value };
                                     newItems[index].coilEntries = newCoils;
+                                    newItems[index] = syncItemFromCoils(newItems[index]);
                                     setFormData({ ...formData, items: newItems });
                                   }}
                                   placeholder="Coil number"
@@ -1402,9 +1535,7 @@ export default function OutwardChallanPage() {
                                       newCoils.push({ coilNumber: '', coilWeight: 0 });
                                     }
                                     newItems[index].coilEntries = newCoils;
-                                    const total = newCoils.reduce((s, c) => s + (c.coilWeight || 0), 0);
-                                    newItems[index].quantity = total > 0 ? total : newItems[index].quantity;
-                                    newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                                    newItems[index] = syncItemFromCoils(newItems[index]);
                                     setFormData({ ...formData, items: newItems });
                                   }}
                                   placeholder="kg"
@@ -1416,11 +1547,12 @@ export default function OutwardChallanPage() {
                                   type="button"
                                   onClick={() => {
                                     const newItems = [...formData.items];
-                                    const newCoils = newItems[index].coilEntries.filter((_, i) => i !== ci);
+                                    let newCoils = newItems[index].coilEntries.filter((_, i) => i !== ci);
+                                    if (newCoils.length === 0) {
+                                      newCoils = [{ coilNumber: '', coilWeight: 0 }];
+                                    }
                                     newItems[index].coilEntries = newCoils;
-                                    const total = newCoils.reduce((s, c) => s + (c.coilWeight || 0), 0);
-                                    if (newCoils.length > 0) newItems[index].quantity = total;
-                                    newItems[index].itemTotal = newItems[index].quantity * newItems[index].rate;
+                                    newItems[index] = syncItemFromCoils(newItems[index]);
                                     setFormData({ ...formData, items: newItems });
                                   }}
                                   className="text-red-400 hover:text-red-600 flex-shrink-0"
@@ -1434,7 +1566,8 @@ export default function OutwardChallanPage() {
                         )}
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
             </div>
 
@@ -1731,15 +1864,15 @@ export default function OutwardChallanPage() {
                 </button>
               </div>
             </div>
-            {['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'].map((copyType) => (
-              <div key={copyType} className="print-page page-break">
-                <ChallanPrintView
-                  challan={viewChallan as any}
-                  company={companyData}
-                  copyType={copyType}
-                  preparedBy={currentUserName}
-                />
-              </div>
+            {['Original for Recipient', 'Duplicate for Transporter', 'Triplicate for Supplier'].map((copyType, copyIdx) => (
+              <ChallanPrintView
+                key={copyType}
+                challan={viewChallan as any}
+                company={companyData}
+                copyType={copyType}
+                preparedBy={currentUserName}
+                isLastCopy={copyIdx === 2}
+              />
             ))}
           </div>
         </div>

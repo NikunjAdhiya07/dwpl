@@ -1,5 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 import { IOutwardChallan, IOutwardChallanItem } from '@/types';
+import { getCoilTotalFromEntries } from '@/lib/challanBomUtils';
 import './PartyMaster';
 import './ItemMaster';
 
@@ -173,13 +174,14 @@ const OutwardChallanSchema = new Schema<IOutwardChallan>(
 
 // Auto-calculate charges and totals before saving
 OutwardChallanSchema.pre('save', function () {
-  // Calculate item totals
   // @ts-ignore - items might not be typed correctly in pre-save
   this.items.forEach((item: any) => {
-    item.itemTotal = item.quantity * item.rate;
+    if (item.coilEntries?.length) {
+      item.quantity = getCoilTotalFromEntries(item.coilEntries);
+    }
+    item.itemTotal = (item.quantity || 0) * (item.rate || 0);
   });
-  
-  // Calculate overall total
+
   // @ts-ignore
   this.totalAmount = this.items.reduce((sum: number, item: any) => sum + item.itemTotal, 0);
 });

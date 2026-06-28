@@ -90,63 +90,26 @@ function getItemAmount(item: ChallanItem): number {
   return getItemQuantity(item) * (item.rate || 0);
 }
 
-/** Row slots consumed by an item (taller rows when many coil entries). */
-function getItemSlotCount(item: ChallanItem): number {
-  const coilCount =
-    item.coilEntries?.filter((c) => c.coilNumber).length ?? (item.coilNumber ? 1 : 0);
-  return Math.max(1, Math.ceil(coilCount / 2));
-}
-
-function sumItemSlots(items: ChallanItem[]): number {
-  return items.reduce((sum, item) => sum + getItemSlotCount(item), 0);
-}
-
-/** Max row slots per page type (accounts for header, party block, totals). */
-const FIRST_PAGE_SLOTS = 12;
-const CONTINUATION_PAGE_SLOTS = 16;
-const FIRST_PAGE_LAST_SLOTS = 8;
-const CONTINUATION_LAST_SLOTS = 10;
-const SINGLE_PAGE_MIN_ROWS = 8;
+/** Items on page 1 (header + party block); remainder continues on page 2+. */
+const FIRST_PAGE_MAX_ITEMS = 6;
+const CONTINUATION_PAGE_MAX_ITEMS = 12;
+const SINGLE_PAGE_MIN_ROWS = 6;
 
 function paginateItems(items: ChallanItem[]): ChallanItem[][] {
   if (items.length === 0) return [[]];
+  if (items.length <= FIRST_PAGE_MAX_ITEMS) return [items];
 
-  const totalSlots = sumItemSlots(items);
-  if (totalSlots <= FIRST_PAGE_LAST_SLOTS) {
-    return [items];
-  }
+  const pages: ChallanItem[][] = [items.slice(0, FIRST_PAGE_MAX_ITEMS)];
 
-  const pages: ChallanItem[][] = [];
-  let idx = 0;
-
+  let idx = FIRST_PAGE_MAX_ITEMS;
   while (idx < items.length) {
-    const remaining = items.slice(idx);
-    const remainingSlots = sumItemSlots(remaining);
-    const isFirst = pages.length === 0;
-    const lastPageCapacity = isFirst ? FIRST_PAGE_LAST_SLOTS : CONTINUATION_LAST_SLOTS;
-
-    if (remainingSlots <= lastPageCapacity) {
-      pages.push(remaining);
+    const remaining = items.length - idx;
+    if (remaining <= CONTINUATION_PAGE_MAX_ITEMS) {
+      pages.push(items.slice(idx));
       break;
     }
-
-    const capacity = isFirst ? FIRST_PAGE_SLOTS : CONTINUATION_PAGE_SLOTS;
-    const page: ChallanItem[] = [];
-    let used = 0;
-
-    for (const item of remaining) {
-      const need = getItemSlotCount(item);
-      if (used + need > capacity && page.length > 0) break;
-      page.push(item);
-      used += need;
-    }
-
-    if (page.length === 0) {
-      page.push(remaining[0]);
-    }
-
-    pages.push(page);
-    idx += page.length;
+    pages.push(items.slice(idx, idx + CONTINUATION_PAGE_MAX_ITEMS));
+    idx += CONTINUATION_PAGE_MAX_ITEMS;
   }
 
   return pages;
@@ -469,10 +432,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
             </div>
 
             {isLastPage && (
-              <div
-                className="mt-3"
-                style={{ breakInside: 'avoid', pageBreakInside: 'avoid', breakBefore: 'avoid' }}
-              >
+              <div className="mt-2">
                 <div className="flex justify-between items-end">
                   <div className="w-1/3">
                     <div className="border-t border-black pt-1 w-2/3 text-center text-[11px]">
@@ -487,7 +447,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
                   </div>
                   <div className="w-1/3 text-right">
                     <div className="inline-block text-center text-[11px]">
-                      <p className="mb-6 font-bold">Authorized Signature</p>
+                      <p className="mb-3 font-bold">Authorized Signature</p>
                       <div className="border-t border-black pt-1">
                         <p className="font-bold">(For {companyData.companyName})</p>
                       </div>
@@ -495,7 +455,7 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
                   </div>
                 </div>
 
-                <div className="mt-4 text-[9px] italic text-gray-500 text-center">
+                <div className="mt-2 text-[9px] italic text-gray-500 text-center">
                   <p>This is a computer generated delivery challan and does not require a physical signature.</p>
                   <p>Subject to Surendranagar Jurisdiction.</p>
                 </div>

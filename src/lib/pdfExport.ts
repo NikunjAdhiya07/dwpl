@@ -115,6 +115,7 @@ export async function exportMultiPageToPDF(
           }
         },
         jsPDF: { orientation: orientation, unit: 'mm' as const, format: 'a4' },
+        pagebreak: { mode: ['css', 'legacy'], after: ['.page-break'], avoid: ['tr'] },
       })
       .from(element)
       .save();
@@ -222,6 +223,7 @@ export async function exportHTMLToPDF(
           }
         },
         jsPDF: { orientation: orientation, unit: 'mm' as const, format: 'a4' },
+        pagebreak: { mode: ['css', 'legacy'], after: ['.page-break'], avoid: ['tr'] },
       })
       .from(tempDiv)
       .save();

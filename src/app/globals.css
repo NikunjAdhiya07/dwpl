@@ -462,6 +462,15 @@ button.input {
     size: A4;
     margin: 10mm 7mm;
   }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }
 
 /* Screen View Styling for Modal */

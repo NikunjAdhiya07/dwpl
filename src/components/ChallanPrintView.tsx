@@ -94,21 +94,25 @@ function getItemAmount(item: ChallanItem): number {
 function getItemSlotCount(item: ChallanItem): number {
   const coilCount =
     item.coilEntries?.filter((c) => c.coilNumber).length ?? (item.coilNumber ? 1 : 0);
-  if (coilCount <= 3) return 1;
-  return Math.ceil(coilCount / 3);
+  return Math.max(1, Math.ceil(coilCount / 2));
+}
+
+function sumItemSlots(items: ChallanItem[]): number {
+  return items.reduce((sum, item) => sum + getItemSlotCount(item), 0);
 }
 
 /** Max row slots per page type (accounts for header, party block, totals). */
-const FIRST_PAGE_SLOTS = 6;
-const CONTINUATION_PAGE_SLOTS = 8;
-const LAST_PAGE_SLOTS = 5;
+const FIRST_PAGE_SLOTS = 12;
+const CONTINUATION_PAGE_SLOTS = 16;
+const FIRST_PAGE_LAST_SLOTS = 8;
+const CONTINUATION_LAST_SLOTS = 10;
 const SINGLE_PAGE_MIN_ROWS = 8;
 
 function paginateItems(items: ChallanItem[]): ChallanItem[][] {
   if (items.length === 0) return [[]];
 
-  const totalSlots = items.reduce((sum, item) => sum + getItemSlotCount(item), 0);
-  if (totalSlots <= SINGLE_PAGE_MIN_ROWS && items.length <= SINGLE_PAGE_MIN_ROWS) {
+  const totalSlots = sumItemSlots(items);
+  if (totalSlots <= FIRST_PAGE_LAST_SLOTS) {
     return [items];
   }
 
@@ -117,10 +121,11 @@ function paginateItems(items: ChallanItem[]): ChallanItem[][] {
 
   while (idx < items.length) {
     const remaining = items.slice(idx);
-    const remainingSlots = remaining.reduce((sum, item) => sum + getItemSlotCount(item), 0);
+    const remainingSlots = sumItemSlots(remaining);
     const isFirst = pages.length === 0;
+    const lastPageCapacity = isFirst ? FIRST_PAGE_LAST_SLOTS : CONTINUATION_LAST_SLOTS;
 
-    if (remainingSlots <= LAST_PAGE_SLOTS) {
+    if (remainingSlots <= lastPageCapacity) {
       pages.push(remaining);
       break;
     }
@@ -129,17 +134,15 @@ function paginateItems(items: ChallanItem[]): ChallanItem[][] {
     const page: ChallanItem[] = [];
     let used = 0;
 
-    for (let i = 0; i < remaining.length; i++) {
-      const need = getItemSlotCount(remaining[i]);
+    for (const item of remaining) {
+      const need = getItemSlotCount(item);
       if (used + need > capacity && page.length > 0) break;
-
-      page.push(remaining[i]);
+      page.push(item);
       used += need;
+    }
 
-      const leftSlots = remaining
-        .slice(i + 1)
-        .reduce((sum, item) => sum + getItemSlotCount(item), 0);
-      if (leftSlots > 0 && leftSlots <= LAST_PAGE_SLOTS) break;
+    if (page.length === 0) {
+      page.push(remaining[0]);
     }
 
     pages.push(page);
@@ -230,7 +233,7 @@ function EmptyRow() {
 
 function TableHeader() {
   return (
-    <thead>
+    <thead style={{ display: 'table-header-group' }}>
       <tr className="border-b border-black font-bold bg-gray-50">
         <th className="border-r border-black px-1 py-2 w-[40px] text-center">Sr. No.</th>
         <th className="border-r border-black px-2 py-2 text-left">Description (Finish Size)</th>
@@ -280,48 +283,55 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
       {pages.map((pageItems, pageIdx) => {
         const isLastPage = pageIdx === pages.length - 1;
         const isOnlyPage = pages.length === 1;
+        const isContinuationPage = pageIdx > 0;
         const globalStartIdx = pages.slice(0, pageIdx).reduce((sum, p) => sum + p.length, 0);
         const needsPageBreak = !(isLastPage && isLastCopy);
 
-        const emptyRowsCount =
-          isLastPage && isOnlyPage
-            ? Math.max(0, SINGLE_PAGE_MIN_ROWS - pageItems.length)
-            : isLastPage
-              ? Math.max(0, SINGLE_PAGE_MIN_ROWS - pageItems.length)
-              : 0;
+        const emptyRowsCount = isOnlyPage
+          ? Math.max(0, SINGLE_PAGE_MIN_ROWS - pageItems.length)
+          : 0;
 
         return (
           <div
             key={`${copyType}-page-${pageIdx}`}
-            className="print-page bg-white text-black font-sans p-[10mm] w-[210mm] box-border mx-auto border border-gray-200 flex flex-col"
+            className={`print-page bg-white text-black font-sans p-[10mm] w-[210mm] box-border mx-auto border border-gray-200${needsPageBreak ? ' page-break' : ''}`}
             style={{
-              minHeight: '297mm',
               boxSizing: 'border-box',
               pageBreakAfter: needsPageBreak ? 'always' : 'auto',
               breakAfter: needsPageBreak ? 'page' : 'auto',
             }}
           >
             {/* Header Section */}
-            <div className="flex justify-between items-start mb-6">
-              <div className="w-[45%] text-[11px] leading-snug">
+            <div className={`flex justify-between items-start ${isContinuationPage ? 'mb-3' : 'mb-6'}`}>
+              <div className={`${isContinuationPage ? 'w-[55%]' : 'w-[45%]'} text-[11px] leading-snug`}>
                 <p className="font-bold text-[16px] mb-1">{companyData.companyName}</p>
-                <p className="whitespace-pre-line text-gray-700">{companyData.address}</p>
-                <div className="mt-2 space-y-0.5">
-                  <p>
-                    <span className="font-semibold text-gray-600">Reg. Off.:</span>{' '}
-                    {companyData.registeredOffice}
+                {!isContinuationPage && (
+                  <>
+                    <p className="whitespace-pre-line text-gray-700">{companyData.address}</p>
+                    <div className="mt-2 space-y-0.5">
+                      <p>
+                        <span className="font-semibold text-gray-600">Reg. Off.:</span>{' '}
+                        {companyData.registeredOffice}
+                      </p>
+                      <p className="text-[10px]">
+                        <span className="font-semibold text-gray-600">CIN:</span> {companyData.cin}
+                      </p>
+                      <p className="text-[10px]">
+                        <span className="font-semibold text-gray-600">GSTIN/UIN:</span> {companyData.gstin}
+                      </p>
+                      <p className="text-[10px]">
+                        <span className="font-semibold text-gray-600">State Name:</span> {companyData.state}, Code:{' '}
+                        {companyData.stateCode}
+                      </p>
+                    </div>
+                  </>
+                )}
+                {isContinuationPage && (
+                  <p className="text-[10px] text-gray-600">
+                    Challan No: {challan.challanNumber} &nbsp;|&nbsp; Date:{' '}
+                    {new Date(challan.challanDate).toLocaleDateString('en-IN')}
                   </p>
-                  <p className="text-[10px]">
-                    <span className="font-semibold text-gray-600">CIN:</span> {companyData.cin}
-                  </p>
-                  <p className="text-[10px]">
-                    <span className="font-semibold text-gray-600">GSTIN/UIN:</span> {companyData.gstin}
-                  </p>
-                  <p className="text-[10px]">
-                    <span className="font-semibold text-gray-600">State Name:</span> {companyData.state}, Code:{' '}
-                    {companyData.stateCode}
-                  </p>
-                </div>
+                )}
               </div>
               <div className="w-[30%] text-center pt-2">
                 <p className="text-[14px] font-bold uppercase tracking-[0.2em] mb-1">Delivery</p>
@@ -337,8 +347,9 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
               </div>
             </div>
 
-            <div className="border border-black flex-1 flex flex-col">
-              {/* Party & Transport Details Section */}
+            <div className="border border-black">
+              {/* Party & Transport Details Section — first page only */}
+              {!isContinuationPage && (
               <div className="flex border-b border-black">
                 <div className="flex-1 border-r border-black p-2 min-h-[120px]">
                   <div className="mb-3">
@@ -386,6 +397,13 @@ const ChallanPrintView: React.FC<ChallanPrintViewProps> = ({
                   </div>
                 </div>
               </div>
+              )}
+
+              {isContinuationPage && (
+                <div className="border-b border-black px-2 py-1.5 text-[9px] text-gray-600 italic bg-gray-50">
+                  Continued from previous page
+                </div>
+              )}
 
               {/* Item Details Table */}
               <table className="w-full border-collapse text-[10px]">

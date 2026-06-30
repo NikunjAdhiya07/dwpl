@@ -49,6 +49,9 @@ export async function PATCH(
     if (body.allowedSections !== undefined) {
       user.allowedSections = body.allowedSections;
     }
+    if (body.canEditInvoicedChallans !== undefined) {
+      user.canEditInvoicedChallans = body.canEditInvoicedChallans;
+    }
     if (body.name) user.name = body.name;
     if (body.role) user.role = body.role;
     if (body.password) {

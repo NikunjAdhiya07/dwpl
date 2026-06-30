@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['SUPER_ADMIN', 'USER'], default: 'USER' },
   allowedSections: { type: [String], default: [] },
+  canEditInvoicedChallans: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true }
 }, {
   timestamps: true

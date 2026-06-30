@@ -33,7 +33,12 @@ export async function POST(request: Request) {
         path: '/',
         maxAge: 60 * 60 * 24 * 7,
       });
-      return NextResponse.json({ success: true, role: 'SUPER_ADMIN' });
+      cookieStore.set('dwpl_can_edit_invoiced_challans', '1', {
+        httpOnly: false,
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      return NextResponse.json({ success: true, role: 'SUPER_ADMIN', canEditInvoicedChallans: true });
     }
 
     await connectDB();
@@ -79,7 +84,20 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    return NextResponse.json({ success: true, role: user.role, name: user.name, sections });
+    const canEditInvoicedChallans = user.canEditInvoicedChallans === true;
+    cookieStore.set('dwpl_can_edit_invoiced_challans', canEditInvoicedChallans ? '1' : '0', {
+      httpOnly: false,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return NextResponse.json({
+      success: true,
+      role: user.role,
+      name: user.name,
+      sections,
+      canEditInvoicedChallans,
+    });
   } catch (error) {
     return NextResponse.json(
       { success: false, message: 'Internal server error' },

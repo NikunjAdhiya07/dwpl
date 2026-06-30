@@ -7,6 +7,7 @@ import { Stock } from '@/models/Stock';
 import { TaxInvoice } from '@/models/TaxInvoice';
 import { BOM } from '@/models/BOM';
 import { isValidFgRmPair, normalizeChallanItemFromCoils } from '@/lib/challanBomUtils';
+import { userCanEditInvoicedChallans } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
@@ -135,13 +136,16 @@ export async function PUT(
     // Block edits if an invoice has already been generated for this challan
     const linkedInvoice = await TaxInvoice.findOne({ outwardChallan: id }).select('invoiceNumber');
     if (linkedInvoice) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Cannot edit challan ${existingChallan.challanNumber}: Invoice ${linkedInvoice.invoiceNumber} has already been generated for it. Delete the invoice first to edit the challan.`,
-        },
-        { status: 400 }
-      );
+      const canEditInvoiced = await userCanEditInvoicedChallans();
+      if (!canEditInvoiced) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Cannot edit challan ${existingChallan.challanNumber}: Invoice ${linkedInvoice.invoiceNumber} has already been generated for it. You do not have permission to edit invoiced challans.`,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     console.log('Updating challan:', existingChallan.challanNumber);

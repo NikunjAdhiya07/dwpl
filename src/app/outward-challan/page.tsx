@@ -201,6 +201,7 @@ export default function OutwardChallanPage() {
   const [expandedChallanId, setExpandedChallanId] = useState<string | null>(null);
   const [selectedOwnerName, setSelectedOwnerName] = useState<string>('');
   const [currentUserName, setCurrentUserName] = useState('');
+  const [canEditInvoicedChallans, setCanEditInvoicedChallans] = useState(false);
   const [invoicedChallanIds, setInvoicedChallanIds] = useState<Set<string>>(new Set());
   const [viewChallan, setViewChallan] = useState<OutwardChallan | null>(null);
   
@@ -221,7 +222,12 @@ export default function OutwardChallanPage() {
     fetchData();
     fetch('/api/auth/me')
       .then(r => r.json())
-      .then(d => { if (d.success) setCurrentUserName(d.data.name); })
+      .then(d => {
+        if (d.success) {
+          setCurrentUserName(d.data.name);
+          setCanEditInvoicedChallans(d.data.canEditInvoicedChallans === true);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -691,8 +697,8 @@ export default function OutwardChallanPage() {
   };
 
   const handleEdit = (challan: OutwardChallan) => {
-    if (invoicedChallanIds.has(challan._id)) {
-      alert(`Challan ${challan.challanNumber} is locked because an invoice has already been generated for it. Delete the invoice first to edit the challan.`);
+    if (invoicedChallanIds.has(challan._id) && !canEditInvoicedChallans) {
+      alert(`Challan ${challan.challanNumber} is locked because an invoice has already been generated for it. You do not have permission to edit invoiced challans.`);
       return;
     }
     setEditingChallan(challan);
@@ -1632,6 +1638,7 @@ export default function OutwardChallanPage() {
             {challans.map((challan) => {
               const isExpanded = expandedChallanId === challan._id;
               const isLocked = invoicedChallanIds.has(challan._id);
+              const isEditLocked = isLocked && !canEditInvoicedChallans;
               return (
                 <div key={challan._id} className="border border-slate-200 rounded-lg overflow-hidden">
                   {/* Header Row */}
@@ -1681,8 +1688,8 @@ export default function OutwardChallanPage() {
                       <button
                         onClick={() => handleEdit(challan)}
                         className="btn btn-sm btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
-                        title={isLocked ? 'Locked: invoice already generated' : 'Edit'}
-                        disabled={isLocked}
+                        title={isEditLocked ? 'Locked: invoice already generated' : isLocked ? 'Edit invoiced challan' : 'Edit'}
+                        disabled={isEditLocked}
                       >
                         <Edit className="w-3.5 h-3.5" />
                       </button>

@@ -12,6 +12,7 @@ interface User {
   isActive: boolean;
   createdAt: string;
   allowedSections?: string[];
+  canEditInvoicedChallans?: boolean;
 }
 
 const AVAILABLE_SECTIONS = ['Dashboard', 'Masters', 'GRN', 'Outward Challan', 'Tax Invoice'];
@@ -27,6 +28,7 @@ export default function ManageUsers() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('USER');
   const [allowedSections, setAllowedSections] = useState<string[]>(AVAILABLE_SECTIONS);
+  const [canEditInvoicedChallans, setCanEditInvoicedChallans] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchUsers = async () => {
@@ -57,7 +59,12 @@ export default function ManageUsers() {
     try {
       const url = editingUser ? `/api/users/${editingUser._id}` : '/api/users';
       const method = editingUser ? 'PATCH' : 'POST';
-      const bodyPayload: any = { name, role, allowedSections: role === 'SUPER_ADMIN' ? AVAILABLE_SECTIONS : allowedSections };
+      const bodyPayload: any = {
+        name,
+        role,
+        allowedSections: role === 'SUPER_ADMIN' ? AVAILABLE_SECTIONS : allowedSections,
+        canEditInvoicedChallans,
+      };
       if (!editingUser || password) {
         bodyPayload.password = password;
       }
@@ -88,6 +95,7 @@ export default function ManageUsers() {
     setName(user.name);
     setRole(user.role);
     setAllowedSections(user.allowedSections || AVAILABLE_SECTIONS);
+    setCanEditInvoicedChallans(user.canEditInvoicedChallans ?? false);
     setPassword('');
   };
 
@@ -97,6 +105,7 @@ export default function ManageUsers() {
     setPassword('');
     setRole('USER');
     setAllowedSections(AVAILABLE_SECTIONS);
+    setCanEditInvoicedChallans(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -118,12 +127,25 @@ export default function ManageUsers() {
   if (loading) return <div className="p-8">Loading users...</div>;
 
   if (error && users.length === 0) {
+    const isDbError =
+      error.includes('querySrv') ||
+      error.includes('ECONNREFUSED') ||
+      error.includes('ETIMEOUT') ||
+      error.includes('ENOTFOUND') ||
+      error.includes('Mongo');
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold text-slate-800">Access Denied / Error</h2>
+        <h2 className="text-2xl font-bold text-slate-800">
+          {isDbError ? 'Database Connection Error' : 'Access Denied / Error'}
+        </h2>
         <p className="text-slate-500 mt-2">Error details: {error}</p>
-        <p className="text-slate-400 text-sm mt-4">Make sure you are logged in properly as SUPER_ADMIN.</p>
+        <p className="text-slate-400 text-sm mt-4">
+          {isDbError
+            ? 'Could not reach MongoDB. Check your internet connection, .env.local MONGODB_URI, and Atlas cluster status, then restart the dev server.'
+            : 'Make sure you are logged in properly as SUPER_ADMIN.'}
+        </p>
       </div>
     );
   }
@@ -221,6 +243,25 @@ export default function ManageUsers() {
                 </div>
               )}
 
+              <div className="space-y-2 mt-4 pt-4 border-t border-slate-100">
+                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-slate-400" />
+                  Permissions
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all text-sm">
+                  <input
+                    type="checkbox"
+                    checked={canEditInvoicedChallans}
+                    onChange={(e) => setCanEditInvoicedChallans(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-slate-600 font-medium">Can Edit Invoiced Challans</span>
+                </label>
+                <p className="text-xs text-slate-500 pl-2">
+                  Allows editing outward challans that already have a tax invoice generated.
+                </p>
+              </div>
+
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -272,20 +313,27 @@ export default function ManageUsers() {
                         </span>
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell">
-                        {user.role === 'SUPER_ADMIN' ? (
-                          <span className="text-xs text-slate-500 italic">All Sections</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {user.allowedSections?.map(sec => (
-                              <span key={sec} className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded border border-slate-200">
-                                {sec}
-                              </span>
-                            ))}
-                            {(!user.allowedSections || user.allowedSections.length === 0) && (
-                              <span className="text-xs text-red-500 italic">No Access</span>
-                            )}
-                          </div>
-                        )}
+                        <div className="flex flex-col gap-1">
+                          {user.role === 'SUPER_ADMIN' ? (
+                            <span className="text-xs text-slate-500 italic">All Sections</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {user.allowedSections?.map(sec => (
+                                <span key={sec} className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded border border-slate-200">
+                                  {sec}
+                                </span>
+                              ))}
+                              {(!user.allowedSections || user.allowedSections.length === 0) && (
+                                <span className="text-xs text-red-500 italic">No Access</span>
+                              )}
+                            </div>
+                          )}
+                          {user.canEditInvoicedChallans && (
+                            <span className="bg-amber-50 text-amber-700 text-[10px] px-1.5 py-0.5 rounded border border-amber-200 w-fit">
+                              Edit Invoiced Challans
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 flex justify-end gap-1">
                         <button
